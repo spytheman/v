@@ -16,6 +16,15 @@ const (
 	error_context_after = 2  // ^^^ same, but after
 )
 
+struct ScannerState {
+mut:
+	pos int
+	line int
+	inside_string bool
+	inter_start bool
+	inter_end bool
+}
+
 struct Scanner {
 mut:
 	file_path      string
@@ -702,6 +711,24 @@ fn (s mut Scanner) ident_char() string {
 	}	
 	// Escapes a `'` character
 	return if c == '\'' { '\\' + c } else { c }
+}
+
+fn (s mut Scanner) save_scan_state() ScannerState {
+	mut ss := ScannerState{}
+	ss.pos = s.pos
+	ss.line = s.line_nr
+	ss.inside_string = s.inside_string
+	ss.inter_start = s.inter_start
+	ss.inter_end = s.inter_end
+	return ss
+}
+
+fn (s mut Scanner) restore_scan_state(ss ScannerState) {
+	s.pos = ss.pos
+	s.line_nr = ss.line
+	s.inside_string = ss.inside_string
+	s.inter_start = ss.inter_start
+	s.inter_end = ss.inter_end
 }
 
 fn (s &Scanner) expect(want string, start_pos int) bool {
