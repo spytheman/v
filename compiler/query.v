@@ -32,18 +32,20 @@ fn sql_params2params_gen(sql_params []string, sql_types []string, qprefix string
 	return params_gen
 }
 
-// `db.select from User where id == 1 && nr_bookings > 0`
-fn (p mut Parser) select_query(fn_ph int) string {
+// `db.select from User where id == 1 && nr_bookings > 0` 
+fn (p mut Parser) select_query(fn_ph int, dbtype string, dbcon string) string {
+	println('select_query: fn_ph $fn_ph | dbtype: $dbtype | dbcon: $dbcon')
 	// NB: qprefix and { p.sql_i, p.sql_params, p.sql_types } SHOULD be reset for each query,
 	// because we can have many queries in the _same_ scope.
 	qprefix := p.get_tmp().replace('tmp','sql') + '_'
 	p.sql_i = 0
 	p.sql_params = []string
 	p.sql_types = []string
-
-	mut q := 'select '
-	p.check(.key_select)
+                                                  
+	mut q := 'select ' 
 	n := p.check_name()
+	println( '\n\nq n is: $n\n')
+
 	if n == 'count' {
 		q += 'count(*) from '
 		p.check_name()
@@ -115,12 +117,12 @@ fn (p mut Parser) select_query(fn_ph int) string {
 	p.cgen.insert_before('// DEBUG_SQL prefix: $qprefix | fn_ph: $fn_ph | query: "$q" ')
 	
 	if n == 'count' {
-		p.cgen.set_placeholder(fn_ph, 'pg__DB_q_int(')
-		p.gen(', tos2("$q"))')
-	} else {
-		// Build an object, assign each field.
-		tmp := p.get_tmp()
-		mut obj_gen := strings.new_builder(300)
+		p.cgen.set_placeholder(fn_ph, '${dbtype}_exec_to_row_to_int(&')
+		p.gen(', tos2("$q"))') 
+	} else { 
+		// Build an object, assign each field. 
+		tmp := p.get_tmp() 
+		mut obj_gen := strings.new_builder(300) 
 		for i, field in fields {
 			mut cast := ''
 			if field.typ == 'int' {
@@ -137,14 +139,13 @@ char* ${qprefix}params[$p.sql_i];
 $params_gen
 
 Option_${table_name} opt_${qprefix}$tmp;
-void* ${qprefix}res = PQexecParams(db.conn, "$q", $p.sql_i, 0, ${qprefix}params, 0, 0, 0)  ;
-array_pg__Row ${qprefix}rows = pg__res_to_rows ( ${qprefix}res ) ;
-Option_pg__Row opt_${qprefix}row = pg__rows_first_or_empty( ${qprefix}rows );
+array_orm__Row ${qprefix}rows = ${dbtype}_pquery(&db, "$q", $p.sql_i, ${qprefix}params)  ;
+Option_orm__Row opt_${qprefix}row = orm__rows_first_or_empty( ${qprefix}rows );
 if (! opt_${qprefix}row . ok ) {
    opt_${qprefix}$tmp = v_error( opt_${qprefix}row . error );
 }else{
    $table_name ${qprefix}$tmp;
-   pg__Row ${qprefix}row = *(pg__Row*) opt_${qprefix}row . data;
+   orm__Row ${qprefix}row = *(orm__Row*) opt_${qprefix}row . data; 
 ${obj_gen.str()}
    opt_${qprefix}$tmp = opt_ok( & ${qprefix}$tmp, sizeof($table_name) );
 }
@@ -159,13 +160,12 @@ ${obj_gen.str()}
 			p.cgen.insert_before('char* ${qprefix}params[$p.sql_i];
 $params_gen
 
-void* ${qprefix}res = PQexecParams(db.conn, "$q", $p.sql_i, 0, ${qprefix}params, 0, 0, 0)  ;
-array_pg__Row ${qprefix}rows = pg__res_to_rows(${qprefix}res);
+array_orm__Row ${qprefix}rows = ${dbtype}_pquery(&db, "$q", $p.sql_i, ${qprefix}params)  ;
 
 // TODO preallocate
 array ${qprefix}arr_$tmp = new_array(0, 0, sizeof($table_name));
 for (int i = 0; i < ${qprefix}rows.len; i++) {
-    pg__Row ${qprefix}row = *(pg__Row*)array__get(${qprefix}rows, i);
+    orm__Row ${qprefix}row = *(orm__Row*)array__get(${qprefix}rows, i);
     $table_name ${qprefix}$tmp;
     ${obj_gen.str()}
     _PUSH(&${qprefix}arr_$tmp, ${qprefix}$tmp, ${tmp}2, $table_name);
@@ -188,15 +188,21 @@ for (int i = 0; i < ${qprefix}rows.len; i++) {
 	}
 }
 
-// `db.insert(user)`
-fn (p mut Parser) insert_query(fn_ph int) {
-	p.check_name()
-	p.check(.lpar)
-	var_name := p.check_name()
-	p.check(.rpar)
-	var := p.find_var(var_name)  or { return }
-	typ := p.table.find_type(var.typ)
-	mut fields := []Var
+
+// TODO
+// `db.insert user`
+fn (p mut Parser) insert_query(fn_ph int, dbtype string, dbcon string) string { 
+	println('insert_query: fn_ph: $fn_ph | dbtype: $dbtype | dbcon: $dbcon')
+	p.error('insert_query not implemented yet')
+	
+	p.check_name() 
+	p.check(.lpar) 
+	var_name := p.check_name() 
+	p.check(.rpar) 
+	var := p.cur_fn.find_var(var_name) or { return }
+	typ := p.table.find_type(var.typ) 
+	mut fields := []Var 
+
 	for i, field in typ.fields {
 		if field.typ != 'string' && field.typ != 'int' {
 			continue
@@ -238,5 +244,22 @@ fn (p mut Parser) insert_query(fn_ph int) {
 	p.cgen.set_placeholder(fn_ph, 'PQexecParams( ')
 	p.genln('.conn, "insert into $table_name ($sfields) values ($vals)", $nr_vals,
 0, params, 0, 0, 0)')
+	return 'int'
+} 
+
+
+// TODO
+// `db.update user`
+fn (p mut Parser) update_query(fn_ph int, dbtype string, dbcon string) string {
+	println('update_query: fn_ph: $fn_ph | dbtype: $dbtype | dbcon: $dbcon') 
+	p.error('update_query not implemented yet')
+	return 'int'
 }
 
+// TODO
+// `db.delete user`
+fn (p mut Parser) delete_query(fn_ph int, dbtype string, dbcon string) string {
+	println('delete_query: fn_ph: $fn_ph | dbtype: $dbtype ') 
+	p.error('delete_query not implemented yet')
+	return 'int'
+}

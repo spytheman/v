@@ -98,7 +98,6 @@ enum Token {
 	key_mut
 	key_none
 	key_return
-	key_select // ORM db.select
 	key_sizeof
 	key_struct
 	key_switch
@@ -223,7 +222,6 @@ fn build_token_str() []string {
 	s[Token.key_as] = 'as'
 	s[Token.key_defer] = 'defer'
 	s[Token.key_match] = 'match'
-	s[Token.key_select] = 'select' // ORM db.select
 	s[Token.key_none] = 'none'
 	return s
 }
