@@ -139,7 +139,7 @@ char* ${qprefix}params[$p.sql_i];
 $params_gen
 
 Option_${table_name} opt_${qprefix}$tmp;
-array_orm__Row ${qprefix}rows = ${dbtype}_pquery(&db, "$q", $p.sql_i, ${qprefix}params)  ;
+array_orm__Row ${qprefix}rows = ${dbtype}_pquery(&${dbcon}, "$q", $p.sql_i, ${qprefix}params)  ;
 Option_orm__Row opt_${qprefix}row = orm__rows_first_or_empty( ${qprefix}rows );
 if (! opt_${qprefix}row . ok ) {
    opt_${qprefix}$tmp = v_error( opt_${qprefix}row . error );
@@ -160,7 +160,7 @@ ${obj_gen.str()}
 			p.cgen.insert_before('char* ${qprefix}params[$p.sql_i];
 $params_gen
 
-array_orm__Row ${qprefix}rows = ${dbtype}_pquery(&db, "$q", $p.sql_i, ${qprefix}params)  ;
+array_orm__Row ${qprefix}rows = ${dbtype}_pquery(&${dbcon}, "$q", $p.sql_i, ${qprefix}params)  ;
 
 // TODO preallocate
 array ${qprefix}arr_$tmp = new_array(0, 0, sizeof($table_name));
