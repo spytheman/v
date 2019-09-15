@@ -60,8 +60,9 @@ CommonCHeaders = '
 #define _Atomic volatile
 
 // MSVC cannot parse some things properly
-//#undef EMPTY_STRUCT_DECLARATION
-//#define EMPTY_STRUCT_DECLARATION void *____dummy_variable
+#undef EMPTY_STRUCT_DECLARATION
+#define EMPTY_STRUCT_DECLARATION void *____dummy_variable
+
 #undef OPTION_CAST
 #define OPTION_CAST(x)
 #endif
