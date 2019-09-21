@@ -193,13 +193,13 @@ for (int i = 0; i < ${qprefix}rows.len; i++) {
 // `db.insert user`
 fn (p mut Parser) insert_query(fn_ph int, dbtype string, dbcon string) string { 
 	println('insert_query: fn_ph: $fn_ph | dbtype: $dbtype | dbcon: $dbcon')
-	p.error('insert_query not implemented yet')
 	
 	p.check_name() 
 	p.check(.lpar) 
 	var_name := p.check_name() 
+	p.error('insert_query not implemented yet. vname: $var_name')
 	p.check(.rpar) 
-	var := p.cur_fn.find_var(var_name) or { return }
+	var := p.cur_fn.find_var(var_name) or { return 'int' }
 	typ := p.table.find_type(var.typ) 
 	mut fields := []Var 
 
