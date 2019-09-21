@@ -713,7 +713,7 @@ fn (s mut Scanner) ident_char() string {
 	return if c == '\'' { '\\' + c } else { c }
 }
 
-fn (s mut Scanner) save_scan_state() ScannerState {
+fn (s &Scanner) save_scan_state() ScannerState {
 	mut ss := ScannerState{}
 	ss.pos = s.pos
 	ss.line = s.line_nr
@@ -730,6 +730,7 @@ fn (s mut Scanner) restore_scan_state(ss ScannerState) {
 	s.inter_start = ss.inter_start
 	s.inter_end = ss.inter_end
 }
+
 
 fn (s &Scanner) expect(want string, start_pos int) bool {
 	end_pos := start_pos + want.len
