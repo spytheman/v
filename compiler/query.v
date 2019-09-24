@@ -199,7 +199,7 @@ fn (p mut Parser) insert_query(fn_ph int, dbtype string, dbcon string) string {
 	var_name := p.check_name() 
 	p.error('insert_query not implemented yet. vname: $var_name')
 	p.check(.rpar) 
-	var := p.cur_fn.find_var(var_name) or { return 'int' }
+	var := p.find_var(var_name) or { return 'int' }
 	typ := p.table.find_type(var.typ) 
 	mut fields := []Var 
 
