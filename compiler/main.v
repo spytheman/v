@@ -109,6 +109,8 @@ mut:
 						 // This is on by default, since a vast majority of users do not
 						 // work on the builtin module itself.
 	
+	// `v -show_v_files` prints the list of all v files that are going to be compiled
+	show_v_files bool
 }
 
 fn main() {
@@ -238,7 +240,7 @@ fn (v mut V) compile() {
 		println(v.files)
 	}
 	v.add_v_files_to_compile()
-	if v.pref.is_verbose || v.pref.is_debug {
+	if v.pref.is_verbose || v.pref.show_v_files {
 		println('all .v files:')
 		println(v.files)
 	}
@@ -887,6 +889,7 @@ fn new_v(args[]string) &V {
 		sanitize: '-sanitize' in args
 		nofmt: '-nofmt' in args
 		show_c_cmd: '-show_c_cmd' in args
+		show_v_files: '-show_v_files' in args
 		translated: 'translated' in args
 		is_run: 'run' in args
 		autofree: '-autofree' in args
