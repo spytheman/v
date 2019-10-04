@@ -27,6 +27,7 @@ fn C.PQconnectdb(a byteptr) &C.PGconn
 fn C.PQerrorMessage(voidptr) byteptr
 fn C.PQgetvalue(voidptr, int, int) byteptr
 fn C.PQstatus(voidptr) int
+fn C.PQexec(&C.PGconn, byteptr) &C.PGresult
 
 pub fn connect(config pg.Config) DB {
 	conninfo := 'host=$config.host user=$config.user dbname=$config.dbname'
@@ -38,6 +39,19 @@ pub fn connect(config pg.Config) DB {
 		exit(1)
 	}
 	return DB {conn: conn}
+}
+
+pub fn (db DB) exec(query string) []orm.Row {
+	a := 1
+	res := C.PQexec(db.conn, query.str)
+	defer { C.PQclear( res ) }
+	e := string(C.PQerrorMessage(db.conn))
+	if e != '' {
+		println('pg exec error:')
+		println(e)
+		return db.res_to_rows(res)
+	}
+	return db.res_to_rows(res)
 }
 
 pub fn (db DB) q_int(query string) int {
@@ -72,18 +86,6 @@ pub fn (db DB) q_strings(query string) []orm.Row {
 	return db.exec(query)
 }
 
-pub fn (db DB) exec(query string) []orm.Row {
-	res := C.PQexec(db.conn, query.str)
-	defer { C.PQclear( res ) }
-	e := string(C.PQerrorMessage(db.conn))
-	if e != '' {
-		println('pg exec error:')
-		println(e)
-		return db.res_to_rows(res)
-	}
-	return db.res_to_rows(res)
-}
-
 fn rows_first_or_empty(rows []pg.Row) ?pg.Row {
 	if rows.len == 0 {
 		return error('no row')
@@ -114,7 +116,7 @@ pub fn (db DB) exec_param(query string, param string) []orm.Row {
 	return db.res_to_rows(res)
 }
 
-pub fn (db &DB) exec_to_row(query string) orm.Row? {
+pub fn (db &DB) exec_to_row(query string) ?orm.Row {
 	res := C.PQexec(db.conn, query.str)
 	defer { C.PQclear( res ) }
 	e := string(C.PQerrorMessage(db.conn))
