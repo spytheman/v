@@ -316,7 +316,7 @@ fn (v &V) type_definitions() string {
 	mut types := []Type // structs that need to be sorted
 	mut builtin_types := []Type // builtin types
 	// builtin types need to be on top
-	builtins := ['string', 'array', 'map', 'Option']
+	builtins := ['string', 'array', 'map', 'Option', 'OError']
 	for builtin in builtins {
 		typ := v.table.typesmap[builtin]
 		builtin_types << typ

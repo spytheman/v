@@ -42,5 +42,8 @@ pub fn error_with_code(s string, code int) Option {
 	}
 }
 
-
-
+// used by the unwrapped error
+struct OError {
+	message string
+	code int
+}
