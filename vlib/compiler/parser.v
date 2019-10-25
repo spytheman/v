@@ -1079,8 +1079,8 @@ fn (p mut Parser) statement(add_semi bool) string {
 			p.gen_blank_identifier_assign()
 		}
 		else {
-			// panic and exit count as returns since they stop the function
-			if p.lit == 'panic' || p.lit == 'exit' {
+			// epanic, panic and exit count as returns since they stop the function
+			if p.lit == 'epanic' || p.lit == 'panic' || p.lit == 'exit' {
 				p.returns = true
 			}
 			// `a + 3`, `a(7)`, or just `a`

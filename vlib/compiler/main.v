@@ -525,7 +525,7 @@ pub fn (v &V) v_files_from_dir(dir string) []string {
 	} else if !os.dir_exists(dir) {
 		verror("$dir isn't a directory")
 	}
-	mut files := os.ls(dir) or { panic(err) }
+	mut files := os.ls(dir) or { panic(err.message) }
 	if v.pref.is_verbose {
 		println('v_files_from_dir ("$dir")')
 	}
@@ -966,7 +966,7 @@ pub fn update_v() {
 	println('Updating V...')
 	vroot := os.dir(vexe_path())
 	s := os.exec('git -C "$vroot" pull --rebase origin master') or {
-		verror(err)
+		verror(err.message)
 		return
 	}
 	println(s.output)
@@ -977,13 +977,13 @@ pub fn update_v() {
 		}
 		os.mv('$vroot/v.exe', v_backup_file)
 		s2 := os.exec('"$vroot/make.bat"') or {
-			verror(err)
+			verror(err.message)
 			return
 		}
 		println(s2.output)
 	} $else {
 		s2 := os.exec('make -C "$vroot"') or {
-			verror(err)
+			verror(err.message)
 			return
 		}
 		println(s2.output)
@@ -1016,7 +1016,7 @@ pub fn install_v(args[]string) {
 		//println('Building vget...')
 		os.chdir(vroot + '/tools')
 		vget_compilation := os.exec('"$vexec" -o $vget vget.v') or {
-			verror(err)
+			verror(err.message)
 			return
 		}
 		if vget_compilation.exit_code != 0 {
@@ -1025,7 +1025,7 @@ pub fn install_v(args[]string) {
 		}
 	}
 	vgetresult := os.exec('$vget ' + names.join(' ')) or {
-		verror(err)
+		verror(err.message)
 		return
 	}
 	if vgetresult.exit_code != 0 {

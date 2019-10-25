@@ -34,7 +34,7 @@ fn generate_vh(mod string) {
 		os.mkdir_all(pdir)
 		// os.mkdir(os.realpath(dir))
 	}
-	out := os.create(path) or { panic(err) }
+	out := os.create(path) or { panic(err.message) }
 	mod_def := if mod.contains('/') { mod.all_after('/') } else { mod } // "os"
 	out.writeln('// $mod module header \n')
 	out.writeln('module $mod_def\n')
@@ -150,7 +150,7 @@ fn (v &V) generate_vh_old() {
 		os.mkdir_all(pdir)
 		// os.mkdir(os.realpath(dir))
 	}
-	file := os.create(path) or { panic(err) }
+	file := os.create(path) or { panic(err.message) }
 	// Consts
 	mod_def := if v.mod.contains('.') { v.mod.all_after('.') } else { v.mod }
 	file.writeln('// $v.mod module header \n')

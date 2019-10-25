@@ -100,7 +100,7 @@ fn find_windows_kit_root(host_arch string) ?WindowsKit {
 
 		// println(kit_lib)
 
-		files := os.ls(kit_lib) or { panic(err) }
+		files := os.ls(kit_lib) or { panic(err.message) }
 		mut highest_path := ''
 		mut highest_int := 0
 		for f in files {
@@ -146,7 +146,7 @@ fn find_vs(vswhere_dir string, host_arch string) ?VsInstallation {
 	// installation!
 	
 	res := os.exec('""$vswhere_dir\\Microsoft Visual Studio\\Installer\\vswhere.exe" -latest -prerelease -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath"') or {
-		return error(err)
+		return error(err.message)
 	}
 	// println('res: "$res"')
 
@@ -395,7 +395,7 @@ fn build_thirdparty_obj_file_with_msvc(path string, moduleflags []CFlag) {
 
 	println('$obj_path not found, building it (with msvc)...')
 	parent := os.dir(obj_path)
-	files := os.ls(parent) or { panic(err) }
+	files := os.ls(parent) or { panic(err.message) }
 
 	mut cfiles := ''
 	for file in files {
@@ -414,7 +414,7 @@ fn build_thirdparty_obj_file_with_msvc(path string, moduleflags []CFlag) {
 	//NB: the quotes above ARE balanced.
 	println('thirdparty cmd line: $cmd')
 	res := os.exec(cmd) or {
-		verror(err)
+		verror(err.message)
 		return
 	}
 	println(res.output)

@@ -235,7 +235,7 @@ start:
 		println(cmd)
 	}
 	ticks := time.ticks()
-	res := os.exec(cmd) or { verror(err) return }
+	res := os.exec(cmd) or { verror(err.message) return }
 	if res.exit_code != 0 {
 		// the command could not be found by the system
 		if res.exit_code == 127 {

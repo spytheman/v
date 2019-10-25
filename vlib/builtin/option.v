@@ -44,6 +44,11 @@ pub fn error_with_code(s string, code int) Option {
 
 // used by the unwrapped error
 struct OError {
+pub:
 	message string
 	code int
+}
+
+fn (e OError) str() string {
+	return 'Error: { $e.message }'
 }

@@ -250,7 +250,7 @@ fn build_thirdparty_obj_file(path string, moduleflags []CFlag) {
 	}
 	println('$obj_path not found, building it...')
 	parent := os.dir(obj_path)
-	files := os.ls(parent) or { panic(err) }
+	files := os.ls(parent) or { panic(err.message) }
 	mut cfiles := ''
 	for file in files {
 		if file.ends_with('.c') {
@@ -264,7 +264,7 @@ fn build_thirdparty_obj_file(path string, moduleflags []CFlag) {
 	cmd := '$cc $cc_thirdparty_options $btarget -c -o "$obj_path" $cfiles $atarget '
 	res := os.exec(cmd) or {
 		println('failed thirdparty object build cmd: $cmd')
-		verror(err)
+		verror(err.message)
 		return
 	}
 	println(res.output)

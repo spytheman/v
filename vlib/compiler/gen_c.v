@@ -38,18 +38,13 @@ fn (p mut Parser) gen_var_decl(name string, is_static bool) string {
 		p.genln('if (!$tmp .ok) {')
 		p.register_var(Var {
 			name: 'err'
-			typ: 'string'
+			typ: 'OError'
 			is_mut: false
 			is_used: true
 		})
-		p.register_var(Var {
-			name: 'errcode'
-			typ: 'int'
-			is_mut: false
-			is_used: true
-		})
-		p.genln('string err = $tmp . error;')
-		p.genln('int    errcode = $tmp . ecode;')
+		p.genln('OError err;')
+		p.genln('err.message = $tmp . error;')
+		p.genln('err.code = $tmp . ecode;')
 		p.statements()
 		p.genln('$typ $name = *($typ*) $tmp . data;')
 		if !p.returns && p.prev_tok2 != .key_continue && p.prev_tok2 != .key_break {
@@ -117,18 +112,13 @@ fn (p mut Parser) gen_blank_identifier_assign() {
 		p.genln('if (!$tmp .ok) {')
 		p.register_var(Var {
 			name: 'err'
-			typ: 'string'
+			typ: 'OError'
 			is_mut: false
 			is_used: true
 		})
-		p.register_var(Var {
-			name: 'errcode'
-			typ: 'int'
-			is_mut: false
-			is_used: true
-		})
-		p.genln('string err = $tmp . error;')
-		p.genln('int    errcode = $tmp . ecode;')
+		p.genln('OError err;')
+		p.genln('err.message = $tmp . error;')
+		p.genln('err.code = $tmp . ecode;')    
 		p.statements()
 		p.returns = false
 	} else {

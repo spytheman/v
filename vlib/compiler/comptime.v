@@ -194,7 +194,7 @@ fn (p mut Parser) chash() {
 			flag = flag.replace('@VMOD', v_modules_path)
 			//p.log('adding flag "$flag"')
 			_ = p.table.parse_cflag(flag, p.mod) or {
-				p.error_with_token_index(err, p.cur_tok_index()-1)
+				p.error_with_token_index(err.message, p.cur_tok_index()-1)
 				return
 			}
 		}
