@@ -79,7 +79,8 @@ pub mut:
 	nofmt         bool   // disable vfmt
 	is_test       bool   // `v test string_test.v`
 	is_script     bool   // single file mode (`v program.v`), main function can be skipped
-	is_live       bool   // for hot code reloading
+	is_live       bool   // for hot code reloading, main executable
+	is_live_so    bool   // for hot code reloading, passed when compiling the shared library that will get reloaded
 	is_so         bool
 	is_prof       bool   // benchmark every function
 	translated    bool   // `v translate doom.v` are we running V code translated from C? allow globals, ++ expressions, etc
@@ -338,6 +339,7 @@ fn (v mut V) generate_init() {
 		}
 		for mod in v.table.imports {
 			init_fn_name := mod_gen_name(mod) + '__init'
+			println('scanning for $init_fn_name ...')
 			if v.table.known_fn(init_fn_name) {
 				call_mod_init += '${init_fn_name}();\n'
 			}
@@ -580,6 +582,7 @@ pub fn (v mut V) add_v_files_to_compile() {
 	}
 	// Parse user imports
 	for file in v.get_user_files() {
+		println('>>>>> user file: $file')
 		mut p := v.new_parser_from_file(file)
 		p.parse(.imports)
 		if p.v_script {
@@ -634,9 +637,9 @@ pub fn (v mut V) add_v_files_to_compile() {
 pub fn (v &V) get_builtin_files() []string {
 	// .vh cache exists? Use it
 	$if js {
-		return v.v_files_from_dir('$v.vroot${os.path_separator}vlib${os.path_separator}builtin${os.path_separator}js')
+		return v.v_files_from_dir( v.vlib(['builtin','js']) )
 	}
-	return v.v_files_from_dir('$v.vroot${os.path_separator}vlib${os.path_separator}builtin')
+	return v.v_files_from_dir( v.vlib(['builtin']) )
 }
 
 // get user files
@@ -648,10 +651,11 @@ pub fn (v &V)  get_user_files() []string {
 	mut user_files := []string
 
 	if v.pref.is_test && v.pref.is_stats {
-		user_files << os.join(v.vroot, 'vlib', 'benchmark', 'tests',
-			'always_imported.v')
+		user_files << v.vlib(['benchmark', 'tests','always_imported.v'])
 	}
-
+	
+	user_files << v.generate_hotcode_reloading_preambule_files()
+	
 	// v volt/slack_test.v: compile all .v files to get the environment
 	// I need to implement user packages! TODO
 	is_test_with_imports := dir.ends_with('_test.v') &&
@@ -910,6 +914,7 @@ pub fn new_v(args[]string) &V {
 		obfuscate: obfuscate
 		is_prof: '-prof' in args
 		is_live: '-live' in args
+		is_live_so: '-live_so' in args
 		sanitize: '-sanitize' in args
 		nofmt: '-nofmt' in args
 		show_c_cmd: '-show_c_cmd' in args
@@ -959,6 +964,7 @@ pub fn env_vflags_and_os_args() []string {
 	} else{
 		args << os.args
 	}
+	println('>> env_vflags_and_os_args: $args')
 	return args
 }
 
@@ -1069,6 +1075,10 @@ pub fn cescaped_path(s string) string {
   return s.replace('\\','\\\\')
 }
 
+pub fn cescaped_quotes(s string) string {
+	return s
+}
+
 pub fn os_from_string(os string) OS {
 	match os {
 		'linux' { return .linux}
@@ -1106,4 +1116,11 @@ pub fn new_v_compiler_with_args(args []string) &V {
 	allargs << args
 	os.setenv('VOSARGS', allargs.join(' '), true)
 	return new_v(allargs)
+}
+
+pub fn (v &V) vlib(fileparts []string) string {
+	base := v.vroot.trim_right('\\/')
+	mut parts := [ base, 'vlib' ]
+	parts << fileparts
+	return os.realpath( parts.join( os.path_separator ) )
 }

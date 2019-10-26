@@ -1,8 +1,6 @@
 module executable
 
-
-
-pub fn (r mut Reloads) load_so(soname) int {
+pub fn (r mut Reloads) v_load_so(soname string) {
 	cpath := './$soname'
 	if !isnil( r.live_lib ) {
 		C.FreeLibrary( r.live_lib )
@@ -12,8 +10,5 @@ pub fn (r mut Reloads) load_so(soname) int {
 		println('open failed')
 		exit(1);
 	}
-	for so_fn in r.fns {
-		GetProcAddress(r.live_lib, so_fn.str)
-	}
-	return 1;
+	r.callback( r.load_fns_cb )
 }
