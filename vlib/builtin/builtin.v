@@ -31,6 +31,20 @@ fn on_panic(f fn (int) int) {
 }
 
 pub fn print_backtrace_skipping_top_frames(skipframes int) {
+
+	$if windows {
+		$if msvc {
+			print_backtrace_skipping_top_frames_msvc(skipframes)
+			return
+		}
+		$if mingw {
+			print_backtrace_skipping_top_frames_mingw(skipframes)
+			return
+		}
+		println('Unsupported compiler. Please, use msvc or mingw64 gcc to get proper backtraces on windows.')
+		return
+	}
+
 	$if mac {
 		buffer := [100]byteptr
 		nr_ptrs := C.backtrace(*voidptr(buffer), 100)
