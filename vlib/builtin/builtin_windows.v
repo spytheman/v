@@ -41,7 +41,6 @@ const (
 )
 
 fn print_backtrace_skipping_top_frames_msvc(skipframes int){
-	println('print_backtrace_skipping_top_frames_msvc $skipframes')
 	handle := C.GetCurrentProcess()
 	options := C.SymSetOptions(SYMOPT_DEBUG | SYMOPT_LOAD_LINES | SYMOPT_UNDNAME)	
 	syminitok := C.SymInitialize( handle, 0, 1)
@@ -62,11 +61,12 @@ fn print_backtrace_skipping_top_frames_msvc(skipframes int){
 		s := *voidptr( u64(backtraces) + u64(i*sizeof(voidptr)) )
 		symfa_ok := C.SymFromAddr( handle, *s, 0, si )
 		if (symfa_ok == 1) {
-			println('NameLen: ${si.f_name_len:3d} | ' + tos3(fname) )
+			nframe := frames - i - 1
+			println('${nframe:-2d}: NameLen: ${si.f_name_len:3d} | ' + tos3(fname) )
 		} else {
 			// https://docs.microsoft.com/en-us/windows/win32/debug/system-error-codes
 			cerr := int(C.GetLastError())
-			println('   SymFromAddr failure: $cerr (Note: 87 = The parameter is incorrect)')  // 87 = The parameter is incorrect.
+			println('SymFromAddr failure: $cerr (Note: 87 = The parameter is incorrect)')  // 87 = The parameter is incorrect.
 		} 
 	}
 	C.SymCleanup(handle)
