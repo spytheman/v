@@ -24,6 +24,10 @@ CommonCHeaders = '
 #endif
 #endif
 
+#ifdef _WIN32
+#pragma comment(lib, "Dbghelp.lib")
+#endif
+
 #if defined(__CYGWIN__) && !defined(_WIN32)
 #error Cygwin is not supported, please use MinGW or Visual Studio.
 #endif
