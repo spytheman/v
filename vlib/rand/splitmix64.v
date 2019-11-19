@@ -2,7 +2,7 @@ module rand
 
 // Ported from http://xoshiro.di.unimi.it/splitmix64.c
 
-struct Splitmix64 {
+pub struct Splitmix64 {
 mut:
 	state u64
 }
