@@ -800,10 +800,6 @@ pub fn (v mut V) parse_lib_imports() {
 	}
 }
 
-pub fn get_arg(joined_args, arg, def string) string {
-	return get_param_after(joined_args, '-$arg', def)
-}
-
 pub fn get_param_after(joined_args, arg, def string) string {
 	key := '$arg '
 	mut pos := joined_args.index(key)
@@ -857,10 +853,10 @@ pub fn new_v(args[]string) &V {
 
 	joined_args := args.join(' ')
 		
-	target_os := get_arg(joined_args, 'os', '')
-	comptime_define := get_arg(joined_args, 'd', '')
+	target_os := get_cmdline_option(args, '-os', '')
+	comptime_define := get_cmdline_option(args, '-d', '')
 	//println('comptimedefine=$comptime_define')
-	mut out_name := get_arg(joined_args, 'o', 'a.out')
+	mut out_name := get_cmdline_option(args, '-o', 'a.out')
 
 	mut dir := args.last()
 	if 'run' in args {
