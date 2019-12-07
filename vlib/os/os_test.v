@@ -201,6 +201,23 @@ fn test_make_symlink_check_is_link_and_remove_symlink() {
    assert symlink_exists == false
 }
 
+
+fn test_make_temporary_directory(){
+	tdir := os.make_temporary_directory('') or { panic(err) }
+	assert tdir.contains('temp')
+	tls := os.ls(tdir) or { panic(err) }
+	assert tls.len == 0
+	os.rmdir(tdir)
+}
+
+fn test_make_temporary_directory_with_named_template(){
+	tdir := os.make_temporary_directory('abc') or { panic(err) }
+	assert tdir.contains('abc')
+	tls := os.ls(tdir) or { panic(err) }
+	assert tls.len == 0
+	os.rmdir(tdir)
+}
+
 //fn test_fork() {
 //  pid := os.fork()
 //  if pid == 0 {

@@ -97,3 +97,13 @@ pub fn exec(cmd string) ?Result {
 		exit_code: exit_code
 	}
 }
+
+fn C.mkdtemp(charptr) charptr
+pub fn make_temporary_directory(template string) ?string {
+	tp  := if template == '' { 'temp.XXXXXX' } else { template + '.XXXXXX'}
+	dtp := tmpdir() + path_separator + tp
+	ok  := C.mkdtemp(dtp.str)
+	if ok != 0 { return dtp }	
+	return error_with_code( get_error_msg(C.errno), C.errno )
+}
+
