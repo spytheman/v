@@ -141,7 +141,9 @@ pub fn (ftp mut FTP) connect(ip string) bool {
 pub fn (ftp FTP) login(user, passwd string) bool {
 
 	ftp.write('USER '+user) or {
-		println('ERROR sending user')
+		if ftp.dbg {
+			println('ERROR sending user')
+		}
 		return false
 	}
 
@@ -158,7 +160,9 @@ pub fn (ftp FTP) login(user, passwd string) bool {
 	}
 
 	ftp.write('PASS '+passwd) or {
-		println('ERROR sending password')
+		if ftp.dbg {
+			println('ERROR sending password')
+		}
 		return false
 	}
 
@@ -189,12 +193,16 @@ pub fn (ftp FTP) cd(dir string) {
 	ftp.write('CWD '+dir) or { return }
 	mut code, mut data := ftp.read()
 	if code == Denied {
-		println("CD $dir denied!")
+		if ftp.dbg {
+			println("CD $dir denied!")
+		}
 	}
 	if code == Complete {
 		code,data = ftp.read()
 	}
-	println('cd $data')
+	if ftp.dbg {
+		println('cd $data')
+	}
 }
 
 pub fn new_dtp(msg string) ?DTP {
@@ -220,7 +228,9 @@ pub fn new_dtp(msg string) ?DTP {
 pub fn (ftp FTP) pasv() ?DTP {
 	ftp.write('PASV') or {}
 	code,data := ftp.read()
-	println("pass: $data")
+	if ftp.dbg {
+		println("pass: $data")
+	}
 
 	if code != PassiveMode {
 		return error('pasive mode not allowed')
@@ -248,7 +258,9 @@ pub fn (ftp FTP) dir() ?string {
 	list_dir := dtp.read()
 	result,_ := ftp.read()
 	if result != CloseDataConnection {
-		println('LIST not ok')
+		if ftp.dbg {
+			println('LIST not ok')
+		}
 	}
 	dtp.close()
 
