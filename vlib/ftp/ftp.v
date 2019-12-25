@@ -42,7 +42,7 @@ mut:
 	port int
 }
 
-fn (dtp DTP) read() string {
+pub fn (dtp DTP) read() string {
 	mut data := ''
 	mut buf := ''
 	for {
@@ -60,7 +60,7 @@ fn (dtp DTP) read() string {
 	return data
 }
 
-fn (dtp DTP) close() {
+pub fn (dtp DTP) close() {
 	dtp.sock.close() or {}
 }
 
@@ -71,17 +71,17 @@ mut:
 	dbg bool
 }
 
-fn new() FTP {
+pub fn new() FTP {
 	mut f := FTP{}
 	f.buff_sz = 1024
 	return f
 }
 
-fn (ftp mut FTP) debug() {
+pub fn (ftp mut FTP) debug() {
 	ftp.dbg = !ftp.dbg
 }
 
-fn (ftp FTP) write(data string) ?int {
+pub fn (ftp FTP) write(data string) ?int {
 	if ftp.dbg {
 		println('FTP.v >>> $data')
 	}
@@ -91,7 +91,7 @@ fn (ftp FTP) write(data string) ?int {
 	return n
 }
 
-fn (ftp FTP) read2() string {
+pub fn (ftp FTP) read2() string {
 	ptr,len := ftp.sock.recv(ftp.buff_sz)
 	mut data := ''
 	data = string{
@@ -101,7 +101,7 @@ fn (ftp FTP) read2() string {
 	return data
 }
 
-fn (ftp FTP) read() (int,string) {
+pub fn (ftp FTP) read() (int,string) {
 	mut data := ftp.sock.read_line()
 	if ftp.dbg {
 		println('FTP.v <<< $data')
@@ -124,7 +124,7 @@ fn (ftp FTP) read() (int,string) {
 	return code,data
 }
 
-fn (ftp mut FTP) connect(ip string) bool {
+pub fn (ftp mut FTP) connect(ip string) bool {
 	sock := net.dial(ip, 21) or {
 		return false
 	}
@@ -138,7 +138,7 @@ fn (ftp mut FTP) connect(ip string) bool {
 	return false
 }
 
-fn (ftp FTP) login(user, passwd string) bool {
+pub fn (ftp FTP) login(user, passwd string) bool {
 
 	ftp.write('USER '+user) or {
 		println('ERROR sending user')
@@ -171,13 +171,13 @@ fn (ftp FTP) login(user, passwd string) bool {
 	return false
 }
 
-fn (ftp FTP) close() {
+pub fn (ftp FTP) close() {
 	send_quit := 'QUIT\r\n'
 	ftp.sock.send_string(send_quit) or {}
 	ftp.sock.close() or {}
 }
 
-fn (ftp FTP) pwd() string {
+pub fn (ftp FTP) pwd() string {
 	ftp.write('PWD') or {
 		return ''
 	}
@@ -185,7 +185,7 @@ fn (ftp FTP) pwd() string {
 	return data
 }
 
-fn (ftp FTP) cd(dir string) {
+pub fn (ftp FTP) cd(dir string) {
 	ftp.write('CWD '+dir) or { return }
 	mut code, mut data := ftp.read()
 	if code == Denied {
@@ -197,7 +197,7 @@ fn (ftp FTP) cd(dir string) {
 	println('cd $data')
 }
 
-fn new_dtp(msg string) ?DTP {
+pub fn new_dtp(msg string) ?DTP {
 	// it receives a control message 227 like: 
 	// '227 Entering Passive Mode (209,132,183,61,48,218)'
 
@@ -217,7 +217,7 @@ fn new_dtp(msg string) ?DTP {
 	return dtp
 }
 
-fn (ftp FTP) pasv() ?DTP {
+pub fn (ftp FTP) pasv() ?DTP {
 	ftp.write('PASV') or {}
 	code,data := ftp.read()
 	println("pass: $data")
@@ -231,7 +231,7 @@ fn (ftp FTP) pasv() ?DTP {
 	return dtp
 }
 
-fn (ftp FTP) dir() ?string {
+pub fn (ftp FTP) dir() ?string {
 	dtp := ftp.pasv() or {
 		return error('cannot establish data connection')
 	}
@@ -255,7 +255,7 @@ fn (ftp FTP) dir() ?string {
 	return list_dir
 }
 
-fn (ftp FTP)  get(file string) ?string {
+pub fn (ftp FTP)  get(file string) ?string {
 	dtp := ftp.pasv() or {
 		return error('cant stablish data connection')
 	}
