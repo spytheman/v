@@ -20,7 +20,7 @@ module ftp
 
 import net
 
-const (
+pub const (
 	Connected = 220
 	SpecifyPassword = 331
 	LoggedIn = 230
