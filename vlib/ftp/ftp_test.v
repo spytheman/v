@@ -13,7 +13,7 @@ fn test_all() {
 	
 	// ftp.rediris.org
 	if ftp.connect('ftp.redhat.com') { 
-		debug_println("connected")
+		debug_println('connected')
 		assert true
 		
 		if ftp.login('ftp','ftp') {

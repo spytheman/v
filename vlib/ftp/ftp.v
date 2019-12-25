@@ -48,15 +48,12 @@ pub fn (dtp DTP) read() string {
 	for {
 		ptr,len := dtp.sock.recv(1024)
 		if len == 0 { break }
-
 		buf = string{
 			str: ptr
 			len: len
 		}
-
 		data += buf
 	}
-
 	return data
 }
 
@@ -85,7 +82,7 @@ pub fn (ftp FTP) write(data string) ?int {
 	if ftp.dbg {
 		println('FTP.v >>> $data')
 	}
-	n := ftp.sock.send_string(data + '\n') or {
+	n := ftp.sock.send_string('$data\n') or {
 		return error('cannot send data')
 	}
 	return n
@@ -140,7 +137,7 @@ pub fn (ftp mut FTP) connect(ip string) bool {
 
 pub fn (ftp FTP) login(user, passwd string) bool {
 
-	ftp.write('USER '+user) or {
+	ftp.write('USER $user') or {
 		if ftp.dbg {
 			println('ERROR sending user')
 		}
@@ -159,7 +156,7 @@ pub fn (ftp FTP) login(user, passwd string) bool {
 		return false
 	}
 
-	ftp.write('PASS '+passwd) or {
+	ftp.write('PASS $passwd') or {
 		if ftp.dbg {
 			println('ERROR sending password')
 		}
@@ -190,11 +187,11 @@ pub fn (ftp FTP) pwd() string {
 }
 
 pub fn (ftp FTP) cd(dir string) {
-	ftp.write('CWD '+dir) or { return }
+	ftp.write('CWD $dir') or { return }
 	mut code, mut data := ftp.read()
 	if code == Denied {
 		if ftp.dbg {
-			println("CD $dir denied!")
+			println('CD $dir denied!')
 		}
 	}
 	if code == Complete {
@@ -229,7 +226,7 @@ pub fn (ftp FTP) pasv() ?DTP {
 	ftp.write('PASV') or {}
 	code,data := ftp.read()
 	if ftp.dbg {
-		println("pass: $data")
+		println('pass: $data')
 	}
 
 	if code != PassiveMode {
