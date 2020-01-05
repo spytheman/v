@@ -21,14 +21,16 @@ const (
 fn C.puts(charptr)
 */
 
-pub fn println(s string) {	
+pub fn println(s string) {
+/*
 	$if linux {
 		$if !android {
 			snl := s + '\n'
 			C.syscall(/* sys_write */ 1, /* stdout_value */ 1, snl.str, s.len+1)
 			return
 		}
-	} 
+	}
+*/    
 	C.printf('%.*s\n', s.len, s.str)
 }
 
