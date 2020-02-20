@@ -13,6 +13,7 @@ fns.txt
 /cmd/tools/vtest
 /cmd/tools/vtest-compiler
 /cmd/tools/vtest-fmt
+/cmd/tools/vdoc
 /cmd/tools/vfmt
 /cmd/tools/vbin2v
 /cmd/tools/vup

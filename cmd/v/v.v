@@ -7,12 +7,11 @@ import (
 	compiler
 	internal.help
 	os
-	v.table
-	v.doc
 )
 
 const (
 	simple_cmd = ['fmt',
+	'doc',
 	'up',
 	'create',
 	'test', 'test-fmt', 'test-compiler',
@@ -44,13 +43,7 @@ fn main() {
 		eprintln('v    args: $arg')
 		eprintln('v command: $command')
 		eprintln('v options: $option')
-	}
-	if command == 'doc' {
-		mod := arg[arg.len-1]
-		table := table.new_table()
-		println(doc.doc(mod, table))
-		return
-	}
+	}	
 	if command in simple_cmd {
 		// External tools
 		launch_tool(is_verbose, 'v' + command, command)
