@@ -180,13 +180,6 @@ pub fn (p &Parser) init_parse_fns() {
 	println('')
 }
 
-pub fn (mut p Parser) read_first_token() {
-	// need to call next() three times to get peek token 1 & 2 and current token
-	p.next()
-	p.next()
-	p.next()
-}
-
 pub fn (mut p Parser) open_scope() {
 	p.scope = &ast.Scope{
 		parent: p.scope
@@ -241,6 +234,13 @@ pub fn (mut p Parser) parse_block_no_scope() []ast.Stmt {
 	return stmts
 }
 
+pub fn (mut p Parser) read_first_token() {
+	// need to call next() three times to get peek token 1 & 2 and current token
+	p.next()
+	p.next()
+	p.next()
+}
+
 /*
 fn (mut p Parser) next_with_comment() {
 	p.tok = p.peek_tok
@@ -251,7 +251,7 @@ fn (mut p Parser) next() {
 	p.prev_tok = p.tok
 	p.tok = p.peek_tok
 	p.peek_tok = p.peek_tok2
-	p.peek_tok2 = p.scanner.scan()
+	p.peek_tok2 = *p.scanner.get_next_token()
 	/*
 	if p.tok.kind==.comment {
 		p.comments << ast.Comment{text:p.tok.lit, line_nr:p.tok.line_nr}

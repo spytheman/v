@@ -40,6 +40,8 @@ mut:
 	is_fmt                      bool // Used only for skipping ${} in strings, since we need literal
 	// string values when generating formatted code.
 	comments_mode               CommentsMode
+	tokens []token.Token // all tokens
+	ctidx int // the current token index
 }
 
 pub enum CommentsMode {
@@ -56,9 +58,17 @@ pub fn new_scanner_file(file_path string, comments_mode CommentsMode) &Scanner {
 		verror(err)
 		return 0
 	}
-	mut s := new_scanner(raw_text, comments_mode) // .skip_comments)
+	mut s := &Scanner{
+		text: raw_text
+		is_print_line_on_error: true
+		is_print_colored_error: true
+		is_print_rel_paths_on_error: true
+		is_fmt: util.is_fmt()
+		comments_mode: comments_mode
+	}
 	// s.init_fmt()
 	s.file_path = file_path
+	s.scan_everything()
 	return s
 }
 
@@ -72,15 +82,43 @@ pub fn new_scanner(text string, comments_mode CommentsMode) &Scanner {
 		is_fmt: util.is_fmt()
 		comments_mode: comments_mode
 	}
+	s.scan_everything()
 	return s
 }
 
-pub fn (s &Scanner) add_fn_main_and_rescan() {
+pub fn (s mut Scanner) add_fn_main_and_rescan() {
 	s.text = 'fn main() {' + s.text + '}'
 	s.is_started = false
 	s.pos = 0
 	s.line_nr = 0
 	s.last_nl_pos = 0
+	s.scan_everything()
+}
+
+pub fn (s mut Scanner) scan_everything() {
+	s.tokens = []token.Token{}
+	for {
+		tok := s.scan()
+		//eprintln('> scan_everything | ${s.tokens.len:5d} | ${s.file_path:-32s} | tok.kind: $tok.kind')
+		s.tokens << tok
+		if tok.kind == .eof {
+			break
+		}
+	}
+	// add some padding tokens
+	s.tokens << &token.Token{}
+	s.tokens << &token.Token{}
+	s.tokens << &token.Token{}
+	s.tokens << &token.Token{}
+	s.tokens << &token.Token{}
+	s.tokens << &token.Token{}
+	s.ctidx = 0
+}
+
+pub fn (s mut Scanner) get_next_token() &token.Token {
+	mut tok := &(s.tokens[s.ctidx])
+	s.ctidx++
+	return tok
 }
 
 fn (s &Scanner) new_token(tok_kind token.Kind, lit string, len int) token.Token {
