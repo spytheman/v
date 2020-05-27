@@ -1175,11 +1175,23 @@ pub fn (mut c Checker) return_stmt(mut return_stmt ast.Return) {
 		return
 	}
 
+	mut fn_multi_return := false
 	if expected_types.len > 0 && expected_types.len != got_types.len {
 		// Check whether the got types actually contains the expected types
-		if got_types.len == 1 && c.table.get_type_symbol(got_types[0]).kind != .multi_return {
-			// Turn this multi return into 2 normal args
-			got_types = c.table.get_type_symbol(got_types[0]).mr_info().types
+		if got_types.len == 1 {
+			got_sym := c.table.get_type_symbol(got_types[0])
+			if got_sym.kind == .multi_return {
+				// Turn this multi return into 2 normal args
+				multi_got_types := got_sym.mr_info().types
+				if multi_got_types.len != expected_types.len {
+					c.error('wrong number of return arguments', return_stmt.pos)
+				}
+				fn_multi_return = true
+				got_types = multi_got_types
+			} else {
+				c.error('wrong number of return arguments', return_stmt.pos)
+				return
+			}
 		} else {
 			c.error('wrong number of return arguments', return_stmt.pos)
 			return
@@ -1190,12 +1202,12 @@ pub fn (mut c Checker) return_stmt(mut return_stmt ast.Return) {
 		got_typ := got_types[i]
 		is_generic := exp_type == table.t_type
 		ok := if is_generic { c.check_types(got_typ, c.cur_generic_type) || got_typ == exp_type } else { c.check_types(got_typ,
-				exp_type) }
+			exp_type) }
 		// ok := c.check_types(got_typ, exp_type)
 		if !ok { // !c.table.check(got_typ, exp_typ) {
 			got_typ_sym := c.table.get_type_symbol(got_typ)
 			mut exp_typ_sym := c.table.get_type_symbol(exp_type)
-			pos := return_stmt.exprs[i].position()
+			pos := if fn_multi_return { return_stmt.pos } else { return_stmt.exprs[i].position() }
 			if is_generic {
 				exp_typ_sym = c.table.get_type_symbol(c.cur_generic_type)
 			}
@@ -2160,7 +2172,7 @@ pub fn (mut c Checker) if_expr(mut node ast.IfExpr) table.Type {
 							if last_expr.typ.is_int() || last_expr.typ.is_float() {
 								node.typ = last_expr.typ
 								continue
-							} 
+							}
 						} else { // node.typ == any_float
 							if last_expr.typ.is_float() {
 								node.typ = last_expr.typ
@@ -2172,7 +2184,7 @@ pub fn (mut c Checker) if_expr(mut node ast.IfExpr) table.Type {
 						if last_expr.typ == table.any_int_type {
 							if node.typ.is_int() || node.typ.is_float() {
 								continue
-							} 
+							}
 						} else { // expr_type == any_float
 							if node.typ.is_float() {
 								continue

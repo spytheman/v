@@ -2226,19 +2226,32 @@ fn (mut g Gen) return_statement(node ast.Return) {
 		} else {
 			styp = g.typ(g.fn_decl.return_type)
 		}
-		g.write('($styp){')
-		for i, expr in node.exprs {
-			g.write('.arg$i=')
-			g.expr(expr)
-			if i < node.exprs.len - 1 {
-				g.write(',')
+		// if it returns a function that has the same return type,
+		// just pass it directly without unpacking first
+		if node.exprs.len == 1 {
+			ne0 :=	node.exprs[0]
+			if ne0 is ast.CallExpr {
+				re := ne0 as ast.CallExpr
+				re_styp := g.typ( re.return_type )
+				if styp == re_styp {
+					g.expr(ne0)
+				}
+			}
+		} else {
+			g.write('($styp){')
+			for i, expr in node.exprs {
+				g.write('.arg$i=')
+				g.expr(expr)
+				if i < node.exprs.len - 1 {
+					g.write(',')
+				}
+			}
+			g.write('}')
+			if fn_return_is_optional {
+				g.write(' }, sizeof($styp))')
 			}
 		}
-		g.write('}')
-		if fn_return_is_optional {
-			g.write(' }, sizeof($styp))')
-		}
-	} else if node.exprs.len >= 1 {
+    } else if node.exprs.len >= 1 {
 		// normal return
 		return_sym := g.table.get_type_symbol(node.types[0])
 		// `return opt_ok(expr)` for functions that expect an optional
