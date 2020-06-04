@@ -258,7 +258,7 @@ pub fn (mut c Checker) type_decl(node ast.TypeDecl) {
 pub fn (mut c Checker) interface_decl(decl ast.InterfaceDecl) {
 	c.check_valid_pascal_case(decl.name, 'interface name', decl.pos)
 	for method in decl.methods {
-		c.check_valid_snake_case(method.name, 'method name', method.pos)
+		c.check_valid_snake_case(stripped_name(method.name), 'method name', method.pos)
 	}
 }
 
@@ -1682,7 +1682,7 @@ fn (mut c Checker) stmt(node ast.Stmt) {
 			c.in_for_count--
 		}
 		ast.GlobalDecl {
-			c.check_valid_snake_case(it.name, 'global name', it.pos)
+			c.check_valid_snake_case(stripped_name(it.name), 'global name', it.pos)
 		}
 		ast.GoStmt {
 			if !(it.call_expr is ast.CallExpr) {
@@ -1698,7 +1698,7 @@ fn (mut c Checker) stmt(node ast.Stmt) {
 		ast.Module {
 			c.mod = it.name
 			c.is_builtin_mod = it.name == 'builtin'
-			c.check_valid_snake_case(it.name, 'module name', it.pos)
+			c.check_valid_snake_case(stripped_name(it.name), 'module name', it.pos)
 		}
 		ast.Return {
 			c.returns = true
@@ -2492,7 +2492,7 @@ fn (mut c Checker) fn_decl(it ast.FnDecl) {
 		return
 	}
 	if it.language == .v && !c.is_builtin_mod {
-		c.check_valid_snake_case(it.name, 'function name', it.pos)
+		c.check_valid_snake_case(stripped_name(it.name), 'function name', it.pos)
 	}
 	if it.is_method {
 		sym := c.table.get_type_symbol(it.receiver.typ)
