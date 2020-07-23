@@ -14,6 +14,8 @@ const (
 	double_quote = `"`
 	// char used as number separator
 	num_sep      = `_`
+	// `\\`; NB: it is deliberately encoded here as byte(92)
+	backslash    = byte(92)
 )
 
 pub struct Scanner {
@@ -1163,9 +1165,10 @@ fn (mut s Scanner) ident_string() string {
 	// println('linenr=$s.line_nr quote=  $qquote ${qquote.str()}')
 	// }
 	mut n_cr_chars := 0
+	mut n_backslashed_single_quotes := 0
+	mut n_backslashed_double_quotes := 0
 	mut start := s.pos
 	s.is_inside_string = false
-	slash := `\\`
 	for {
 		s.pos++
 		if s.pos >= s.text.len {
@@ -1174,10 +1177,19 @@ fn (mut s Scanner) ident_string() string {
 		c := s.text[s.pos]
 		prevc := s.text[s.pos - 1]
 		// end of string
-		if c == s.quote && (prevc != slash || (prevc == slash && s.text[s.pos - 2] == slash)) {
-			// handle '123\\'  slash at the end
+		if c == s.quote &&
+			(prevc != backslash || (prevc == backslash && s.text[s.pos - 2] == backslash)) {
+			// handle '123\\'  backslash at the end
 			break
 		}
+        //
+		if prevc == backslash && c == double_quote {
+			n_backslashed_double_quotes++
+        }
+        if prevc == backslash && c == single_quote {
+		n_backslashed_single_quotes++
+		}
+        //
 		if c == `\r` {
 			n_cr_chars++
 		}
@@ -1185,7 +1197,7 @@ fn (mut s Scanner) ident_string() string {
 			s.inc_line_number()
 		}
 		// Don't allow \0
-		if c == `0` && s.pos > 2 && s.text[s.pos - 1] == slash {
+		if c == `0` && s.pos > 2 && s.text[s.pos - 1] == backslash {
 			if s.pos < s.text.len - 1 && s.text[s.pos + 1].is_digit() {
 			} else if !is_cstr {
 				s.error('0 character in a string literal')
@@ -1198,7 +1210,8 @@ fn (mut s Scanner) ident_string() string {
 			}
 		}
 		// ${var} (ignore in vfmt mode)
-		if c == `{` && prevc == `$` && !is_raw && s.count_symbol_before(s.pos - 2, slash) % 2 == 0 {
+		if c == `{` &&
+			prevc == `$` && !is_raw && s.count_symbol_before(s.pos - 2, backslash) % 2 == 0 {
 			s.is_inside_string = true
 			// so that s.pos points to $ at the next step
 			s.pos -= 2
@@ -1206,7 +1219,7 @@ fn (mut s Scanner) ident_string() string {
 		}
 		// $var
 		if util.is_name_char(c) && prevc == `$` && !is_raw &&
-			s.count_symbol_before(s.pos - 2, slash) % 2 == 0 {
+			s.count_symbol_before(s.pos - 2, backslash) % 2 == 0 {
 			s.is_inside_string = true
 			s.is_inter_start = true
 			s.pos -= 2
@@ -1225,6 +1238,20 @@ fn (mut s Scanner) ident_string() string {
 		mut string_so_far := s.text[start..end]
 		if n_cr_chars > 0 {
 			string_so_far = string_so_far.replace('\r', '')
+		}
+		if s.quote == single_quote && n_backslashed_single_quotes > 0 {
+			bs := backslash.str()
+			sq := single_quote.str()
+            eprintln('n_backslashed_single_quotes: $n_backslashed_single_quotes | $bs$sq => $sq | string_so_far: $string_so_far')
+			string_so_far = string_so_far.replace('$bs$sq', sq)
+            eprintln('<<<<<<<<<<<<<<<<<<<<<<<<<<<: $n_backslashed_single_quotes | $bs$sq => $sq | string_so_far: $string_so_far')
+		}
+		if s.quote == double_quote && n_backslashed_double_quotes > 0 {
+			bs := backslash.str()
+			dq := double_quote.str()
+            eprintln('n_backslashed_double_quotes: $n_backslashed_double_quotes | $bs$dq => $dq | string_so_far: $string_so_far')
+			string_so_far = string_so_far.replace('$bs$dq', dq)
+            eprintln('<<<<<<<<<<<<<<<<<<<<<<<<<<<: $n_backslashed_double_quotes | $bs$dq => $dq | string_so_far: $string_so_far')
 		}
 		if string_so_far.contains('\\\n') {
 			lit = trim_slash_line_break(string_so_far)
@@ -1252,20 +1279,19 @@ fn trim_slash_line_break(s string) string {
 
 fn (mut s Scanner) ident_char() string {
 	start := s.pos
-	slash := `\\`
 	mut len := 0
 	for {
 		s.pos++
 		if s.pos >= s.text.len {
 			break
 		}
-		if s.text[s.pos] != slash {
+		if s.text[s.pos] != backslash {
 			len++
 		}
-		double_slash := s.expect('\\\\', s.pos - 2)
-		if s.text[s.pos] == `\`` && (s.text[s.pos - 1] != slash || double_slash) {
+		double_backslash := s.expect('\\\\', s.pos - 2)
+		if s.text[s.pos] == `\`` && (s.text[s.pos - 1] != backslash || double_backslash) {
 			// ` // apostrophe balance comment. do not remove
-			if double_slash {
+			if double_backslash {
 				len++
 			}
 			break

@@ -898,7 +898,7 @@ pub fn (mut f Fmt) expr(node ast.Expr) {
 		}
 		ast.PrefixExpr {
 			f.write(node.op.str())
-			f.prefix_expr_cast_expr( node.right )
+			f.prefix_expr_cast_expr(node.right)
 		}
 		ast.RangeExpr {
 			f.expr(node.low)
@@ -974,10 +974,16 @@ pub fn (mut f Fmt) expr(node ast.Expr) {
 			if node.is_raw {
 				f.write('r')
 			}
-			if node.val.contains("'") && !node.val.contains('"') {
+			has_single_quote := node.val.contains("'")
+			if has_single_quote && !node.val.contains('"') {
 				f.write('"$node.val"')
 			} else {
-				f.write("'$node.val'")
+				if has_single_quote {
+					s := node.val.replace("'", "\\'")
+					f.write("'$s'")
+				} else {
+					f.write("'$node.val'")
+				}
 			}
 		}
 		ast.StringInterLiteral {
@@ -999,7 +1005,12 @@ pub fn (mut f Fmt) expr(node ast.Expr) {
 			}
 			f.is_inside_interp = true
 			for i, val in node.vals {
-				f.write(val)
+				if !contains_single_quote && val.contains("'") {
+					s := val.replace("'", "\\'")
+					f.write(s)
+				} else {
+					f.write(val)
+				}
 				if i >= node.exprs.len {
 					break
 				}
@@ -1770,10 +1781,10 @@ pub fn (mut f Fmt) const_decl(it ast.ConstDecl) {
 }
 
 fn (mut f Fmt) is_external_name(name string) bool {
-	if name.len > 2 && name[0]==`C` && name[1]==`.` {
+	if name.len > 2 && name[0] == `C` && name[1] == `.` {
 		return true
 	}
-	if name.len > 3 && name[0]==`J` && name[1]==`S` && name[2] == `.` {
+	if name.len > 3 && name[0] == `J` && name[1] == `S` && name[2] == `.` {
 		return true
 	}
 	return false

@@ -117,12 +117,31 @@ string _STR_TMP(const char *fmt, ...) {
 }
 
 fn (mut g Gen) string_literal(node ast.StringLiteral) {
+    aquote := `"`.str()
+    bs := `\\`.str()
+    bsbs := '$bs$bs'
+    bsq := '$bs$aquote'
+    bsbsq := '$bsbs$aquote'
+    ebsq := '#@#'
+    //
 	if node.is_raw {
-		escaped_val := node.val.replace_each(['"', '\\"', '\\', '\\\\'])
+		mut escaped_val := node.val
+        escaped_val = escaped_val.replace(aquote, bsq)
+        escaped_val = escaped_val.replace('\\', '\\\\')
 		g.write('tos_lit("$escaped_val")')
 		return
 	}
-	escaped_val := node.val.replace_each(['"', '\\"', '\r\n', '\\n', '\n', '\\n'])
+    //
+	mut escaped_val := node.val
+//    escaped_val = escaped_val.replace(bsq, ebsq) 
+    escaped_val = escaped_val.replace(aquote, bsq)
+//    escaped_val = escaped_val.replace(ebsq, bsq)
+    escaped_val = escaped_val.replace('\r\n', '\\n')
+    escaped_val = escaped_val.replace('\n', '\\n')
+    if node.val.contains('Hel') {
+	eprintln(' > node.val: |$node.val|')
+        eprintln(' > escaped : |$escaped_val|')
+    }
 	if g.is_c_call || node.language == .c {
 		// In C calls we have to generate C strings
 		// `C.printf("hi")` => `printf("hi");`
