@@ -876,7 +876,8 @@ pub fn (mut c Checker) call_method(mut call_expr ast.CallExpr) table.Type {
 				scope.update_var_type('b', array_info.elem_type)
 				// Verify `.sort(a < b)`
 				if call_expr.args.len > 0 {
-					if call_expr.args[0].expr !is ast.InfixExpr {
+					if (call_expr.args[0].expr !is ast.InfixExpr) &&
+						(call_expr.args[0].expr !is ast.AnonFn) {
 						c.error('`.sort()` requires a `<` or `>` comparison as the first and only argument' +
 							'\ne.g. `users.sort(a.id < b.id)`', call_expr.pos)
 					}
