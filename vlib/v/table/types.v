@@ -13,6 +13,9 @@ module table
 
 import strings
 
+fn C.__rdtsc() u64
+#include <x86intrin.h>
+
 pub type Type = int
 
 pub type TypeInfo = Aggregate | Alias | Array | ArrayFixed | Chan | Enum | FnType | GenericStructInst |
@@ -849,7 +852,9 @@ pub fn (t &Table) fn_signature(func &Fn, opts FnSignatureOpts) string {
 	return sb.str()
 }
 
+__global ( sw_embed_name = u64(0) )
 pub fn (t &TypeSymbol) embed_name() string {
+	z1 := C.__rdtsc()
 	// main.Abc<int> => Abc<int>
 	mut embed_name := t.name.split('.').last()
 	// remove generic part from name
@@ -857,6 +862,7 @@ pub fn (t &TypeSymbol) embed_name() string {
 	if '<' in embed_name {
 		embed_name = embed_name.split('<')[0]
 	}
+	z2 := C.__rdtsc() sw_embed_name += (z2 - z1 )
 	return embed_name
 }
 

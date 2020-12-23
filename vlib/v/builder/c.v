@@ -26,6 +26,7 @@ pub fn (mut b Builder) gen_c(v_files []string) string {
 	b.timing_measure('C GEN')
 	// println('cgen done')
 	// println(res)
+    println('sw_embed_name: $sw_embed_name')
 	return res
 }
 
