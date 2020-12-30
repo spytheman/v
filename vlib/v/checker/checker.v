@@ -176,10 +176,7 @@ pub fn (mut c Checker) check_files(ast_files []ast.File) {
 	}
 	c.timers.show('checker_post_process_generic_fns')
 	//
-	c.timers.start('checker_verify_all_vweb_routes')
 	c.verify_all_vweb_routes()
-	c.timers.show('checker_verify_all_vweb_routes')
-	//
 	// Make sure fn main is defined in non lib builds
 	if c.pref.build_mode == .build_module || c.pref.is_test {
 		return
@@ -194,11 +191,54 @@ pub fn (mut c Checker) check_files(ast_files []ast.File) {
 	} else if !has_main_fn {
 		c.error('function `main` must be declared in the main module', token.Position{})
 	}
+	c.produce_call_graph(ast_files)
 }
 
 const (
 	no_pub_in_main_warning = 'in module main cannot be declared public'
 )
+
+struct CallGraph {
+mut:
+	all_functions map[string]&ast.FnDecl
+}
+fn new_callgraph(ast_files []ast.File) CallGraph { 
+	mut all_functions := map[string]&ast.FnDecl{}
+	for fi in 0 .. ast_files.len {
+		file := unsafe {&ast_files[fi]}
+		for s in file.stmts {
+			if s is ast.FnDecl {
+				all_functions[ s.name ] = &s
+			}			
+		}
+	}
+	return CallGraph {
+		all_functions: all_functions
+	}
+}	
+
+fn (mut c Checker) produce_call_graph(ast_files []ast.File) {
+	c.timers.start('checker produce_call_graph')
+	defer {
+		c.timers.show('checker produce_call_graph')
+	}
+	mut callg := new_callgraph(ast_files)
+	callg.mark_used('main.main')
+	callg.mark_used('println')
+}
+
+fn (mut callg CallGraph) mark_used(rootname string) {
+	if rootname !in callg.all_functions {
+		return
+	}
+	eprintln('---------> $rootname found')
+	mut rootfn := callg.all_functions[rootname]
+	rootfn.usages++
+	eprintln('rootname: $rootname | rootfn: $rootfn.name stmt.len: $rootfn.stmts.len | rootfn.usages: $rootfn.usages | rootfn.calling.len: $rootfn.calling.len')
+	for ce in rootfn.calling {
+		eprintln('> rootfn ce: ' + ast.Expr(ce).str())
+	}
+}
 
 // do checks specific to files in main module
 // returns `true` if a main function is in the file
@@ -1061,6 +1101,9 @@ fn (mut c Checker) fail_if_immutable(expr ast.Expr) (string, token.Position) {
 }
 
 pub fn (mut c Checker) call_expr(mut call_expr ast.CallExpr) table.Type {
+	if c.cur_fn != 0 {
+		c.cur_fn.calling << call_expr
+	}
 	// First check everything that applies to both fns and methods
 	// TODO merge logic from call_method and call_fn
 	/*
@@ -4882,7 +4925,12 @@ fn (mut c Checker) fn_decl(mut node ast.FnDecl) {
 		}
 	}
 	c.expected_type = table.void_type
+	old_c_cur_fn := c.cur_fn
 	c.cur_fn = node
+	defer {
+		eprintln('defered restoring of c.cur_fn: ' + ptr_str(c.cur_fn) + ' to old value: ' + ptr_str(old_c_cur_fn))
+		//c.cur_fn = old_c_cur_fn
+	}
 	// Add return if `fn(...) ? {...}` have no return at end
 	if node.return_type != table.void_type && node.return_type.has_flag(.optional) &&
 		(node.stmts.len == 0 || node.stmts[node.stmts.len - 1] !is ast.Return) {
@@ -4945,6 +4993,10 @@ fn (mut c Checker) verify_vweb_params_for_method(m table.Fn) (bool, int, int) {
 }
 
 fn (mut c Checker) verify_all_vweb_routes() {
+	c.timers.start('checker_verify_all_vweb_routes')
+	defer {
+		c.timers.show('checker_verify_all_vweb_routes')
+	}
 	if c.vweb_gen_types.len == 0 {
 		return
 	}

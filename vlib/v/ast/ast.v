@@ -316,6 +316,8 @@ pub mut:
 	next_comments   []Comment // coments that are one line after the decl; used for InterfaceDecl
 	source_file     &File = 0
 	scope           &Scope
+	usages          int
+	calling         []&CallExpr
 }
 
 // break, continue
