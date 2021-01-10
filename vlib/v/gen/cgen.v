@@ -36,7 +36,7 @@ mut:
 	typedefs2                        strings.Builder
 	type_definitions                 strings.Builder // typedefs, defines etc (everything that goes to the top of the file)
 	definitions                      strings.Builder // typedefs, defines etc (everything that goes to the top of the file)
-	inits                            map[string]strings.Builder // contents of `void _vinit(){}`
+	inits                            map[string]strings.Builder // contents of `void _vinit/2{}`
 	cleanups                         map[string]strings.Builder // contents of `void _vcleanup(){}`
 	gowrappers                       strings.Builder // all go callsite wrappers
 	stringliterals                   strings.Builder // all string literals (they depend on tos3() beeing defined
@@ -4397,13 +4397,20 @@ fn (mut g Gen) const_decl_simple_define(name string, val string) {
 }
 
 fn (mut g Gen) const_decl_init_later(mod string, name string, val string, typ table.Type) {
-	// Initialize more complex consts in `void _vinit(){}`
+	// Initialize more complex consts in `void _vinit/2{}`
 	// (C doesn't allow init expressions that can't be resolved at compile time).
 	styp := g.typ(typ)
-	//
 	cname := '_const_$name'
 	g.definitions.writeln('$styp $cname; // inited later')
-	g.inits[mod].writeln('\t$cname = $val;')
+	if cname == '_const_os__args' {
+		if g.pref.os == .windows {
+			g.inits[mod].writeln('\t_const_os__args = os__init_os_args_wide(___argc, (byteptr*)___argv);')
+		} else {
+			g.inits[mod].writeln('\t_const_os__args = os__init_os_args(___argc, (byte**)___argv);')
+		}
+	} else {
+		g.inits[mod].writeln('\t$cname = $val;')
+	}
 	if g.is_autofree {
 		if styp.starts_with('array_') {
 			g.cleanups[mod].writeln('\tarray_free(&$cname);')
@@ -4697,14 +4704,8 @@ fn (mut g Gen) write_init_function() {
 		return
 	}
 	fn_vinit_start_pos := g.out.len
-	needs_constructor := g.pref.is_shared && g.pref.os != .windows
-	if needs_constructor {
-		g.writeln('__attribute__ ((constructor))')
-		g.writeln('void _vinit() {')
-		g.writeln('static bool once = false; if (once) {return;} once = true;')
-	} else {
-		g.writeln('void _vinit() {')
-	}
+	// ___argv is declared as voidptr here, because that unifies the windows/unix logic
+	g.writeln('void _vinit(int ___argc, voidptr ___argv) {')
 	if g.is_autofree {
 		// Pre-allocate the string buffer
 		// s_str_buf_size := os.getenv('V_STRBUF_MB')
@@ -4749,6 +4750,17 @@ fn (mut g Gen) write_init_function() {
 		if g.pref.printfn_list.len > 0 && '_vcleanup' in g.pref.printfn_list {
 			println(g.out.after(fn_vcleanup_start_pos))
 		}
+	}
+	needs_constructor := g.pref.is_shared && g.pref.os != .windows
+	if needs_constructor {
+		// shared libraries need a way to call _vinit/2. For that purpose,
+		// provide a constructor, ensuring that all constants are initialized just once.
+		// NB: os.args in this case will be [].
+		g.writeln('__attribute__ ((constructor))')
+		g.writeln('void _vinit_caller() {')
+		g.writeln('\tstatic bool once = false; if (once) {return;} once = true;')
+		g.writeln('\t_vinit(0,0);')
+		g.writeln('}')
 	}
 }
 

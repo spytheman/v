@@ -49,6 +49,7 @@ fn (mut g Gen) gen_c_main_function_header() {
 			}
 			// GUI application
 			g.writeln('int WINAPI wWinMain(HINSTANCE instance, HINSTANCE prev_instance, LPWSTR cmd_line, int show_cmd){')
+			// NB: ___argc and ___argv will be declared and initialized later
 		} else {
 			// Console application
 			g.writeln('int wmain(int ___argc, wchar_t* ___argv[], wchar_t* ___envp[]){')
@@ -68,21 +69,11 @@ fn (mut g Gen) gen_c_main_header() {
 		g.writeln('\tint ___argc;')
 		g.writeln('\twchar_t** ___argv = CommandLineToArgvW(full_cmd_line, &___argc);')
 	}
-	g.writeln('\t_vinit();')
+	g.writeln('\t_vinit(___argc, (voidptr)___argv);')
 	if g.pref.is_prof {
 		g.writeln('')
 		g.writeln('\tatexit(vprint_profile_stats);')
 		g.writeln('')
-	}
-	if g.is_importing_os() {
-		if g.is_autofree {
-			g.writeln('free(_const_os__args.data); // empty, inited in _vinit()')
-		}
-		if g.pref.os == .windows {
-			g.writeln('\t_const_os__args = os__init_os_args_wide(___argc, ___argv);')
-		} else {
-			g.writeln('\t_const_os__args = os__init_os_args(___argc, (byteptr*)___argv);')
-		}
 	}
 	if g.pref.is_livemain {
 		g.generate_hotcode_reloading_main_caller()
@@ -123,7 +114,7 @@ void (_vsokol_cleanup_userdata_cb)(void* user_data) {
 sapp_desc sokol_main(int argc, char* argv[]) {
 	(void)argc; (void)argv;
 
-	_vinit();
+	_vinit(argc, (voidptr)argv);
 	main__main();
 ')
 	if g.is_autofree {
@@ -149,7 +140,7 @@ pub fn (mut g Gen) write_tests_main() {
 	g.definitions.writeln('jmp_buf g_jump_buffer;')
 	main_fn_start_pos := g.out.len
 	g.gen_c_main_function_header()
-	g.writeln('\t_vinit();')
+	g.writeln('\t_vinit(___argc, (voidptr)___argv);')
 	g.writeln('')
 	all_tfuncs := g.get_all_test_function_names()
 	if g.pref.is_stats {
