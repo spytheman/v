@@ -16,7 +16,7 @@ import os
 import strings
 
 const (
-	font_path = "Qarmic_sans_Abridged.ttf"
+	font_path = os.resource_abs_path("Qarmic_sans_Abridged.ttf")
 	create_data = false  // use true to generate binary data for this test file
 )
 
@@ -28,7 +28,7 @@ fn save_raw_data_as_array(buf_bin []byte, file_name string) {
 	os.write_file_array(file_name, buf.buf)
 }
 
-fn main() {
+fn test_abc() {
 	mut tf := ttf.TTF_File{}
 	if create_data == true {
 		tf.buf = os.read_bytes(font_path) or { panic(err) }
