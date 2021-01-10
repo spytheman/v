@@ -12,8 +12,8 @@ const (
 	win_height = 700
 	bg_color   = gx.white
 	font_paths = [
-		"Imprima-Regular.ttf"
-		"Graduate-Regular.ttf"
+		os.resource_abs_path("Imprima-Regular.ttf")
+		os.resource_abs_path("Graduate-Regular.ttf")
 	]
 )
 
