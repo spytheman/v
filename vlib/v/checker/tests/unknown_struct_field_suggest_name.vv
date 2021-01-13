@@ -1,5 +1,5 @@
 
-struct Points {
+z struct Points {
 	xxxx   []int
 	yyyy   []int
 	zzzz   []int

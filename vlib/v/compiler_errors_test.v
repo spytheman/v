@@ -7,12 +7,13 @@ import sync
 import runtime
 import benchmark
 
-const (
-	skip_files     = [
+const skip_files = [
 		'vlib/v/checker/tests/custom_comptime_define_if_flag.vv',
 	]
-	should_autofix = os.getenv('VAUTOFIX') != ''
-)
+
+const should_autofix = os.getenv('VAUTOFIX') != ''
+
+const can_use_color = term.can_show_color_on_stderr()
 
 struct TaskDescription {
 	vexe             string
@@ -21,17 +22,20 @@ struct TaskDescription {
 	result_extension string
 	path             string
 mut:
-	is_error         bool
-	is_skipped       bool
-	is_module        bool
-	expected         string
-	found___         string
-	took             time.Duration
+	is_error   bool
+	is_skipped bool
+	is_module  bool
+	expected   string
+	found___   string
+	took       time.Duration
 }
 
 fn test_all() {
 	vexe := os.getenv('VEXE')
 	vroot := os.dir(vexe)
+	if use_color {
+		os.setenv('VCOLORS', 'always', true)
+	}
 	os.chdir(vroot)
 	checker_dir := 'vlib/v/checker/tests'
 	parser_dir := 'vlib/v/parser/tests'
@@ -162,7 +166,7 @@ fn (mut task TaskDescription) execute() {
 		return
 	}
 	program := task.path
-	cli_cmd := '$task.vexe $task.voptions $program'
+	cli_cmd := '$task.vexe -nocolor $task.voptions $program'
 	res := os.exec(cli_cmd) or { panic(err) }
 	expected_out_path := program.replace('.vv', '') + task.result_extension
 	mut expected := os.read_file(expected_out_path) or { panic(err) }
@@ -192,7 +196,7 @@ fn clean_line_endings(s string) string {
 
 fn diff_content(s1 string, s2 string) {
 	diff_cmd := util.find_working_diff_command() or { return }
-	println('diff: ')
+	println(term.fail_message('diff: '))
 	println(util.color_compare_strings(diff_cmd, s1, s2))
 	println('============\n')
 }
