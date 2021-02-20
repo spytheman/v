@@ -8,7 +8,15 @@ fn abc() {
 	println('hi')
 }
 
+struct Abc {}
+[deprecated: 'please use a.xyz()']
+fn (a Abc) method() {
+	println('hi from ${@METHOD}')
+}
+
 fn main() {
 	xyz()
 	abc()
+	a := Abc{}
+	a.method()
 }

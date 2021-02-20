@@ -1,13 +1,20 @@
-vlib/v/checker/tests/use_deprecated_function_warning.vv:12:2: error: function `xyz` has been deprecated
-   10 | 
-   11 | fn main() {
-   12 |     xyz()
+vlib/v/checker/tests/use_deprecated_function_warning.vv:18:2: error: function `xyz` has been deprecated
+   16 | 
+   17 | fn main() {
+   18 |     xyz()
       |     ~~~~~
-   13 |     abc()
-   14 | }
-vlib/v/checker/tests/use_deprecated_function_warning.vv:13:2: error: function `abc` has been deprecated; use foo2 instead
-   11 | fn main() {
-   12 |     xyz()
-   13 |     abc()
+   19 |     abc()
+   20 |     a := Abc{}
+vlib/v/checker/tests/use_deprecated_function_warning.vv:19:2: error: function `abc` has been deprecated; use foo2 instead
+   17 | fn main() {
+   18 |     xyz()
+   19 |     abc()
       |     ~~~~~
-   14 | }
+   20 |     a := Abc{}
+   21 |     a.method()
+vlib/v/checker/tests/use_deprecated_function_warning.vv:21:4: error: method `method` has been deprecated; please use a.xyz()
+   19 |     abc()
+   20 |     a := Abc{}
+   21 |     a.method()
+      |       ~~~~~~~~
+   22 | }

@@ -1286,6 +1286,7 @@ pub fn (mut c Checker) call_method(mut call_expr ast.CallExpr) table.Type {
 			c.table.register_fn_gen_type(call_expr.name, generic_types)
 		}
 	}
+
 	// TODO: remove this for actual methods, use only for compiler magic
 	// FIXME: Argument count != 1 will break these
 	if left_type_sym.kind == .array && method_name in checker.array_builtin_methods {
@@ -1436,6 +1437,9 @@ pub fn (mut c Checker) call_method(mut call_expr ast.CallExpr) table.Type {
 		}
 	}
 	if has_method {
+		if method.is_deprecated {
+			c.fn_is_deprecated('method', method, call_expr)
+		}
 		if !method.is_pub && !c.is_builtin_mod && !c.pref.is_test && left_type_sym.mod != c.mod
 			&& left_type_sym.mod != '' { // method.mod != c.mod {
 			// If a private method is called outside of the module
@@ -1784,13 +1788,7 @@ pub fn (mut c Checker) call_fn(mut call_expr ast.CallExpr) table.Type {
 			call_expr.pos)
 	}
 	if f.is_deprecated {
-		mut deprecation_message := 'function `$f.name` has been deprecated'
-		for d in f.attrs {
-			if d.name == 'deprecated' && d.arg != '' {
-				deprecation_message += '; $d.arg'
-			}
-		}
-		c.warn(deprecation_message, call_expr.pos)
+		c.fn_is_deprecated('function', f, call_expr)
 	}
 	if f.is_unsafe && !c.inside_unsafe
 		&& (f.language != .c || (f.name[2] in [`m`, `s`] && f.mod == 'builtin')) {
@@ -5905,4 +5903,14 @@ fn (mut c Checker) ensure_type_exists(typ table.Type, pos token.Position) ? {
 		}
 		else {}
 	}
+}
+
+fn (mut c Checker) fn_is_deprecated(label string, f &table.Fn, call_expr &ast.CallExpr) {
+	mut deprecation_message := '$label `$f.name` has been deprecated'
+	for d in f.attrs {
+		if d.name == 'deprecated' && d.arg != '' {
+			deprecation_message += '; $d.arg'
+		}
+	}
+	c.warn(deprecation_message, call_expr.pos)
 }
