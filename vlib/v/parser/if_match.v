@@ -58,7 +58,7 @@ fn (mut p Parser) if_expr(is_comptime bool) ast.IfExpr {
 					})
 				}
 				branches << ast.IfBranch{
-					stmts: p.parse_block_no_scope(false)
+					stmts: p.if_block_stmts()
 					pos: start_pos.extend(end_pos)
 					body_pos: body_pos.extend(p.tok.position())
 					comments: comments
@@ -72,6 +72,7 @@ fn (mut p Parser) if_expr(is_comptime bool) ast.IfExpr {
 				p.check(.dollar)
 			}
 		}
+
 		// `if` or `else if`
 		p.check(.key_if)
 		if p.tok.kind == .key_match {
@@ -110,10 +111,9 @@ fn (mut p Parser) if_expr(is_comptime bool) ast.IfExpr {
 		body_pos := p.tok.position()
 		p.inside_if = false
 		p.open_scope()
-		stmts := p.parse_block_no_scope(false)
 		branches << ast.IfBranch{
 			cond: cond
-			stmts: stmts
+			stmts: p.if_block_stmts()
 			pos: start_pos.extend(end_pos)
 			body_pos: body_pos.extend(p.prev_tok.position())
 			comments: comments
@@ -149,6 +149,13 @@ fn (mut p Parser) if_expr(is_comptime bool) ast.IfExpr {
 		has_else: has_else
 		is_expr: is_expr
 	}
+}
+
+fn (mut p Parser) if_block_stmts() []ast.Stmt {
+	if p.inside_fn {
+		return p.parse_block_no_scope(false)
+	}
+	return p.parse_top_block(.braces)
 }
 
 fn (mut p Parser) match_expr() ast.MatchExpr {
@@ -258,6 +265,7 @@ fn (mut p Parser) match_expr() ast.MatchExpr {
 	if p.tok.kind == .rcbr {
 		p.check(.rcbr)
 	}
+
 	// return ast.StructInit{}
 	pos.update_last_line(p.prev_tok.line_nr)
 	return ast.MatchExpr{
