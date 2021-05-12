@@ -365,7 +365,8 @@ pub:
 	is_anon         bool
 	is_manualfree   bool           // true, when [manualfree] is used on a fn
 	is_main         bool           // true for `fn main()`
-	is_test         bool           // true for `fn test_abcde`
+	is_test         bool           // true for `fn test_abcde()`
+	is_bench        bool           // true for `fn bench_xyz(iterations int)`
 	is_conditional  bool           // true for `[if abc] fn abc(){}`
 	is_keep_alive   bool           // passed memory must not be freed (by GC) before function returns
 	receiver        StructField    // TODO this is not a struct field

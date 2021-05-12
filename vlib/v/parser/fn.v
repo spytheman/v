@@ -324,6 +324,7 @@ fn (mut p Parser) fn_decl() ast.FnDecl {
 	short_fn_name := name
 	is_main := short_fn_name == 'main' && p.mod == 'main'
 	is_test := short_fn_name.starts_with('test_') || short_fn_name.starts_with('testsuite_')
+	is_bench := short_fn_name.starts_with('bench_')
 
 	// Register
 	if is_method {
@@ -356,6 +357,7 @@ fn (mut p Parser) fn_decl() ast.FnDecl {
 			is_unsafe: is_unsafe
 			is_main: is_main
 			is_test: is_test
+			is_bench: is_bench
 			is_conditional: conditional_ctdefine != ''
 			is_keep_alive: is_keep_alive
 			ctdefine: conditional_ctdefine
@@ -385,6 +387,7 @@ fn (mut p Parser) fn_decl() ast.FnDecl {
 			is_unsafe: is_unsafe
 			is_main: is_main
 			is_test: is_test
+			is_bench: is_bench
 			is_conditional: conditional_ctdefine != ''
 			is_keep_alive: is_keep_alive
 			ctdefine: conditional_ctdefine
@@ -428,6 +431,7 @@ fn (mut p Parser) fn_decl() ast.FnDecl {
 		is_variadic: is_variadic
 		is_main: is_main
 		is_test: is_test
+		is_bench: is_bench
 		is_conditional: conditional_ctdefine != ''
 		is_keep_alive: is_keep_alive
 		receiver: ast.StructField{

@@ -221,16 +221,23 @@ pub fn (mut c Checker) check_files(ast_files []ast.File) {
 
 	if c.pref.is_test {
 		mut n_test_fns := 0
+		mut n_bench_fns := 0
 		for _, f in c.table.fns {
 			if f.is_test {
 				n_test_fns++
 			}
+			if f.is_bench {
+				n_bench_fns++
+			}
 		}
-		if n_test_fns == 0 {
-			c.add_error_detail('The name of a test function in V, should start with `test_`.')
-			c.add_error_detail('The test function should take 0 parameters, and no return type. Example:')
+		if n_test_fns == 0 && n_bench_fns == 0 {
+			c.add_error_detail('The name of a test function in V, should start with `test_` or `bench_` .')
+			c.add_error_detail('Each `test_` function should take 0 parameters. Example:')
 			c.add_error_detail('fn test_xyz(){ assert 2 + 2 == 4 }')
-			c.error('a _test.v file should have *at least* one `test_` function', token.Position{})
+			c.add_error_detail('Each `bench_` function should take 1 `int` parameter (N of iterations), and should *not* return values. Example:')
+			c.add_error_detail('fn bench_multiply(n int) { for i in 0..n { _ := i * i } }')
+			c.error('a _test.v file should have *at least* one `test_` or `bench_` function',
+				token.Position{})
 		}
 	}
 	// Make sure fn main is defined in non lib builds
@@ -7073,23 +7080,37 @@ fn (mut c Checker) fn_decl(mut node ast.FnDecl) {
 		}
 	}
 	// TODO c.pref.is_vet
-	if node.language == .v && !node.is_method && node.params.len == 0 && node.is_test {
-		if !c.pref.is_test {
-			// simple heuristic
-			for st in node.stmts {
-				if st is ast.AssertStmt {
-					c.warn('tests will not be run, because filename does not end with `_test.v`',
-						node.pos)
-					break
+	if node.language == .v && !node.is_method {
+		if c.pref.is_test {
+			if node.is_test {
+				if node.params.len > 0 {
+					c.error('test_ functions should not take any parameters', node.pos)
+				} else {
+					if node.return_type != ast.void_type_idx
+						&& node.return_type.clear_flag(.optional) != ast.void_type_idx {
+						c.error('test functions should either return nothing at all, or be marked to return `?`',
+							node.pos)
+					}
 				}
 			}
-		}
-		if node.return_type != ast.void_type_idx
-			&& node.return_type.clear_flag(.optional) != ast.void_type_idx {
-			c.error('test functions should either return nothing at all, or be marked to return `?`',
-				node.pos)
+			if node.is_bench {
+				if node.params.len != 1 || (node.params[0].typ != ast.int_type) {
+					c.error('bench_ functions should take a single `iterations int` parameter',
+						node.pos)
+				} else {
+					if node.return_type != ast.void_type_idx {
+						c.error('bench functions should not return values', node.pos)
+					}
+				}
+			}
+		} else {
+			if node.is_test || node.is_bench {
+				c.warn('tests/benches will not run, because filename does not end with `_test.v`',
+					node.pos)
+			}
 		}
 	}
+
 	c.expected_type = ast.void_type
 	c.table.cur_fn = unsafe { node }
 	// c.table.cur_fn = node

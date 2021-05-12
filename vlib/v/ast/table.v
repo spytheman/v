@@ -73,6 +73,7 @@ pub:
 	is_placeholder  bool
 	is_main         bool // `fn main(){}`
 	is_test         bool // `fn test_abc(){}`
+	is_bench        bool // `fn bench_xyz(iterations int){}`
 	is_conditional  bool // `[if abc]fn(){}`
 	is_keep_alive   bool // passed memory must not be freed (by GC) before function returns
 	no_body         bool // a pure declaration like `fn abc(x int)`; used in .vh files, C./JS. fns.
