@@ -147,8 +147,8 @@ sapp_desc sokol_main(int argc, char* argv[]) {
 
 pub fn (mut g Gen) write_tests_definitions() {
 	g.includes.writeln('#include <setjmp.h> // write_tests_main')
-	g.definitions.writeln('int g_test_oks = 0;')
-	g.definitions.writeln('int g_test_fails = 0;')
+	g.definitions.writeln('i64 g_test_oks = 0;')
+	g.definitions.writeln('i64 g_test_fails = 0;')
 	g.definitions.writeln('jmp_buf g_jump_buffer;')
 }
 
@@ -182,22 +182,31 @@ pub fn (mut g Gen) gen_c_main_for_tests() {
 	g.writeln('\t_vinit(___argc, (voidptr)___argv);')
 	all_tfuncs := g.get_all_test_function_names()
 	if g.pref.is_stats {
+		g.writeln('')
 		g.writeln('\tmain__BenchedTests bt = main__start_testing($all_tfuncs.len, _SLIT("$g.pref.path"));')
+		g.writeln('')
 	}
 	g.writeln('')
 	for tname in all_tfuncs {
 		tcname := util.no_dots(tname)
 		if g.pref.is_stats {
+			g.writeln('')
 			g.writeln('\tmain__BenchedTests_testing_step_start(&bt, _SLIT("$tcname"));')
 		}
-		g.writeln('\tif (!setjmp(g_jump_buffer)) ${tcname}();')
+		g.writeln('\tif (!setjmp(g_jump_buffer)) {')
+		g.writeln('\t\tfor(i64 ti=0; ti < $g.pref.test_count; ti++) {')
+		g.writeln('\t\t\t${tcname}();')
+		g.writeln('\t\t}')
+		g.writeln('\t}')
 		if g.pref.is_stats {
 			g.writeln('\tmain__BenchedTests_testing_step_end(&bt);')
 		}
 	}
 	g.writeln('')
 	if g.pref.is_stats {
+		g.writeln('')
 		g.writeln('\tmain__BenchedTests_end_testing(&bt);')
+		g.writeln('')
 	}
 	g.writeln('\t_vcleanup();')
 	g.writeln('\treturn g_test_fails > 0;')

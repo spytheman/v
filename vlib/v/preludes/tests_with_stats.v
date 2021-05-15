@@ -17,8 +17,8 @@ const (
 struct BenchedTests {
 mut:
 	bench          benchmark.Benchmark
-	oks            int
-	fails          int
+	oks            i64
+	fails          i64
 	test_suit_file string
 	step_func_name string
 }
@@ -37,7 +37,7 @@ fn start_testing(total_number_of_tests int, vfilename string) BenchedTests {
 
 // Called before each test_ function, defined in file_test.v
 fn (mut b BenchedTests) testing_step_start(stepfunc string) {
-	b.step_func_name = stepfunc.replace('main.', '').replace('__', '.')
+	b.step_func_name = stepfunc.replace('main__', '').replace('__', '.')
 	b.oks = C.g_test_oks
 	b.fails = C.g_test_fails
 	b.bench.step()
@@ -83,9 +83,10 @@ fn (mut b BenchedTests) end_testing() {
 }
 
 // ///////////////////////////////////////////////////////////////////
-fn nasserts(n int) string {
+fn nasserts(n i64) string {
+	eprintln(n)
 	if n == 1 {
-		return '${n:5d} assert  | '
+		return '${n:7} assert  | '
 	}
-	return '${n:5d} asserts | '
+	return '${n:7} asserts | '
 }

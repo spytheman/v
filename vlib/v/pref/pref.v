@@ -173,6 +173,9 @@ pub mut:
 	gc_mode             GarbageCollectionMode = .no_gc // .no_gc, .boehm, .boehm_leak, ...
 	is_cstrict          bool                  // turn on more C warnings; slightly slower
 	assert_failure_mode AssertFailureMode // whether to call abort() or print_backtrace() after an assertion failure
+	test_count          i64 = 1 // repetition count for the test/bench functions
+	test_run_names      []string          // patterns that should match the test function names; non matching ones are skipped
+	test_bench_names    []string // patterns that should match the bench function names
 	// checker settings:
 	checker_match_exhaustive_cutoff_limit int = 10
 }
@@ -238,6 +241,28 @@ pub fn parse_args(known_external_commands []string, args []string) (&Preferences
 				} else {
 					command = 'version'
 					command_pos = i
+				}
+			}
+			'-test-run-names' {
+				names := cmdline.option(current_args, '-test-run-names', '')
+				if names != '' {
+					res.test_run_names << names
+				}
+				i++
+			}
+			'-test-bench-names' {
+				names := cmdline.option(current_args, '-test-bench-names', '')
+				if names != '' {
+					res.test_bench_names << names
+				}
+				i++
+			}
+			'-test-count' {
+				res.test_count = cmdline.option(current_args, '-test-count', '').i64()
+				i++
+				if res.test_count <= 0 {
+					eprintln('-test-count accepts positive numbers')
+					exit(1)
 				}
 			}
 			'-progress' {

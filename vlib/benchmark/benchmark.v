@@ -16,10 +16,10 @@ pub mut:
 	verbose         bool
 	no_cstep        bool
 	step_timer      time.StopWatch
-	ntotal          int
-	nok             int
-	nfail           int
-	nskip           int
+	ntotal          i64
+	nok             i64
+	nfail           i64
+	nskip           i64
 	nexpected_steps int
 	cstep           int
 	bok             string
@@ -92,14 +92,14 @@ pub fn (mut b Benchmark) skip() {
 }
 
 // fail_many increases the fail count by `n` and stops the internal timer.
-pub fn (mut b Benchmark) fail_many(n int) {
+pub fn (mut b Benchmark) fail_many(n i64) {
 	b.step_timer.stop()
 	b.ntotal += n
 	b.nfail += n
 }
 
 // ok_many increases the ok count by `n` and stops the internal timer.
-pub fn (mut b Benchmark) ok_many(n int) {
+pub fn (mut b Benchmark) ok_many(n i64) {
 	b.step_timer.stop()
 	b.ntotal += n
 	b.nok += n
