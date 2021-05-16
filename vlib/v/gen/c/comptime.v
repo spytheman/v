@@ -9,21 +9,31 @@ import v.util
 import v.pref
 
 fn (mut g Gen) comptime_selector(node ast.ComptimeSelector) {
+	// check for field.name
+	mut is_field_name := false
+	if node.field_expr is ast.SelectorExpr {
+		if node.field_expr.expr is ast.Ident {
+			if node.field_expr.expr.name == g.comp_for_field_var
+				&& node.field_expr.field_name == 'name' {
+					is_field_name = true
+			}
+		}
+	}
+	//
+	if is_field_name {
+		ftype := g.comp_for_field_value.typ
+		fmuls := ftype.nr_muls()
+		dump('>>$g.comp_for_field_value.name $fmuls')
+	}
 	g.expr(node.left)
 	if node.left_type.is_ptr() {
 		g.write('->')
 	} else {
 		g.write('.')
 	}
-	// check for field.name
-	if node.field_expr is ast.SelectorExpr {
-		if node.field_expr.expr is ast.Ident {
-			if node.field_expr.expr.name == g.comp_for_field_var
-				&& node.field_expr.field_name == 'name' {
-				g.write(g.comp_for_field_value.name)
-				return
-			}
-		}
+	if is_field_name {				
+		g.write(g.comp_for_field_value.name)
+		return
 	}
 	g.expr(node.field_expr)
 }
@@ -496,12 +506,16 @@ fn (mut g Gen) comp_for(node ast.CompFor) {
 				}
 				// field_sym := g.table.get_type_symbol(field.typ)
 				// g.writeln('\t${node.val_var}.typ = _SLIT("$field_sym.name");')
-				styp := field.typ
-				g.writeln('\t${node.val_var}.typ = $styp;')
+				base_type := field.typ.set_nr_muls(0)
+				g.writeln('\t${node.val_var}.typ = $base_type;')
+				g.writeln('\t${node.val_var}.n_ptr = $field.typ.nr_muls();')
 				g.writeln('\t${node.val_var}.is_pub = $field.is_pub;')
 				g.writeln('\t${node.val_var}.is_mut = $field.is_mut;')
-				g.comptime_var_type_map['${node.val_var}.typ'] = styp
+				g.comptime_var_type_map['${node.val_var}.typ'] = base_type
+				eprintln('>>>> field.typ: $field.typ')
+				g.writeln('/** ZZZZZZ **/')
 				g.stmts(node.stmts)
+				g.writeln('/** YYYYYY **/')
 				i++
 				g.writeln('}')
 			}

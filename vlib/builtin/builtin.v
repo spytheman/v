@@ -121,6 +121,7 @@ pub:
 	is_pub bool
 	is_mut bool
 	typ    int
+	n_ptr  int
 }
 
 enum AttributeKind {

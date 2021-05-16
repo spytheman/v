@@ -3,6 +3,7 @@ struct Foo {
 mut:
 	test string
 	name string
+	another &Foo = 0
 }
 
 fn comptime_field_selector_read<T>() []string {
@@ -31,6 +32,15 @@ fn comptime_field_selector_write<T>() T {
 		$if f.typ is int {
 			t.$(f.name) = 1
 		}
+		println('ISSSSSSSS____FOOO')
+		$if f.typ is Foo {
+			println('FOO:')
+			println('f.n_ptr: $f.n_ptr')
+			println('f.typ: $f.typ')
+			x := (t.$(f.name))
+			dump(typeof(x))
+		}
+		println('ISSSSSSSS____ZOOO')
 	}
 	return t
 }
