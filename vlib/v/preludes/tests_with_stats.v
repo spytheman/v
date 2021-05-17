@@ -1,18 +1,16 @@
 module main
 
-// /////////////////////////////////////////////////////////////////////
-// / This file will get compiled as a part of the same module,
-// / in which a given _test.v file is, when v is given -stats argument
-// / The methods defined here are called back by the test program's
-// / main function, so that customizing the look & feel of the results
-// / is easy, since it is done in normal V code, instead of in embedded C ...
-// /////////////////////////////////////////////////////////////////////
 import os
+import time
 import benchmark
 
-const (
-	inner_indent = '     '
-)
+// This file will get compiled as a part of the same module,
+// in which a given _test.v file is, when v is given -stats argument
+// The methods defined here are called back by the test program's
+// main function, so that customizing the look & feel of the results
+// is easier, done in normal V code, instead of in embedded C ...
+
+const inner_indent = '     '
 
 struct BenchedTests {
 mut:
@@ -26,31 +24,37 @@ mut:
 // ///////////////////////////////////////////////////////////////////
 // Called at the start of the test program produced by `v -stats file_test.v`
 fn start_testing(total_number_of_tests int, vfilename string) BenchedTests {
+	println('Running tests in: $vfilename')
 	mut benched_tests_res := BenchedTests{
 		bench: benchmark.new_benchmark()
+		test_suit_file: vfilename
 	}
 	benched_tests_res.bench.set_total_expected_steps(total_number_of_tests)
-	benched_tests_res.test_suit_file = vfilename
-	println('running tests in: $benched_tests_res.test_suit_file')
 	return benched_tests_res
 }
 
 // Called before each test_ function, defined in file_test.v
 fn (mut b BenchedTests) testing_step_start(stepfunc string) {
-	b.step_func_name = stepfunc.replace('main__', '').replace('__', '.')
+	b.step_func_name = stepfunc.replace_each(['main__', '', '__', '.'])
 	b.oks = C.g_test_oks
 	b.fails = C.g_test_fails
 	b.bench.step()
 }
 
+fn (mut b BenchedTests) print_step_message(label string, msg string, step_duration time.Duration) {
+	measure_msg := b.bench.step_message_with_label_and_duration(label, msg, step_duration)
+	println(inner_indent + measure_msg + b.step_func_name + '()')
+}
+
 // Called after each test_ function, defined in file_test.v
 fn (mut b BenchedTests) testing_step_end() {
+	step_duration := b.bench.step_timer.elapsed()
 	ok_diff := C.g_test_oks - b.oks
 	fail_diff := C.g_test_fails - b.fails
 	// ////////////////////////////////////////////////////////////////
 	if ok_diff == 0 && fail_diff == 0 {
 		b.bench.neither_fail_nor_ok()
-		println(inner_indent + b.bench.step_message_ok('   NO asserts | ') + b.fn_name())
+		b.print_step_message(benchmark.b_ok, ' --NO-- asserts | ', step_duration)
 		return
 	}
 	// ////////////////////////////////////////////////////////////////
@@ -62,17 +66,13 @@ fn (mut b BenchedTests) testing_step_end() {
 	}
 	// ////////////////////////////////////////////////////////////////
 	if ok_diff > 0 && fail_diff == 0 {
-		println(inner_indent + b.bench.step_message_ok(nasserts(ok_diff)) + b.fn_name())
+		b.print_step_message(benchmark.b_ok, nasserts(ok_diff), step_duration)
 		return
 	}
 	if fail_diff > 0 {
-		println(inner_indent + b.bench.step_message_fail(nasserts(fail_diff)) + b.fn_name())
+		b.print_step_message(benchmark.b_fail, nasserts(fail_diff), step_duration)
 		return
 	}
-}
-
-fn (b &BenchedTests) fn_name() string {
-	return b.step_func_name + '()'
 }
 
 // Called at the end of the test program produced by `v -stats file_test.v`
@@ -84,7 +84,6 @@ fn (mut b BenchedTests) end_testing() {
 
 // ///////////////////////////////////////////////////////////////////
 fn nasserts(n i64) string {
-	eprintln(n)
 	if n == 1 {
 		return '${n:7} assert  | '
 	}
