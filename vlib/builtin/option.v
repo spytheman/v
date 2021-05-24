@@ -16,11 +16,17 @@ pub:
 	code int
 }
 
+[manualfree]
 pub fn (err IError) str() string {
 	return match err {
 		None__ { 'none' }
-		Error { err.msg }
-		else { '$err.type_name(): $err.msg' }
+		Error { err.msg.clone() }
+		else {
+			etn := err.type_name()
+			res := '$etn: $err.msg'
+			unsafe { etn.free() }
+			res
+		}
 	}
 }
 

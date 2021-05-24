@@ -1631,6 +1631,24 @@ pub fn (stmt Stmt) check_c_expr() ? {
 	return error('unsupported statement (`$stmt.type_name()`)')
 }
 
+// CFreeVar is used in cgen only, to hold variable names
+pub struct CFreeVar {
+pub:
+	name   string // the name of the C variable that should be freed
+	prefix string // the start of the freeing expression
+	suffix string // the end of the freeing expression
+}
+pub fn (c CFreeVar) str() string {
+	return c.prefix + c.name + c.suffix
+}
+pub fn new_free_ierror(name string) CFreeVar {
+	return ast.CFreeVar{
+		prefix: 'IError_free(&'
+		name: name
+		suffix: ')'
+	}
+}
+
 // CTempVar is used in cgen only, to hold nodes for temporary variables
 pub struct CTempVar {
 pub:

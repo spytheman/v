@@ -105,6 +105,8 @@ mut:
 	is_test                bool
 	assign_op              token.Kind // *=, =, etc (for array_set)
 	defer_stmts            []ast.DeferStmt
+	defer_free_cvars       []ast.CFreeVar
+	cscopes_stack          [][]ast.CFreeVar
 	defer_ifdef            string
 	defer_profile_code     string
 	str_types              []string     // types that need automatic str() generation
@@ -2856,8 +2858,9 @@ fn (mut g Gen) autofree_scope_vars2(scope &ast.Scope, start_pos int, end_pos int
 	// }
 	// ```
 	// if !isnil(scope.parent) && line_nr > 0 {
+	//
 	if free_parent_scopes && !isnil(scope.parent)
-		&& (stop_pos == -1 || scope.parent.start_pos >= stop_pos) {
+	&& (stop_pos == -1 || scope.parent.start_pos >= stop_pos) {
 		g.trace_autofree('// af parent scope:')
 		g.autofree_scope_vars2(scope.parent, start_pos, end_pos, line_nr, true, stop_pos)
 	}
@@ -4713,6 +4716,7 @@ fn (mut g Gen) if_expr(node ast.IfExpr) {
 		}
 	}
 	for i, branch in node.branches {
+		g.open_cscope()
 		if i > 0 {
 			g.write('} else ')
 		}
@@ -4723,6 +4727,7 @@ fn (mut g Gen) if_expr(node ast.IfExpr) {
 			if is_guard && guard_idx == i - 1 {
 				cvar_name := guard_vars[guard_idx]
 				g.writeln('\tIError err = ${cvar_name}.err;')
+				g.free_at_cscope_end('err')
 			}
 		} else {
 			match branch.cond {
@@ -4773,6 +4778,7 @@ fn (mut g Gen) if_expr(node ast.IfExpr) {
 					g.writeln(') {')
 				}
 			}
+			g.close_cscope()
 		}
 		if needs_tmp_var {
 			g.stmts_with_tmp_var(branch.stmts, tmp)
@@ -5832,6 +5838,28 @@ fn (mut g Gen) write_expr_to_string(expr ast.Expr) string {
 	return g.out.cut_last(g.out.buf.len - pos)
 }
 
+fn (mut g Gen) open_cscope() {
+	g.cscopes_stack << g.defer_free_cvars
+	g.defer_free_cvars = []
+}
+fn (mut g Gen) close_cscope() {
+	if g.defer_free_cvars.len > 0 {
+		g.writeln('\t{ // cscope cvars start | g.defer_free_cvars.len: $g.defer_free_cvars.len | g.cscopes_stack.len: $g.cscopes_stack.len')
+		for i := g.defer_free_cvars.len - 1; i >= 0; i-- {
+			g.write('\t\t')	g.write(g.defer_free_cvars[i].str()) g.writeln(';')
+		}
+		g.writeln('\t} // cscope cvars end')
+	}
+	if g.cscopes_stack.len > 0 {
+		g.defer_free_cvars = g.cscopes_stack.pop()
+	} else {
+		g.defer_free_cvars = []
+	}
+}
+fn (mut g Gen) free_at_cscope_end(name string) {
+	g.defer_free_cvars << ast.new_free_ierror(name)
+}
+
 // fn (mut g Gen) start_tmp() {
 // }
 // If user is accessing the return value eg. in assigment, pass the variable name.
@@ -5849,11 +5877,13 @@ fn (mut g Gen) or_block(var_name string, or_block ast.OrExpr, return_type ast.Ty
 	} else {
 		g.writeln('if (${cvar_name}.state != 0) { /*or block*/ ')
 	}
+	g.open_cscope()
 	if or_block.kind == .block {
 		if g.inside_or_block {
 			g.writeln('\terr = ${cvar_name}.err;')
 		} else {
 			g.writeln('\tIError err = ${cvar_name}.err;')
+			g.free_at_cscope_end('err')
 		}
 		g.inside_or_block = true
 		defer {
@@ -5913,6 +5943,7 @@ fn (mut g Gen) or_block(var_name string, or_block ast.OrExpr, return_type ast.Ty
 			}
 		}
 	}
+	g.close_cscope()
 	g.write('}')
 }
 

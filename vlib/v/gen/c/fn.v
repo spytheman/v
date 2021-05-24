@@ -347,6 +347,7 @@ fn (g &Gen) defer_flag_var(stmt &ast.DeferStmt) string {
 }
 
 fn (mut g Gen) write_defer_stmts_when_needed() {
+	g.close_cscope()
 	// unlock all mutexes, in case we are in a lock statement. defers are not allowed in lock statements
 	g.unlock_locks()
 	if g.defer_stmts.len > 0 {
