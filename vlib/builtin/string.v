@@ -1483,6 +1483,9 @@ pub fn (s &string) free() {
 	$if prealloc {
 		return
 	}
+	if s.is_lit == 1 || s.len == 0 || s.str == 0 {
+		return
+	}
 	if s.is_lit == -98761234 {
 		$if freestanding {
 			bare_eprint(c'double string.free() detected\n', 30)
@@ -1491,12 +1494,10 @@ pub fn (s &string) free() {
 		}
 		return
 	}
-	if s.is_lit == 1 || s.len == 0 || s.str == 0 {
-		return
-	}
 	unsafe {
 		free(s.str)
 	}
+	s.str = &byte(0)
 	s.is_lit = -98761234
 }
 

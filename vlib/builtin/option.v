@@ -19,8 +19,12 @@ pub:
 [manualfree]
 pub fn (err IError) str() string {
 	return match err {
-		None__ { 'none' }
-		Error { err.msg.clone() }
+		None__ {
+			'none'
+		}
+		Error {
+			err.msg.clone()
+		}
 		else {
 			etn := err.type_name()
 			res := '$etn: $err.msg'
@@ -97,13 +101,19 @@ pub fn (n &None__) free() {
 [typedef]
 struct C.IError {
 	_object voidptr
+	_typ    int
 }
 
-[unsafe]
+[manualfree; unsafe]
 pub fn (ie &IError) free() {
 	unsafe {
-		ie.msg.free()
 		cie := &C.IError(ie)
+		// eprintln('>> ie.free(): ${voidptr(ie)} | ie.msg: $ie.msg | ie.msg.str: ${voidptr(ie.msg.str)}')
+		if cie._typ == 0 {
+			// do not free the global `none` object
+			return
+		}
+		ie.msg.free()
 		free(cie._object)
 	}
 }

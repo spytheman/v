@@ -2860,7 +2860,7 @@ fn (mut g Gen) autofree_scope_vars2(scope &ast.Scope, start_pos int, end_pos int
 	// if !isnil(scope.parent) && line_nr > 0 {
 	//
 	if free_parent_scopes && !isnil(scope.parent)
-	&& (stop_pos == -1 || scope.parent.start_pos >= stop_pos) {
+		&& (stop_pos == -1 || scope.parent.start_pos >= stop_pos) {
 		g.trace_autofree('// af parent scope:')
 		g.autofree_scope_vars2(scope.parent, start_pos, end_pos, line_nr, true, stop_pos)
 	}
@@ -4716,13 +4716,14 @@ fn (mut g Gen) if_expr(node ast.IfExpr) {
 		}
 	}
 	for i, branch in node.branches {
-		g.open_cscope()
 		if i > 0 {
+			g.close_cscope()
 			g.write('} else ')
 		}
 		// if last branch is `else {`
 		if i == node.branches.len - 1 && node.has_else {
 			g.writeln('{')
+			g.open_cscope()
 			// define `err` only for simple `if val := opt {...} else {`
 			if is_guard && guard_idx == i - 1 {
 				cvar_name := guard_vars[guard_idx]
@@ -4740,10 +4741,12 @@ fn (mut g Gen) if_expr(node ast.IfExpr) {
 						guard_vars[i] = var_name // for `else`
 						g.tmp_count--
 						g.writeln('if (${var_name}.state == 0) {')
+						g.open_cscope()
 					} else {
 						g.write('if ($var_name = ')
 						g.expr(branch.cond.expr)
 						g.writeln(', ${var_name}.state == 0) {')
+						g.open_cscope()
 					}
 					if short_opt || branch.cond.var_name != '_' {
 						base_type := g.base_type(branch.cond.expr_type)
@@ -4776,9 +4779,9 @@ fn (mut g Gen) if_expr(node ast.IfExpr) {
 					g.write('if (')
 					g.expr(branch.cond)
 					g.writeln(') {')
+					g.open_cscope()
 				}
 			}
-			g.close_cscope()
 		}
 		if needs_tmp_var {
 			g.stmts_with_tmp_var(branch.stmts, tmp)
@@ -4786,6 +4789,7 @@ fn (mut g Gen) if_expr(node ast.IfExpr) {
 			g.stmts(branch.stmts)
 		}
 	}
+	g.close_cscope()
 	g.writeln('}')
 	if needs_tmp_var {
 		g.empty_line = false
@@ -4816,6 +4820,7 @@ fn (mut g Gen) return_stmt(node ast.Return) {
 	if node.exprs.len > 0 {
 		// skip `return $vweb.html()`
 		if node.exprs[0] is ast.ComptimeCall {
+			g.close_cscope()
 			g.expr(node.exprs[0])
 			g.writeln(';')
 			return
@@ -4835,12 +4840,14 @@ fn (mut g Gen) return_stmt(node ast.Return) {
 		g.write_defer_stmts_when_needed()
 		if fn_return_is_optional {
 			styp := g.typ(g.fn_decl.return_type)
+			g.close_cscope()
 			g.writeln('return ($styp){0};')
 		} else {
 			if g.is_autofree {
 				g.trace_autofree('// free before return (no values returned)')
 				g.autofree_scope_vars(node.pos.pos - 1, node.pos.line_nr, true)
 			}
+			g.close_cscope()
 			g.writeln('return;')
 		}
 		return
@@ -4857,12 +4864,14 @@ fn (mut g Gen) return_stmt(node ast.Return) {
 			if use_tmp_var {
 				g.write('$ret_typ $tmpvar = ')
 			} else {
+				g.close_cscope()
 				g.write('return ')
 			}
 			g.gen_optional_error(g.fn_decl.return_type, node.exprs[0])
 			g.writeln(';')
 			if use_tmp_var {
 				g.write_defer_stmts_when_needed()
+				g.close_cscope()
 				g.writeln('return $tmpvar;')
 			}
 			return
@@ -4876,6 +4885,7 @@ fn (mut g Gen) return_stmt(node ast.Return) {
 			g.expr(node.exprs[0])
 			g.writeln(';')
 			g.write_defer_stmts_when_needed()
+			g.close_cscope()
 			g.writeln('return $tmpvar;')
 			return
 		}
@@ -4890,6 +4900,7 @@ fn (mut g Gen) return_stmt(node ast.Return) {
 			if use_tmp_var {
 				g.write('$ret_typ $tmpvar = ')
 			} else {
+				g.close_cscope()
 				g.write('return ')
 			}
 			styp = g.typ(g.fn_decl.return_type)
@@ -4949,6 +4960,7 @@ fn (mut g Gen) return_stmt(node ast.Return) {
 		if fn_return_is_optional {
 			g.writeln(' }, (Option*)(&$tmpvar), sizeof($styp));')
 			g.write_defer_stmts_when_needed()
+			g.close_cscope()
 			g.write('return $tmpvar')
 		}
 		// Make sure to add our unpacks
@@ -4960,6 +4972,7 @@ fn (mut g Gen) return_stmt(node ast.Return) {
 				g.writeln(';')
 			}
 			g.write_defer_stmts_when_needed()
+			g.close_cscope()
 			g.writeln('return $tmpvar;')
 			has_semicolon = true
 		}
@@ -4994,6 +5007,7 @@ fn (mut g Gen) return_stmt(node ast.Return) {
 			g.writeln(' }, (Option*)(&$tmpvar), sizeof($styp));')
 			g.write_defer_stmts_when_needed()
 			g.autofree_scope_vars(node.pos.pos - 1, node.pos.line_nr, true)
+			g.close_cscope()
 			g.writeln('return $tmpvar;')
 			return
 		}
@@ -5022,10 +5036,12 @@ fn (mut g Gen) return_stmt(node ast.Return) {
 				if !g.is_builtin_mod {
 					g.autofree_scope_vars(node.pos.pos - 1, node.pos.line_nr, true)
 				}
+				g.close_cscope()
 				g.write('return ')
 			}
 		} else {
 			g.autofree_scope_vars(node.pos.pos - 1, node.pos.line_nr, true)
+			g.close_cscope()
 			g.write('return ')
 		}
 		if expr0.is_auto_deref_var() {
@@ -5046,6 +5062,7 @@ fn (mut g Gen) return_stmt(node ast.Return) {
 			if !g.is_builtin_mod {
 				g.autofree_scope_vars(node.pos.pos - 1, node.pos.line_nr, true)
 			}
+			g.close_cscope()
 			g.write('return $tmpvar')
 			has_semicolon = false
 		}
@@ -5842,11 +5859,12 @@ fn (mut g Gen) open_cscope() {
 	g.cscopes_stack << g.defer_free_cvars
 	g.defer_free_cvars = []
 }
+
 fn (mut g Gen) close_cscope() {
 	if g.defer_free_cvars.len > 0 {
 		g.writeln('\t{ // cscope cvars start | g.defer_free_cvars.len: $g.defer_free_cvars.len | g.cscopes_stack.len: $g.cscopes_stack.len')
 		for i := g.defer_free_cvars.len - 1; i >= 0; i-- {
-			g.write('\t\t')	g.write(g.defer_free_cvars[i].str()) g.writeln(';')
+			g.writeln(g.defer_free_cvars[i].str() + ';')
 		}
 		g.writeln('\t} // cscope cvars end')
 	}
@@ -5856,6 +5874,7 @@ fn (mut g Gen) close_cscope() {
 		g.defer_free_cvars = []
 	}
 }
+
 fn (mut g Gen) free_at_cscope_end(name string) {
 	g.defer_free_cvars << ast.new_free_ierror(name)
 }
@@ -5917,6 +5936,7 @@ fn (mut g Gen) or_block(var_name string, or_block ast.OrExpr, return_type ast.Ty
 	} else if or_block.kind == .propagate {
 		if g.file.mod.name == 'main' && (isnil(g.fn_decl) || g.fn_decl.is_main) {
 			// In main(), an `opt()?` call is sugar for `opt() or { panic(err) }`
+			g.close_cscope()
 			if g.pref.is_debug {
 				paline, pafile, pamod, pafn := g.panic_debug_info(or_block.pos)
 				g.writeln('panic_debug($paline, tos3("$pafile"), tos3("$pamod"), tos3("$pafn"), *${cvar_name}.err.msg );')
@@ -5931,6 +5951,7 @@ fn (mut g Gen) or_block(var_name string, or_block ast.OrExpr, return_type ast.Ty
 			// Since we *do* return, first we have to ensure that
 			// the defered statements are generated.
 			g.write_defer_stmts()
+			g.close_cscope()
 			// Now that option types are distinct we need a cast here
 			if g.fn_decl.return_type == ast.void_type {
 				g.writeln('\treturn;')
@@ -5939,6 +5960,7 @@ fn (mut g Gen) or_block(var_name string, or_block ast.OrExpr, return_type ast.Ty
 				err_obj := g.new_tmp_var()
 				g.writeln('\t$styp $err_obj;')
 				g.writeln('\tmemcpy(&$err_obj, &$cvar_name, sizeof(Option));')
+				g.close_cscope()
 				g.writeln('\treturn $err_obj;')
 			}
 		}
