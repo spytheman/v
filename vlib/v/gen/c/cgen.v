@@ -1112,7 +1112,9 @@ fn (mut g Gen) stmt(node ast.Stmt) {
 			} else {
 				g.writeln('{')
 			}
+			g.open_cscope()
 			g.stmts(node.stmts)
+			g.close_cscope()
 			g.writeln('}')
 		}
 		ast.BranchStmt {
@@ -1141,6 +1143,7 @@ fn (mut g Gen) stmt(node ast.Stmt) {
 					else {}
 				}
 
+				g.write_cscope_cleanup()
 				if node.kind == .key_break {
 					g.writeln('goto ${node.label}__break;')
 				} else {
@@ -1173,6 +1176,7 @@ fn (mut g Gen) stmt(node ast.Stmt) {
 					g.autofree_scope_vars_stop(node.pos.pos - 1, node.pos.line_nr, true,
 						g.branch_parent_pos)
 				}
+				g.write_cscope_cleanup()
 				g.writeln('$node.kind;')
 			}
 		}
@@ -1395,6 +1399,7 @@ fn (mut g Gen) write_defer_stmts() {
 		defer_stmt := g.defer_stmts[i]
 		g.writeln('// Defer begin')
 		g.writeln('if (${g.defer_flag_var(defer_stmt)}) {')
+		g.open_cscope()
 		g.indent++
 		if defer_stmt.ifdef.len > 0 {
 			g.writeln(defer_stmt.ifdef)
@@ -1407,6 +1412,7 @@ fn (mut g Gen) write_defer_stmts() {
 			g.indent++
 		}
 		g.indent--
+		g.close_cscope()
 		g.writeln('}')
 		g.writeln('// Defer end')
 	}
@@ -1421,10 +1427,13 @@ fn (mut g Gen) for_c_stmt(node ast.ForCStmt) {
 		g.writeln('{')
 		g.indent++
 		if node.has_init {
+			g.open_cscope()
 			g.stmt(node.init)
+			g.close_cscope()
 		}
 		g.writeln('bool _is_first = true;')
 		g.writeln('while (true) {')
+		g.open_cscope()
 		g.writeln('\tif (_is_first) {')
 		g.writeln('\t\t_is_first = false;')
 		g.writeln('\t} else {')
@@ -1438,10 +1447,14 @@ fn (mut g Gen) for_c_stmt(node ast.ForCStmt) {
 		if node.has_cond {
 			g.write('if (!(')
 			g.expr(node.cond)
-			g.writeln(')) break;')
+			g.writeln(')) {')
+			g.write_cscope_cleanup()
+			g.writeln('\tbreak;')
+			g.writeln('}')
 		}
 		g.is_vlines_enabled = true
 		g.stmts(node.stmts)
+		g.close_cscope()
 		if node.label.len > 0 {
 			g.writeln('${node.label}__continue: {}')
 		}
@@ -1460,7 +1473,9 @@ fn (mut g Gen) for_c_stmt(node ast.ForCStmt) {
 		if !node.has_init {
 			g.write('; ')
 		} else {
+			g.open_cscope()
 			g.stmt(node.init)
+			g.close_cscope()
 			// Remove excess return and add space
 			if g.out.last_n(1) == '\n' {
 				g.out.go_back(1)
@@ -1476,8 +1491,10 @@ fn (mut g Gen) for_c_stmt(node ast.ForCStmt) {
 			g.stmt(node.inc)
 		}
 		g.writeln(') {')
+		g.open_cscope()
 		g.is_vlines_enabled = true
 		g.stmts(node.stmts)
+		g.close_cscope()
 		if node.label.len > 0 {
 			g.writeln('${node.label}__continue: {}')
 		}
@@ -1494,16 +1511,21 @@ fn (mut g Gen) for_stmt(node ast.ForStmt) {
 		g.writeln('$node.label:')
 	}
 	g.writeln('for (;;) {')
+	g.open_cscope()
 	if !node.is_inf {
 		g.indent++
 		g.stmt_path_pos << g.out.len
 		g.write('if (!(')
-		g.expr(node.cond)
-		g.writeln(')) break;')
+		g.expr(node.cond)		
+		g.writeln(')) {')
+		g.write_cscope_cleanup()
+		g.writeln('\tbreak;')
+		g.writeln('}')
 		g.indent--
 	}
 	g.is_vlines_enabled = true
 	g.stmts(node.stmts)
+	g.close_cscope()
 	if node.label.len > 0 {
 		g.writeln('\t${node.label}__continue: {}')
 	}
@@ -1526,6 +1548,7 @@ fn (mut g Gen) for_in_stmt(node ast.ForInStmt) {
 		g.write('; $i < ')
 		g.expr(node.high)
 		g.writeln('; ++$i) {')
+		g.open_cscope()
 	} else if node.kind == .array {
 		// `for num in nums {`
 		g.writeln('// FOR IN array')
@@ -1547,6 +1570,7 @@ fn (mut g Gen) for_in_stmt(node ast.ForInStmt) {
 		op_field := field_accessor + share_accessor
 		g.empty_line = true
 		g.writeln('for (int $i = 0; $i < $cond_var${op_field}len; ++$i) {')
+		g.open_cscope()
 		if node.val_var != '_' {
 			if val_sym.kind == .function {
 				g.write('\t')
@@ -1597,6 +1621,7 @@ fn (mut g Gen) for_in_stmt(node ast.ForInStmt) {
 		cond_sym := g.table.get_type_symbol(node.cond_type)
 		info := cond_sym.info as ast.ArrayFixed
 		g.writeln('for (int $idx = 0; $idx != $info.size; ++$idx) {')
+		g.open_cscope()
 		if node.val_var != '_' {
 			val_sym := g.table.get_type_symbol(node.val_type)
 			is_fixed_array := val_sym.kind == .array_fixed && !node.val_is_mut
@@ -1646,17 +1671,25 @@ fn (mut g Gen) for_in_stmt(node ast.ForInStmt) {
 		g.empty_line = true
 		g.writeln('int $map_len = $cond_var${arw_or_pt}key_values.len;')
 		g.writeln('for (int $idx = 0; $idx < $map_len; ++$idx ) {')
+		g.open_cscope()
 		// TODO: don't have this check when the map has no deleted elements
 		g.indent++
 		diff := g.new_tmp_var()
 		g.writeln('int $diff = $cond_var${arw_or_pt}key_values.len - $map_len;')
 		g.writeln('$map_len = $cond_var${arw_or_pt}key_values.len;')
+		
 		// TODO: optimize this
 		g.writeln('if ($diff < 0) {')
 		g.writeln('\t$idx = -1;')
+		g.write_cscope_cleanup()
 		g.writeln('\tcontinue;')
 		g.writeln('}')
-		g.writeln('if (!DenseArray_has_index(&$cond_var${arw_or_pt}key_values, $idx)) {continue;}')
+		
+		g.writeln('if (!DenseArray_has_index(&$cond_var${arw_or_pt}key_values, $idx)) {')
+		g.write_cscope_cleanup()
+		g.writeln('\tcontinue;')
+		g.writeln('}')
+		
 		if node.key_var != '_' {
 			key_styp := g.typ(node.key_type)
 			key := c_name(node.key_var)
@@ -1697,6 +1730,7 @@ fn (mut g Gen) for_in_stmt(node ast.ForInStmt) {
 		g.write('for (int $i = 0; $i < ')
 		g.expr(cond)
 		g.writeln('.len; ++$i) {')
+		g.open_cscope()
 		if node.val_var != '_' {
 			g.write('\tbyte ${c_name(node.val_var)} = ')
 			g.expr(cond)
@@ -1714,6 +1748,7 @@ fn (mut g Gen) for_in_stmt(node ast.ForInStmt) {
 		g.expr(node.cond)
 		g.writeln(';')
 		g.writeln('while (1) {')
+		g.open_cscope()
 		t_var := g.new_tmp_var()
 		receiver_typ := next_fn.params[0].typ
 		receiver_styp := g.typ(receiver_typ)
@@ -1723,7 +1758,10 @@ fn (mut g Gen) for_in_stmt(node ast.ForInStmt) {
 			g.write('&')
 		}
 		g.writeln('$t_expr);')
-		g.writeln('\tif (${t_var}.state != 0) break;')
+		g.writeln('\tif (${t_var}.state != 0) {')
+		g.write_cscope_cleanup()
+		g.writeln('\t\tbreak;')
+		g.writeln('\t}')
 		val := if node.val_var in ['', '_'] { g.new_tmp_var() } else { node.val_var }
 		val_styp := g.typ(node.val_type)
 		g.writeln('\t$val_styp $val = *($val_styp*)${t_var}.data;')
@@ -1732,6 +1770,7 @@ fn (mut g Gen) for_in_stmt(node ast.ForInStmt) {
 		g.error('for in: unhandled symbol `$node.cond` of type `$typ_str`', node.pos)
 	}
 	g.stmts(node.stmts)
+	g.close_cscope()
 	if node.label.len > 0 {
 		g.writeln('\t${node.label}__continue: {}')
 	}
@@ -4449,7 +4488,9 @@ fn (mut g Gen) select_expr(node ast.SelectExpr) {
 			}
 			i++
 		}
+		g.open_cscope()
 		g.stmts(node.branches[j].stmts)
+		g.close_cscope()
 	}
 	g.writeln('}')
 	if is_expr {
@@ -4686,7 +4727,9 @@ fn (mut g Gen) if_expr(node ast.IfExpr) {
 				g.expr(branch.cond)
 				g.write(' ? ')
 			}
+			g.open_cscope()
 			g.stmts(branch.stmts)
+			g.close_cscope()
 		}
 		if node.branches.len == 1 {
 			g.write(': 0')
@@ -5860,7 +5903,7 @@ fn (mut g Gen) open_cscope() {
 	g.defer_free_cvars = []
 }
 
-fn (mut g Gen) close_cscope() {
+fn (mut g Gen) write_cscope_cleanup() {
 	if g.defer_free_cvars.len > 0 {
 		g.writeln('\t{ // cscope cvars start | g.defer_free_cvars.len: $g.defer_free_cvars.len | g.cscopes_stack.len: $g.cscopes_stack.len')
 		for i := g.defer_free_cvars.len - 1; i >= 0; i-- {
@@ -5868,6 +5911,10 @@ fn (mut g Gen) close_cscope() {
 		}
 		g.writeln('\t} // cscope cvars end')
 	}
+}
+
+fn (mut g Gen) close_cscope() {
+	g.write_cscope_cleanup()
 	if g.cscopes_stack.len > 0 {
 		g.defer_free_cvars = g.cscopes_stack.pop()
 	} else {
