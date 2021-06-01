@@ -23,11 +23,16 @@ REM VC settings
 set "vc_url=https://github.com/vlang/vc"
 set "vc_dir=%~dp0vc"
 
+REM BOEHM variables
+set "boehm_url=https://github.com/ivmai/bdwgc"
+set "boehm_dir=%~dp0thirdparty\boehm"
+
 REM Let a particular environment specify their own TCC and VC repos (to help mirrors)
 if /I not ["%TCC_GIT%"] == [""] set "tcc_url=%TCC_GIT%"
 if /I not ["%TCC_BRANCH%"] == [""] set "tcc_branch=%TCC_BRANCH%"
 
 if /I not ["%VC_GIT%"] == [""] set "vc_url=%VC_GIT%"
+if /I not ["%BOEHM_GIT%"] == [""] set "boehm_url=%BOEHM_GIT%"
 
 pushd %~dp0
 
@@ -140,35 +145,18 @@ exit /b %ERRORLEVEL%
 
 :build
 if !flag_local! NEQ 1 (
-    call :download_tcc
+    call :update_boehm
     if %ERRORLEVEL% NEQ 0 goto :error
     del "!log_file!">NUL 2>&1
-    pushd "%vc_dir%" 2>NUL && (
-        echo Updating vc...
-        echo  ^> Sync with remote !vc_url!
-        if !flag_verbose! EQU 1 (
-            echo [Debug] cd "%vc_dir%">>"!log_file!"
-            echo    cd "%vc_dir%"
-            cd "%vc_dir%">>"!log_file!" 2>NUL
-            echo [Debug] git pull --quiet>>"!log_file!"
-            echo    git pull --quiet
-            git pull --quiet>>"!log_file!" 2>NUL
-            echo [Debug] cd ..>>"!log_file!"
-            echo    cd ..
-            cd ..>>"!log_file!" 2>NUL
-        ) else (
-            cd "%vc_dir%">>"!log_file!" 2>NUL
-            git pull --quiet>>"!log_file!" 2>NUL
-            cd ..>>"!log_file!" 2>NUL
-        )
-        popd
-    ) || call :cloning_vc
+    call :update_tcc
+    if %ERRORLEVEL% NEQ 0 goto :error
+    del "!log_file!">NUL 2>&1
+	call :update_vc
     echo.
 )
 
 echo Building V...
 if not [!compiler!] == [] goto :!compiler!_strap
-
 
 REM By default, use tcc, since we have it prebuilt:
 :tcc_strap
@@ -189,7 +177,6 @@ if !flag_verbose! EQU 1 (
 v.exe -cc "!tcc_exe!" self>>"!log_file!" 2>NUL
 if %ERRORLEVEL% NEQ 0 goto :clang_strap
 goto :success
-
 
 
 :clang_strap
@@ -292,24 +279,15 @@ if %ERRORLEVEL% NEQ 0 (
 echo  ^> Compiling with .\v.exe self
 if !flag_verbose! EQU 1 (
     echo [Debug] v.exe -cc msvc self>>"!log_file!"
-    echo    v.exe -cc msvc self
+    echo         v.exe -cc msvc self
 )
 v.exe -cc msvc self>>"!log_file!" 2>NUL
 del %ObjFile%>>"!log_file!" 2>>&1
 if %ERRORLEVEL% NEQ 0 goto :compile_error
 goto :success
 
-:download_tcc
-pushd %tcc_dir% 2>NUL && (
-    echo Updating TCC
-    echo  ^> Syncing TCC from !tcc_url!
-    if !flag_verbose! EQU 1 (
-        echo [Debug] git pull --quiet>>"!log_file!"
-        echo    git pull --quiet
-    )
-    git pull --quiet>>"!log_file!" 2>NUL
-    popd
-) || call :bootstrap_tcc
+call :update_boehm
+call :update_tcc
 
 for /f "usebackq delims=" %%i in (`dir "%tcc_dir%" /b /a /s tcc.exe`) do (
     set "attrib=%%~ai"
@@ -319,6 +297,7 @@ for /f "usebackq delims=" %%i in (`dir "%tcc_dir%" /b /a /s tcc.exe`) do (
 if [!tcc_exe!] == [] echo  ^> TCC not found, even after cloning& goto :error
 echo.
 exit /b 0
+
 
 :compile_error
 echo.
@@ -408,26 +387,92 @@ echo                                      file
 echo    --verbose                         Output compilation commands to stdout
 exit /b 0
 
-:bootstrap_tcc
-echo Bootstraping TCC...
+
+:update_boehm
+pushd %boehm_dir% 2>NUL && (
+    echo Updating Boehm
+    echo  ^> Syncing Boehm from !boehm_url!
+    if !flag_verbose! EQU 1 (
+        echo [Debug] git pull --quiet>>"!log_file!"
+        echo         git pull --quiet
+    )
+    git pull --quiet>>"!log_file!" 2>NUL
+    popd
+) || call :cloning_boehm
+exit /b 0
+
+
+:update_tcc
+pushd %tcc_dir% 2>NUL && (
+    echo Updating TCC
+    echo  ^> Syncing TCC from !tcc_url!
+    if !flag_verbose! EQU 1 (
+        echo [Debug] git pull --quiet>>"!log_file!"
+        echo         git pull --quiet
+    )
+    git pull --quiet>>"!log_file!" 2>NUL
+    popd
+) || call :cloning_tcc
+exit /b 0
+
+
+:update_vc
+pushd "%vc_dir%" 2>NUL && (
+   echo Updating vc...
+   echo  ^> Sync with remote !vc_url!
+   if !flag_verbose! EQU 1 (
+       echo [Debug] cd "%vc_dir%">>"!log_file!"
+	   echo         cd "%vc_dir%"
+	   cd "%vc_dir%">>"!log_file!" 2>NUL
+	   echo [Debug] git pull --quiet>>"!log_file!"
+	   echo         git pull --quiet
+	   git pull --quiet>>"!log_file!" 2>NUL
+	   echo [Debug] cd ..>>"!log_file!"
+	   echo         cd ..
+	   cd ..>>"!log_file!" 2>NUL
+   ) else (
+       cd "%vc_dir%">>"!log_file!" 2>NUL
+	   git pull --quiet>>"!log_file!" 2>NUL
+	   cd ..>>"!log_file!" 2>NUL
+   )
+   popd
+) || call :cloning_vc
+exit /b 0
+
+
+:cloning_tcc
+echo Cloning TCC...
 echo  ^> TCC not found
 if "!tcc_branch!" == "thirdparty-windows-i386" ( echo  ^> Downloading TCC32 from !tcc_url! ) else ( echo  ^> Downloading TCC64 from !tcc_url! )
 if !flag_verbose! EQU 1 (
    echo [Debug] git clone --depth 1 --quiet --single-branch --branch !tcc_branch! !tcc_url! "%tcc_dir%">>"!log_file!"
-   echo    git clone --depth 1 --quiet --single-branch --branch !tcc_branch! !tcc_url! "%tcc_dir%"
+   echo         git clone --depth 1 --quiet --single-branch --branch !tcc_branch! !tcc_url! "%tcc_dir%"
 )
 git clone --depth 1 --quiet --single-branch --branch !tcc_branch! !tcc_url! "%tcc_dir%">>"!log_file!" 2>NUL
 exit /b 0
+
 
 :cloning_vc
 echo Cloning vc...
 echo  ^> Cloning from remote !vc_url!
 if !flag_verbose! EQU 1 (
    echo [Debug] git clone --depth 1 --quiet %vc_url%>>"!log_file!"
-   echo    git clone --depth 1 --quiet %vc_url%
+   echo         git clone --depth 1 --quiet %vc_url%
 )
 git clone --depth 1 --quiet %vc_url%>>"!log_file!" 2>NUL
 exit /b 0
+
+
+:cloning_boehm
+echo Cloning boehm...
+echo  ^> Cloning from remote !boehm_url!
+if !flag_verbose! EQU 1 (
+   echo [Debug] git clone --depth 1 --quiet %boehm_url% "%boehm_dir%" >>"!log_file!"
+   echo         git clone --depth 1 --quiet %boehm_url% "%boehm_dir%"
+)
+git clone --depth 1 --quiet --quiet %boehm_url% "%boehm_dir%">>"!log_file!" 2>NUL
+exit /b 0
+
 
 :eof
 popd

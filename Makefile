@@ -7,9 +7,11 @@ VC     ?= ./vc
 V      ?= ./v
 VCREPO ?= https://github.com/vlang/vc
 TCCREPO ?= https://github.com/vlang/tccbin
+BOEHMREPO ?= https://github.com/ivmai/bdwgc
 
 VCFILE := v.c
-TMPTCC := $(VROOT)/thirdparty/tcc
+TP_TCC := $(VROOT)/thirdparty/tcc
+TP_BOEHM := $(VROOT)/thirdparty/boehm
 TCCOS := unknown
 TCCARCH := unknown
 GITCLEANPULL := git clean -xf && git pull --quiet
@@ -76,13 +78,13 @@ endif
 endif
 endif
 
-.PHONY: all clean fresh_vc fresh_tcc
-
 ifdef prod
 VFLAGS+=-prod
 endif
 
-all: latest_vc latest_tcc
+.PHONY: all clean fresh_vc fresh_tcc fresh_boehm
+
+all: latest_vc latest_tcc latest_boehm
 ifdef WIN32
 	$(CC) $(CFLAGS) -g -std=c99 -municode -w -o $(V) $(VC)/$(VCFILE) $(LDFLAGS)
 	$(V) -o v2.exe $(VFLAGS) cmd/v
@@ -96,48 +98,9 @@ endif
 	@$(V) -version
 
 clean:
-	rm -rf $(TMPTCC)
+	rm -rf $(TP_TCC)
+	rm -rf $(TP_BOEHM)
 	rm -rf $(VC)
-
-ifndef local
-latest_vc: $(VC)/.git/config
-	cd $(VC) && $(GITCLEANPULL)
-else
-latest_vc:
-	@echo "Using local vc"
-endif
-
-fresh_vc:
-	rm -rf $(VC)
-	$(GITFASTCLONE) $(VCREPO) $(VC)
-
-ifndef local
-latest_tcc: $(TMPTCC)/.git/config
-	cd $(TMPTCC) && $(GITCLEANPULL)
-else
-latest_tcc:
-	@echo "Using local tcc"
-endif
-
-fresh_tcc:
-	rm -rf $(TMPTCC)
-ifndef local
-# Check wether a TCC branch exists for the user's system configuration.
-ifneq (,$(findstring thirdparty-$(TCCOS)-$(TCCARCH), $(shell git ls-remote --heads $(TCCREPO) | sed 's/^[a-z0-9]*\trefs.heads.//')))
-	$(GITFASTCLONE) --branch thirdparty-$(TCCOS)-$(TCCARCH) $(TCCREPO) $(TMPTCC)
-else
-	@echo 'Pre-built TCC not available for thirdparty-$(TCCOS)-$(TCCARCH) at $(TCCREPO), will use the system compiler: $(CC)'
-	$(GITFASTCLONE) --branch thirdparty-unknown-unknown $(TCCREPO) $(TMPTCC)
-endif
-else
-	@echo "Using local tccbin"
-endif
-
-$(TMPTCC)/.git/config:
-	$(MAKE) fresh_tcc
-
-$(VC)/.git/config:
-	$(MAKE) fresh_vc
 
 asan:
 	$(MAKE) all CFLAGS='-fsanitize=address,undefined'
@@ -152,3 +115,63 @@ selfcompile-static:
 install:
 	@echo 'Please use `sudo v symlink` instead.'
     
+
+### VC:
+ifndef local
+latest_vc: $(VC)/.git/config
+	cd $(VC) && $(GITCLEANPULL)
+else
+latest_vc:
+	@echo "Using local vc"
+endif
+
+$(VC)/.git/config:
+	$(MAKE) fresh_vc
+
+fresh_vc:
+	rm -rf $(VC)
+	$(GITFASTCLONE) $(VCREPO) $(VC)
+
+
+### BOEHM:
+ifndef local
+latest_boehm: $(TP_BOEHM)/.git/config
+	cd $(TP_BOEHM) && $(GITCLEANPULL)
+else
+latest_boehm:
+	@echo "Using local boehm"
+endif
+
+$(TP_BOEHM)/.git/config:
+	$(MAKE) fresh_boehm
+
+fresh_boehm:
+	rm -rf $(TP_BOEHM)
+	$(GITFASTCLONE) $(BOEHMREPO) $(TP_BOEHM)
+
+
+### TCC:
+ifndef local
+latest_tcc: $(TP_TCC)/.git/config
+	cd $(TP_TCC) && $(GITCLEANPULL)
+else
+latest_tcc:
+	@echo "Using local tcc"
+endif
+
+$(TP_TCC)/.git/config:
+	$(MAKE) fresh_tcc
+
+fresh_tcc:
+	rm -rf $(TP_TCC)
+ifndef local
+# Check wether a TCC branch exists for the user's system configuration.
+ifneq (,$(findstring thirdparty-$(TCCOS)-$(TCCARCH), $(shell git ls-remote --heads $(TCCREPO) | sed 's/^[a-z0-9]*\trefs.heads.//')))
+	$(GITFASTCLONE) --branch thirdparty-$(TCCOS)-$(TCCARCH) $(TCCREPO) $(TP_TCC)
+else
+	@echo 'Pre-built TCC not available for thirdparty-$(TCCOS)-$(TCCARCH) at $(TCCREPO), will use the system compiler: $(CC)'
+	$(GITFASTCLONE) --branch thirdparty-unknown-unknown $(TCCREPO) $(TP_TCC)
+endif
+else
+	@echo "Using local tccbin"
+endif

@@ -8,4 +8,5 @@ SDL2_mixer/
 SDL2_ttf/
 pg/
 tcc/
+boehm/
 sqlite/

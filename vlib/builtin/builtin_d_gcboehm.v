@@ -2,32 +2,37 @@ module builtin
 
 #define GC_THREADS 1
 
-$if static_boehm ? {
-	$if macos {
-		#flag -I$first_existing("/opt/homebrew/include",     "/usr/local/include")
-		#flag   $first_existing("/opt/homebrew/lib/libgc.a", "/usr/local/lib/libgc.a")
-	} $else $if linux {
-		#flag -l:libgc.a
-	} $else $if openbsd {
-		#flag -I/usr/local/include
-		#flag /usr/local/lib/libgc.a
-		#flag -lpthread
+$if system_boehm ? || tinyc {
+	$if static_boehm ? {
+		$if macos {
+			#flag -I$first_existing("/opt/homebrew/include",     "/usr/local/include")
+			#flag   $first_existing("/opt/homebrew/lib/libgc.a", "/usr/local/lib/libgc.a")
+		} $else $if linux {
+			#flag -l:libgc.a
+		} $else $if openbsd {
+			#flag -I/usr/local/include
+			#flag /usr/local/lib/libgc.a
+			#flag -lpthread
+		} $else {
+			#flag -lgc
+		}
 	} $else {
-		#flag -lgc
+		$if macos {
+			#pkgconfig bdw-gc
+		} $else $if openbsd || freebsd {
+			#flag -I/usr/local/include
+			#flag -L/usr/local/lib
+		}
+		$if windows {
+			#flag -I@VEXEROOT/thirdparty/libgc/include
+			#flag -L@VEXEROOT/thirdparty/libgc
+		} $else {
+			#flag -lgc
+		}
 	}
 } $else {
-	$if macos {
-		#pkgconfig bdw-gc
-	} $else $if openbsd || freebsd {
-		#flag -I/usr/local/include
-		#flag -L/usr/local/lib
-	}
-	$if windows {
-		#flag -I@VEXEROOT/thirdparty/libgc/include
-		#flag -L@VEXEROOT/thirdparty/libgc
-	} $else {
-		#flag -lgc
-	}
+    #flag -I@VEXEROOT/thirdparty/boehm/include
+    #flag @VEXEROOT/thirdparty/boehm/extra/gc.o
 }
 
 $if gcboehm_leak ? {
