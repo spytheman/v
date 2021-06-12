@@ -354,7 +354,7 @@ pub fn (x Expr) str() string {
 		}
 		SizeOf {
 			if x.is_type {
-				return 'sizeof(Type($x.typ))'
+				return 'sizeof(${global_table.type_to_str(x.typ)})'
 			}
 			return 'sizeof($x.expr)'
 		}
