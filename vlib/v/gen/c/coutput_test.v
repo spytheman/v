@@ -122,6 +122,9 @@ fn test_c_must_have_files() ? {
 		}
 		if nmatches == expected_lines.len {
 			println(term.green('OK'))
+		} else {
+			eprintln('> ALL lines:')
+			eprintln(compilation.output)
 		}
 	}
 	assert total_errors == 0
