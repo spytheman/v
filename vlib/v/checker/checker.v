@@ -5581,7 +5581,8 @@ pub fn (mut c Checker) cast_expr(mut node ast.CastExpr) ast.Type {
 		msg := if node.expr_type.has_flag(.optional) { 'an optional' } else { 'a variadic' }
 		c.error('cannot type cast $msg', node.pos)
 	} else if !c.inside_unsafe && node.typ.is_ptr() && node.expr_type.is_ptr()
-		&& node.typ.deref() != ast.char_type && node.expr_type.deref() != ast.char_type {
+		&& node.typ.deref() != ast.char_type && node.expr_type.deref() != ast.char_type
+		&& node.expr_type != node.typ {
 		ft := c.table.type_to_str(node.expr_type)
 		tt := c.table.type_to_str(node.typ)
 		c.warn('casting `$ft` to `$tt` is only allowed in `unsafe` code', node.pos)

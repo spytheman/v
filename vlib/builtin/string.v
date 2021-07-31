@@ -1312,7 +1312,8 @@ pub fn (c byte) is_letter() bool {
 
 // free allows for manually freeing the memory occupied by the string
 [manualfree; unsafe]
-pub fn (s &string) free() {
+pub fn (os &string) free() {
+	mut s := unsafe { os }
 	$if prealloc {
 		return
 	}
