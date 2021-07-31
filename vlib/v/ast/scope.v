@@ -42,7 +42,7 @@ fn (s &Scope) dont_lookup_parent() bool {
 }
 
 pub fn (s &Scope) find_with_scope(name string) ?(ScopeObject, &Scope) {
-	mut sc := s
+	mut sc := unsafe { &Scope(s) }
 	for {
 		if name in sc.objects {
 			return sc.objects[name], sc
@@ -56,7 +56,7 @@ pub fn (s &Scope) find_with_scope(name string) ?(ScopeObject, &Scope) {
 }
 
 pub fn (s &Scope) find(name string) ?ScopeObject {
-	for sc := s; true; sc = sc.parent {
+	for sc := &Scope(s); true; sc = sc.parent {
 		if name in sc.objects {
 			return sc.objects[name]
 		}
@@ -69,7 +69,7 @@ pub fn (s &Scope) find(name string) ?ScopeObject {
 
 // selector_expr:  name.field_name
 pub fn (s &Scope) find_struct_field(name string, struct_type Type, field_name string) ?ScopeStructField {
-	for sc := s; true; sc = sc.parent {
+	for sc := &Scope(s); true; sc = sc.parent {
 		if field := sc.struct_fields[name] {
 			if field.struct_type == struct_type && field.name == field_name {
 				return field
@@ -160,7 +160,7 @@ pub fn (mut s Scope) register(obj ScopeObject) {
 }
 
 pub fn (s &Scope) outermost() &Scope {
-	mut sc := s
+	mut sc := &Scope(s)
 	for !sc.dont_lookup_parent() {
 		sc = sc.parent
 	}
@@ -177,7 +177,7 @@ pub fn (s &Scope) innermost(pos int) &Scope {
 		mut middle := last / 2
 		for first <= last {
 			// println('FIRST: $first, LAST: $last, LEN: $s.children.len-1')
-			s1 := s.children[middle]
+			mut s1 := &Scope(s.children[middle])
 			if s1.end_pos < pos {
 				first = middle + 1
 			} else if s1.contains(pos) {
@@ -190,10 +190,10 @@ pub fn (s &Scope) innermost(pos int) &Scope {
 				break
 			}
 		}
-		return s
+		return &Scope(s)
 	}
 	// return none
-	return s
+	return &Scope(s)
 }
 
 [inline]

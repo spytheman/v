@@ -86,9 +86,9 @@ pub fn parse_stmt(text string, table &ast.Table, scope &ast.Scope) ast.Stmt {
 	mut p := Parser{
 		scanner: scanner.new_scanner(text, .skip_comments, &pref.Preferences{})
 		inside_test_file: true
-		table: table
+		table: &ast.Table(table)
 		pref: &pref.Preferences{}
-		scope: scope
+		scope: &ast.Scope(scope)
 	}
 	p.init_parse_fns()
 	util.timing_start('PARSE stmt')
@@ -99,24 +99,24 @@ pub fn parse_stmt(text string, table &ast.Table, scope &ast.Scope) ast.Stmt {
 	return p.stmt(false)
 }
 
-pub fn parse_comptime(text string, table &ast.Table, pref &pref.Preferences, scope &ast.Scope) &ast.File {
+pub fn parse_comptime(text string, table &ast.Table, prefs &pref.Preferences, scope &ast.Scope) &ast.File {
 	mut p := Parser{
-		scanner: scanner.new_scanner(text, .skip_comments, pref)
-		table: table
-		pref: pref
-		scope: scope
+		scanner: scanner.new_scanner(text, .skip_comments, prefs)
+		table: &ast.Table(table)
+		pref: &pref.Preferences(prefs)
+		scope: &ast.Scope(scope)
 		errors: []errors.Error{}
 		warnings: []errors.Warning{}
 	}
 	return p.parse()
 }
 
-pub fn parse_text(text string, path string, table &ast.Table, comments_mode scanner.CommentsMode, pref &pref.Preferences) &ast.File {
+pub fn parse_text(text string, path string, table &ast.Table, comments_mode scanner.CommentsMode, prefs &pref.Preferences) &ast.File {
 	mut p := Parser{
-		scanner: scanner.new_scanner(text, comments_mode, pref)
+		scanner: scanner.new_scanner(text, comments_mode, prefs)
 		comments_mode: comments_mode
-		table: table
-		pref: pref
+		table: &ast.Table(table)
+		pref: &pref.Preferences(prefs)
 		scope: &ast.Scope{
 			start_pos: 0
 			parent: table.global_scope
@@ -169,16 +169,16 @@ pub fn (mut p Parser) set_path(path string) {
 	}
 }
 
-pub fn parse_file(path string, table &ast.Table, comments_mode scanner.CommentsMode, pref &pref.Preferences) &ast.File {
+pub fn parse_file(path string, table &ast.Table, comments_mode scanner.CommentsMode, prefs &pref.Preferences) &ast.File {
 	// NB: when comments_mode == .toplevel_comments,
 	// the parser gives feedback to the scanner about toplevel statements, so that the scanner can skip
 	// all the tricky inner comments. This is needed because we do not have a good general solution
 	// for handling them, and should be removed when we do (the general solution is also needed for vfmt)
 	mut p := Parser{
-		scanner: scanner.new_scanner_file(path, comments_mode, pref)
+		scanner: scanner.new_scanner_file(path, comments_mode, prefs)
 		comments_mode: comments_mode
-		table: table
-		pref: pref
+		table: &ast.Table(table)
+		pref: &pref.Preferences(prefs)
 		scope: &ast.Scope{
 			start_pos: 0
 			parent: table.global_scope
@@ -190,15 +190,15 @@ pub fn parse_file(path string, table &ast.Table, comments_mode scanner.CommentsM
 	return p.parse()
 }
 
-pub fn parse_vet_file(path string, table_ &ast.Table, pref &pref.Preferences) (&ast.File, []vet.Error) {
+pub fn parse_vet_file(path string, table_ &ast.Table, prefs &pref.Preferences) (&ast.File, []vet.Error) {
 	global_scope := &ast.Scope{
 		parent: 0
 	}
 	mut p := Parser{
-		scanner: scanner.new_scanner_file(path, .parse_comments, pref)
+		scanner: scanner.new_scanner_file(path, .parse_comments, prefs)
 		comments_mode: .parse_comments
-		table: table_
-		pref: pref
+		table: &ast.Table(table_)
+		pref: &pref.Preferences(prefs)
 		scope: &ast.Scope{
 			start_pos: 0
 			parent: global_scope

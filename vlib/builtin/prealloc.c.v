@@ -34,7 +34,7 @@ fn vmemory_block_new(prev &VMemoryBlock, at_least int) &VMemoryBlock {
 	if prev != 0 {
 		v.id = prev.id + 1
 	}
-	v.previous = prev
+	v.previous = &VMemoryBlock(prev)
 	block_size := if at_least < prealloc_block_size { prealloc_block_size } else { at_least }
 	v.start = unsafe { C.malloc(block_size) }
 	v.cap = block_size

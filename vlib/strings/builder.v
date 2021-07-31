@@ -20,7 +20,7 @@ pub fn (mut b Builder) write_ptr(ptr &byte, len int) {
 	if len == 0 {
 		return
 	}
-	unsafe { b.push_many(ptr, len) }
+	unsafe { b.push_many(voidptr(ptr), len) }
 }
 
 // write_b appends a single `data` byte to the accumulated buffer

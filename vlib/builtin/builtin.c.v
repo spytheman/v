@@ -234,7 +234,7 @@ fn _write_buf_to_fd(fd int, buf &byte, buf_len int) {
 		return
 	}
 	unsafe {
-		mut ptr := buf
+		mut ptr := &byte(buf)
 		mut remaining_bytes := buf_len
 		for remaining_bytes > 0 {
 			x := C.write(fd, ptr, remaining_bytes)
@@ -365,9 +365,9 @@ pub fn v_realloc(b &byte, n int) &byte {
 		}
 		return new_ptr
 	} $else $if gcboehm ? {
-		new_ptr = unsafe { C.GC_REALLOC(b, n) }
+		new_ptr = unsafe { C.GC_REALLOC(&byte(b), n) }
 	} $else {
-		new_ptr = unsafe { C.realloc(b, n) }
+		new_ptr = unsafe { C.realloc(&byte(b), n) }
 	}
 	if new_ptr == 0 {
 		panic('realloc($n) failed')
@@ -411,9 +411,9 @@ pub fn realloc_data(old_data &byte, old_size int, new_size int) &byte {
 	}
 	mut nptr := &byte(0)
 	$if gcboehm ? {
-		nptr = unsafe { C.GC_REALLOC(old_data, new_size) }
+		nptr = unsafe { C.GC_REALLOC(&byte(old_data), new_size) }
 	} $else {
-		nptr = unsafe { C.realloc(old_data, new_size) }
+		nptr = unsafe { C.realloc(&byte(old_data), new_size) }
 	}
 	if nptr == 0 {
 		panic('realloc_data($old_data, $old_size, $new_size) failed')

@@ -86,7 +86,7 @@ pub fn tos(s &byte, len int) string {
 		panic('tos(): nil string')
 	}
 	return string{
-		str: unsafe { s }
+		str: &byte(s)
 		len: len
 	}
 }
@@ -105,7 +105,7 @@ pub fn tos2(s &byte) string {
 		panic('tos2: nil string')
 	}
 	return string{
-		str: unsafe { s }
+		str: &byte(s)
 		len: unsafe { vstrlen(s) }
 	}
 }
@@ -117,7 +117,7 @@ pub fn tos3(s &char) string {
 		panic('tos3: nil string')
 	}
 	return string{
-		str: &byte(s)
+		str: unsafe { &byte(s) }
 		len: unsafe { C.strlen(s) }
 	}
 }
@@ -146,7 +146,7 @@ pub fn tos5(s &char) string {
 [unsafe]
 pub fn (bp &byte) vstring() string {
 	return string{
-		str: unsafe { bp }
+		str: &byte(bp)
 		len: unsafe { C.strlen(&char(bp)) }
 	}
 }
@@ -156,7 +156,7 @@ pub fn (bp &byte) vstring() string {
 [unsafe]
 pub fn (bp &byte) vstring_with_len(len int) string {
 	return string{
-		str: unsafe { bp }
+		str: &byte(bp)
 		len: len
 		is_lit: 0
 	}
@@ -194,7 +194,7 @@ pub fn (cp &char) vstring_with_len(len int) string {
 [unsafe]
 pub fn (bp &byte) vstring_literal() string {
 	return string{
-		str: unsafe { bp }
+		str: &byte(bp)
 		len: unsafe { C.strlen(&char(bp)) }
 		is_lit: 1
 	}
@@ -205,7 +205,7 @@ pub fn (bp &byte) vstring_literal() string {
 [unsafe]
 pub fn (bp &byte) vstring_literal_with_len(len int) string {
 	return string{
-		str: unsafe { bp }
+		str: &byte(bp)
 		len: len
 		is_lit: 1
 	}
@@ -1313,7 +1313,7 @@ pub fn (c byte) is_letter() bool {
 // free allows for manually freeing the memory occupied by the string
 [manualfree; unsafe]
 pub fn (os &string) free() {
-	mut s := unsafe { os }
+	mut s := &string(os)
 	$if prealloc {
 		return
 	}

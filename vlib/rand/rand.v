@@ -70,7 +70,7 @@ pub fn get_current_rng() &PRNG {
 // should be restored if work with the custom RNG is complete. It is not necessary to restore if the
 // program terminates soon afterwards.
 pub fn set_rng(rng &PRNG) {
-	default_rng = unsafe { rng }
+	default_rng = unsafe { &PRNG(voidptr(rng)) }
 }
 
 // seed sets the given array of `u32` values as the seed for the `default_rng`. The default_rng is

@@ -327,7 +327,7 @@ pub fn (mut f File) write_ptr_at(data voidptr, size int, pos u64) int {
 
 // fread wraps C.fread and handles error and end-of-file detection.
 fn fread(ptr voidptr, item_size int, items int, stream &C.FILE) ?int {
-	nbytes := int(C.fread(ptr, item_size, items, stream))
+	nbytes := int(C.fread(voidptr(ptr), item_size, items, &C.FILE(stream)))
 	// If no bytes were read, check for errors and end-of-file.
 	if nbytes <= 0 {
 		// If fread encountered end-of-file return the none error. Note that fread
@@ -335,14 +335,14 @@ fn fread(ptr voidptr, item_size int, items int, stream &C.FILE) ?int {
 		// in that case which is why we only check for end-of-file if no data was
 		// read. The caller will get none on their next call because there will be
 		// no data available and the end-of-file will be encountered again.
-		if C.feof(stream) != 0 {
+		if C.feof(&C.FILE(stream)) != 0 {
 			return none
 		}
 		// If fread encountered an error, return it. Note that fread and ferror do
 		// not tell us what the error was, so we can't return anything more specific
 		// than there was an error. This is because fread and ferror do not set
 		// errno.
-		if C.ferror(stream) != 0 {
+		if C.ferror(&C.FILE(stream)) != 0 {
 			return error('file read error')
 		}
 	}

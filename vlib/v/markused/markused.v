@@ -7,7 +7,7 @@ import v.util
 import v.pref
 
 // mark_used walks the AST, starting at main() and marks all used fns transitively
-pub fn mark_used(mut table ast.Table, pref &pref.Preferences, ast_files []&ast.File) {
+pub fn mark_used(mut table ast.Table, prefs &pref.Preferences, ast_files []&ast.File) {
 	mut all_fns, all_consts, all_globals := all_fn_const_and_global(ast_files)
 	util.timing_start(@METHOD)
 	defer {
@@ -115,7 +115,7 @@ pub fn mark_used(mut table ast.Table, pref &pref.Preferences, ast_files []&ast.F
 		'os.init_os_args_wide',
 	]
 
-	if pref.is_bare {
+	if prefs.is_bare {
 		all_fn_root_names << [
 			'strlen',
 			'memcmp',
@@ -126,7 +126,7 @@ pub fn mark_used(mut table ast.Table, pref &pref.Preferences, ast_files []&ast.F
 		]
 	}
 
-	if pref.gc_mode in [.boehm_full_opt, .boehm_incr_opt] {
+	if prefs.gc_mode in [.boehm_full_opt, .boehm_incr_opt] {
 		all_fn_root_names << [
 			'memdup_noscan',
 			'__new_array_noscan',
@@ -202,7 +202,7 @@ pub fn mark_used(mut table ast.Table, pref &pref.Preferences, ast_files []&ast.F
 			continue
 		}
 		// testing framework:
-		if pref.is_test {
+		if prefs.is_test {
 			if k.starts_with('test_') || k.contains('.test_') {
 				all_fn_root_names << k
 				continue
@@ -215,7 +215,7 @@ pub fn mark_used(mut table ast.Table, pref &pref.Preferences, ast_files []&ast.F
 		}
 		// public/exported functions can not be skipped,
 		// especially when producing a shared library:
-		if mfn.is_pub && pref.is_shared {
+		if mfn.is_pub && prefs.is_shared {
 			all_fn_root_names << k
 			continue
 		}
@@ -224,18 +224,18 @@ pub fn mark_used(mut table ast.Table, pref &pref.Preferences, ast_files []&ast.F
 			all_fn_root_names << k
 			continue
 		}
-		if pref.prealloc && k.starts_with('prealloc_') {
+		if prefs.prealloc && k.starts_with('prealloc_') {
 			all_fn_root_names << k
 			continue
 		}
 	}
 
 	// handle assertions and testing framework callbacks:
-	if pref.is_debug {
+	if prefs.is_debug {
 		all_fn_root_names << 'panic_debug'
 	}
 	all_fn_root_names << 'panic_optional_not_set'
-	if pref.is_test {
+	if prefs.is_test {
 		all_fn_root_names << 'main.cb_assertion_ok'
 		all_fn_root_names << 'main.cb_assertion_failed'
 		if benched_tests_sym := table.find_type('main.BenchedTests') {
@@ -306,18 +306,18 @@ pub fn mark_used(mut table ast.Table, pref &pref.Preferences, ast_files []&ast.F
 	}
 
 	// handle -live main programs:
-	if pref.is_livemain {
+	if prefs.is_livemain {
 		all_fn_root_names << 'v.live.executable.start_reloader'
 		all_fn_root_names << 'v.live.executable.new_live_reload_info'
 	}
 
 	mut walker := Walker{
-		table: table
+		table: &ast.Table(table)
 		files: ast_files
 		all_fns: all_fns
 		all_consts: all_consts
 		all_globals: all_globals
-		pref: pref
+		pref: &pref.Preferences(prefs)
 	}
 	// println( all_fns.keys() )
 	walker.mark_exported_fns()
@@ -337,7 +337,7 @@ pub fn mark_used(mut table ast.Table, pref &pref.Preferences, ast_files []&ast.F
 				|| k.starts_with('map_') {
 				walker.fn_decl(mut mfn)
 			}
-			if pref.gc_mode in [.boehm_full_opt, .boehm_incr_opt] {
+			if prefs.gc_mode in [.boehm_full_opt, .boehm_incr_opt] {
 				if k in ['new_map_noscan_key', 'new_map_noscan_value', 'new_map_noscan_key_value',
 					'new_map_init_noscan_key', 'new_map_init_noscan_value',
 					'new_map_init_noscan_key_value',

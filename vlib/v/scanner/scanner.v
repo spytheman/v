@@ -101,7 +101,7 @@ pub enum CommentsMode {
 }
 
 // new scanner from file.
-pub fn new_scanner_file(file_path string, comments_mode CommentsMode, pref &pref.Preferences) &Scanner {
+pub fn new_scanner_file(file_path string, comments_mode CommentsMode, the_prefs &pref.Preferences) &Scanner {
 	if !os.is_file(file_path) {
 		verror('$file_path is not a file')
 	}
@@ -110,12 +110,12 @@ pub fn new_scanner_file(file_path string, comments_mode CommentsMode, pref &pref
 		return voidptr(0)
 	}
 	mut s := &Scanner{
-		pref: pref
+		pref: &pref.Preferences(the_prefs)
 		text: raw_text
 		is_print_line_on_error: true
 		is_print_colored_error: true
 		is_print_rel_paths_on_error: true
-		is_fmt: pref.is_fmt
+		is_fmt: the_prefs.is_fmt
 		comments_mode: comments_mode
 		file_path: file_path
 		file_base: os.base(file_path)
@@ -125,14 +125,14 @@ pub fn new_scanner_file(file_path string, comments_mode CommentsMode, pref &pref
 }
 
 // new scanner from string.
-pub fn new_scanner(text string, comments_mode CommentsMode, pref &pref.Preferences) &Scanner {
+pub fn new_scanner(text string, comments_mode CommentsMode, the_prefs &pref.Preferences) &Scanner {
 	mut s := &Scanner{
-		pref: pref
+		pref: &pref.Preferences(the_prefs)
 		text: text
 		is_print_line_on_error: true
 		is_print_colored_error: true
 		is_print_rel_paths_on_error: true
-		is_fmt: pref.is_fmt
+		is_fmt: the_prefs.is_fmt
 		comments_mode: comments_mode
 		file_path: 'internal_memory'
 		file_base: 'internal_memory'

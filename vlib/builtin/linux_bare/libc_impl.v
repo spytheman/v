@@ -1,7 +1,7 @@
 module builtin
 
 [unsafe]
-pub fn memcpy(dest &C.void, src &C.void, n size_t) &C.void {
+pub fn memcpy(mut dest C.void, mut src C.void, n size_t) &C.void {
 	dest_ := unsafe { &byte(dest) }
 	src_ := unsafe { &byte(src) }
 	unsafe {
@@ -27,7 +27,8 @@ fn strlen(_s &C.void) size_t {
 }
 
 [unsafe]
-fn realloc(old_area &C.void, new_size size_t) &C.void {
+fn realloc(mut old_area_ C.void, new_size size_t) &C.void {
+	old_area := unsafe { &byte(old_area_) }
 	if old_area == 0 {
 		return unsafe { malloc(int(new_size)) }
 	}
@@ -40,25 +41,25 @@ fn realloc(old_area &C.void, new_size size_t) &C.void {
 		return unsafe { old_area }
 	} else {
 		new_area := unsafe { malloc(int(new_size)) }
-		unsafe { memmove(new_area, old_area, size_t(old_size)) }
+		unsafe { memmove(mut new_area, old_area, size_t(old_size)) }
 		unsafe { free(old_area) }
 		return new_area
 	}
 }
 
 [unsafe]
-fn memset(s &C.void, c int, n size_t) &C.void {
+fn memset(mut s C.void, c int, n size_t) &C.void {
 	mut s_ := unsafe { &char(s) }
 	for i in 0 .. int(n) {
 		unsafe {
 			s_[i] = char(c)
 		}
 	}
-	return unsafe { s }
+	return unsafe { &C.void(s) }
 }
 
 [unsafe]
-fn memmove(dest &C.void, src &C.void, n size_t) &C.void {
+fn memmove(mut dest C.void, src &C.void, n size_t) &C.void {
 	dest_ := unsafe { &byte(dest) }
 	src_ := unsafe { &byte(src) }
 	mut temp_buf := unsafe { malloc(int(n)) }
@@ -74,14 +75,14 @@ fn memmove(dest &C.void, src &C.void, n size_t) &C.void {
 		}
 	}
 	unsafe { free(temp_buf) }
-	return unsafe { dest }
+	return unsafe { &C.void(dest) }
 }
 
 [export: 'calloc']
 [unsafe]
 fn __calloc(nmemb size_t, size size_t) &C.void {
 	new_area := unsafe { malloc(int(nmemb) * int(size)) }
-	unsafe { memset(new_area, 0, nmemb * size) }
+	unsafe { memset(mut new_area, 0, nmemb * size) }
 	return new_area
 }
 

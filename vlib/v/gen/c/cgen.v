@@ -181,13 +181,13 @@ mut:
 	anon_fn            bool
 }
 
-pub fn gen(files []&ast.File, table &ast.Table, pref &pref.Preferences) string {
+pub fn gen(files []&ast.File, table &ast.Table, prefs &pref.Preferences) string {
 	// println('start cgen2')
 	mut module_built := ''
-	if pref.build_mode == .build_module {
+	if prefs.build_mode == .build_module {
 		for file in files {
-			if file.path.contains(pref.path)
-				&& file.mod.short_name == pref.path.all_after_last(os.path_separator).trim_right(os.path_separator) {
+			if file.path.contains(prefs.path)
+				&& file.mod.short_name == prefs.path.all_after_last(os.path_separator).trim_right(os.path_separator) {
 				module_built = file.mod.name
 				break
 			}
@@ -221,8 +221,8 @@ pub fn gen(files []&ast.File, table &ast.Table, pref &pref.Preferences) string {
 		json_forward_decls: strings.new_builder(100)
 		enum_typedefs: strings.new_builder(100)
 		sql_buf: strings.new_builder(100)
-		table: table
-		pref: pref
+		table: &ast.Table(table)
+		pref: &pref.Preferences(prefs)
 		fn_decl: 0
 		is_autofree: true
 		indent: -1

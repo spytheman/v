@@ -43,7 +43,7 @@ pub fn new_error_manager() &EManager {
 
 pub fn (e &EManager) set_support_color(b bool) {
 	unsafe {
-		mut me := e
+		mut me := &EManager(e)
 		me.support_color = b
 	}
 }

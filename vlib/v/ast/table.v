@@ -67,7 +67,7 @@ fn default_table_panic_handler(t &Table, message string) {
 pub fn (t &Table) panic(message string) {
 	mut mt := unsafe { &Table(t) }
 	mt.panic_npanics++
-	t.panic_handler(t, message)
+	t.panic_handler(&Table(t), message)
 }
 
 pub struct Fn {
@@ -179,7 +179,7 @@ pub fn new_table() &Table {
 	t.register_builtin_type_symbols()
 	t.is_fmt = true
 	set_global_table(t)
-	return t
+	return &Table(t)
 }
 
 const global_table = &Table(0)
@@ -187,7 +187,7 @@ const global_table = &Table(0)
 pub fn set_global_table(t &Table) {
 	unsafe {
 		mut pg := &ast.global_table
-		*pg = t
+		*pg = &Table(t)
 	}
 }
 
@@ -327,7 +327,7 @@ pub fn (t &Table) type_has_method(s &TypeSymbol, name string) bool {
 // type_find_method searches from current type up through each parent looking for method
 pub fn (t &Table) type_find_method(s &TypeSymbol, name string) ?Fn {
 	// println('type_find_method($s.name, $name) types.len=$t.types.len s.parent_idx=$s.parent_idx')
-	mut ts := unsafe { s }
+	mut ts := unsafe { &TypeSymbol(s) }
 	for {
 		if method := ts.find_method(name) {
 			return method
@@ -409,7 +409,7 @@ pub fn (t &Table) struct_has_field(struct_ &TypeSymbol, name string) bool {
 // search from current type up through each parent looking for field
 pub fn (t &Table) find_field(s &TypeSymbol, name string) ?StructField {
 	// println('find_field($s.name, $name) types.len=$t.types.len s.parent_idx=$s.parent_idx')
-	mut ts := unsafe { s }
+	mut ts := unsafe { &TypeSymbol(s) }
 	for {
 		match mut ts.info {
 			Struct {
@@ -488,7 +488,7 @@ pub fn (t &Table) find_field_with_embeds(sym &TypeSymbol, field_name string) ?St
 }
 
 pub fn (t &Table) resolve_common_sumtype_fields(sym_ &TypeSymbol) {
-	mut sym := unsafe { sym_ }
+	mut sym := unsafe { &TypeSymbol(sym_) }
 	mut info := sym.info as SumType
 	if info.found_fields {
 		return

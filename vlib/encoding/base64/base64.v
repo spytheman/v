@@ -182,8 +182,8 @@ fn encode_from_buffer(dest &byte, src &byte, src_len int) int {
 	mut i := 0
 	mut j := 0
 
-	mut d := unsafe { src }
-	mut b := unsafe { dest }
+	mut d := &byte(src)
+	mut b := &byte(dest)
 	mut etable := base64.enc_table.str
 	for i < input_length {
 		mut octet_a := 0
