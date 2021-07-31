@@ -12,14 +12,8 @@ const testdata_folder = os.join_path(vroot, 'vlib', 'v', 'gen', 'c', 'testdata')
 
 const diff_cmd = diff.find_working_diff_command() or { '' }
 
-fn test_windows() ? {
-	$if windows {
-		eprintln('this test can not run on windows for now')
-		exit(0)
-	}
-}
-
 fn test_out_files() ? {
+	eprintln('> vexe: $vexe')
 	eprintln('> vroot: $vroot')
 	println(term.colorize(term.green, '> testing whether .out files match:'))
 	os.chdir(vroot)
@@ -41,7 +35,7 @@ fn test_out_files() ? {
 		print(term.colorize(term.magenta, 'v run $relpath') + ' == ' +
 			term.colorize(term.magenta, out_relpath) + ' ')
 		pexe := os.join_path(output_path, '${basename}.exe')
-		compilation := os.execute('VCOLORS=never $vexe -o $pexe $path')
+		compilation := os.execute('$vexe -o $pexe $path')
 		ensure_compilation_succeeded(compilation)
 		res := os.execute(pexe)
 		if res.exit_code < 0 {
@@ -108,7 +102,7 @@ fn test_c_must_have_files() ? {
 		basename, path, relpath, must_have_relpath := target2paths(must_have_path, '.c.must_have')
 		print(term.colorize(term.magenta, 'v -o - $relpath') + ' matches all line paterns in ' +
 			term.colorize(term.magenta, must_have_relpath) + ' ')
-		compilation := os.execute('VCOLORS=never $vexe -o - $path')
+		compilation := os.execute('$vexe -o - $path')
 		ensure_compilation_succeeded(compilation)
 		expected_lines := os.read_lines(must_have_path) or { [] }
 		generated_c_lines := compilation.output.split_into_lines()
@@ -154,8 +148,10 @@ fn normalize_panic_message(message string, vroot string) string {
 	return msg
 }
 
-fn vroot_relative(path string) string {
-	return path.replace(os.path_separator, '/').replace('$vroot/', '').replace('./', '')
+fn vroot_relative(opath string) string {
+	nvroot := vroot.replace(os.path_separator, '/') + '/'
+	npath := opath.replace(os.path_separator, '/')
+	return npath.replace(nvroot, '')
 }
 
 fn ensure_compilation_succeeded(compilation os.Result) {
@@ -167,7 +163,7 @@ fn ensure_compilation_succeeded(compilation os.Result) {
 	}
 }
 
-[if etrace ?]
+//[if etrace ?]
 fn etrace(msg string) {
 	eprintln(msg)
 }
