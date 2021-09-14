@@ -75,7 +75,7 @@ mut:
 	tmp_count_declarations int      // counter for unique tmp names (_d1, _d2 etc); does NOT reset, used for C declarations
 	global_tmp_count       int      // like tmp_count but global and not resetted in each function
 	is_assign_lhs          bool     // inside left part of assign expr (for array_set(), etc)
-	discard_or_result      bool     // do not safe last ExprStmt of `or` block in tmp variable to defer ongoing expr usage
+	discard_or_result      bool     // do not save last ExprStmt of `or` block in tmp variable to defer ongoing expr usage
 	is_void_expr_stmt      bool     // ExprStmt whos result is discarded
 	is_arraymap_set        bool     // map or array set value state
 	is_amp                 bool     // for `&Foo{}` to merge PrefixExpr `&` and StructInit `Foo{}`; also for `&byte(0)` etc
@@ -2374,9 +2374,9 @@ fn (mut g Gen) gen_assign_stmt(assign_stmt ast.AssignStmt) {
 	if assign_stmt.is_static {
 		g.write('static ')
 	}
+	g.assign_op = assign_stmt.op
 	mut return_type := ast.void_type
 	is_decl := assign_stmt.op == .decl_assign
-	g.assign_op = assign_stmt.op
 	op := if is_decl { token.Kind.assign } else { assign_stmt.op }
 	right_expr := assign_stmt.right[0]
 	match right_expr {
@@ -2386,17 +2386,17 @@ fn (mut g Gen) gen_assign_stmt(assign_stmt ast.AssignStmt) {
 		ast.IfExpr { return_type = right_expr.typ }
 		else {}
 	}
+	is_simple_assignment := assign_stmt.op == .assign && assign_stmt.left_types.len == 1
+		&& (assign_stmt.left[0] is ast.Ident || assign_stmt.left[0] is ast.SelectorExpr)
 	// Free the old value assigned to this string var (only if it's `str = [new value]`
 	// or `x.str = [new value]` )
-	mut af := g.is_autofree && !g.is_builtin_mod && assign_stmt.op == .assign
-		&& assign_stmt.left_types.len == 1
-		&& (assign_stmt.left[0] is ast.Ident || assign_stmt.left[0] is ast.SelectorExpr)
+	mut af := g.is_autofree && !g.is_builtin_mod && is_simple_assignment
 	// assign_stmt.left_types[0] in [ast.string_type, ast.array_type] &&
 	mut sref_name := ''
 	mut type_to_free := ''
 	if af {
 		first_left_type := assign_stmt.left_types[0]
-		first_left_sym := g.table.get_type_symbol(assign_stmt.left_types[0])
+		first_left_sym := g.table.get_type_symbol(first_left_type)
 		if first_left_type == ast.string_type || first_left_sym.kind == .array {
 			type_to_free = if first_left_type == ast.string_type { 'string' } else { 'array' }
 			mut ok := true
@@ -5326,6 +5326,7 @@ fn (mut g Gen) struct_init(struct_init ast.StructInit) {
 	if is_amp {
 		g.out.go_back(1) // delete the `&` already generated in `prefix_expr()
 	}
+	//println('> struct_init | styp: $styp | is_amp: $is_amp | g.inside_cast_in_heap: $g.inside_cast_in_heap')
 	if g.is_shared && !g.inside_opt_data && !g.is_arraymap_set {
 		mut shared_typ := struct_init.typ.set_flag(.shared_f)
 		shared_styp = g.typ(shared_typ)
