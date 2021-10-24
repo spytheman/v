@@ -28,7 +28,7 @@ pub type FNUnClick = fn (x f32, y f32, button MouseButton, data voidptr)
 pub type FNChar = fn (c u32, data voidptr)
 
 pub struct Config {
-pub:
+pub mut:
 	width         int
 	height        int
 	use_ortho     bool // unused, still here just for backwards compatibility
