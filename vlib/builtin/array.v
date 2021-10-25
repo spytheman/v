@@ -414,8 +414,12 @@ fn (mut a array) set(i int, val voidptr) {
 	unsafe { vmemcpy(&byte(a.data) + a.element_size * i, val, a.element_size) }
 }
 
+[inline]
 fn (mut a array) push(val voidptr) {
-	a.ensure_cap(a.len + 1)
+	newlen := a.len + 1
+	if _unlikely_(newlen > a.cap) {
+		a.ensure_cap(newlen)
+	}
 	unsafe { vmemmove(&byte(a.data) + a.element_size * a.len, val, a.element_size) }
 	a.len++
 }
@@ -424,16 +428,21 @@ fn (mut a array) push(val voidptr) {
 // `val` is array.data and user facing usage is `a << [1,2,3]`
 [unsafe]
 pub fn (mut a3 array) push_many(val voidptr, size int) {
+	newlen := a3.len + size
 	if a3.data == val && !isnil(a3.data) {
 		// handle `arr << arr`
 		copy := a3.clone()
-		a3.ensure_cap(a3.len + size)
+		if _unlikely_(newlen > a3.cap) {
+			a3.ensure_cap(a3.len + size)
+		}
 		unsafe {
 			// vmemcpy(a.data, copy.data, copy.element_size * copy.len)
 			vmemcpy(a3.get_unsafe(a3.len), copy.data, a3.element_size * size)
 		}
 	} else {
-		a3.ensure_cap(a3.len + size)
+		if _unlikely_(newlen > a3.cap) {
+			a3.ensure_cap(a3.len + size)
+		}
 		if !isnil(a3.data) && !isnil(val) {
 			unsafe { vmemcpy(a3.get_unsafe(a3.len), val, a3.element_size * size) }
 		}
