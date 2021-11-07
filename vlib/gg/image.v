@@ -3,7 +3,6 @@
 module gg
 
 // import sokol.sapp
-import gx
 import sokol.gfx
 import os
 import sokol
@@ -37,7 +36,7 @@ pub:
 	part_rect Rect // defines the size and position of part of the image to use when rendering
 	rotate    int  // amount to rotate the image in degrees
 	z         f32
-	color     gx.Color = gx.white
+	color     Color = white
 }
 
 pub struct Rect {

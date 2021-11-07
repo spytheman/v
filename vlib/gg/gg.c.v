@@ -4,7 +4,6 @@
 module gg
 
 import os
-import gx
 import sokol
 import sokol.sapp
 import sokol.sgl
@@ -206,7 +205,7 @@ pub fn new_context(cfg Config) &Context {
 	return g
 }
 
-pub fn (ctx &Context) draw_circle_line(x f32, y f32, r int, segments int, c gx.Color) {
+pub fn (ctx &Context) draw_circle_line(x f32, y f32, r int, segments int, c Color) {
 	$if macos {
 		if ctx.native_rendering {
 			C.darwin_draw_circle(x - r + 1, ctx.height - (y + r + 3), r, c)
@@ -265,7 +264,7 @@ pub fn wait_events() {
 */
 
 // TODO: Fix alpha
-pub fn (ctx &Context) draw_rect(x f32, y f32, w f32, h f32, c gx.Color) {
+pub fn (ctx &Context) draw_rect(x f32, y f32, w f32, h f32, c Color) {
 	$if macos {
 		if ctx.native_rendering {
 			C.darwin_draw_rect(x, ctx.height - (y + h), w, h, c)

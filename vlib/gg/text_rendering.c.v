@@ -4,7 +4,6 @@ module gg
 
 import sokol.sfons
 import sokol.sgl
-import gx
 import os
 
 struct FT {
@@ -121,7 +120,7 @@ fn new_ft(c FTConfig) ?&FT {
 	}
 }
 
-pub fn (ctx &Context) set_cfg(cfg gx.TextCfg) {
+pub fn (ctx &Context) set_cfg(cfg TextCfg) {
 	if !ctx.font_inited {
 		return
 	}
@@ -149,10 +148,10 @@ pub fn (ctx &Context) set_cfg(cfg gx.TextCfg) {
 	ctx.ft.fons.vert_metrics(&ascender, &descender, &lh)
 }
 
-pub fn (ctx &Context) draw_text(x int, y int, text_ string, cfg gx.TextCfg) {
+pub fn (ctx &Context) draw_text(x int, y int, text_ string, cfg TextCfg) {
 	$if macos {
 		if ctx.native_rendering {
-			if cfg.align == gx.align_right {
+			if cfg.align == align_right {
 				width := ctx.text_width(text_)
 				C.darwin_draw_string(x - width, ctx.height - y, text_, cfg)
 			} else {

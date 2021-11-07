@@ -3,7 +3,6 @@
 
 module gg
 
-import gx
 import sokol.sapp
 import sokol.sgl
 import sokol.gfx
@@ -41,7 +40,7 @@ pub:
 	window_title      string
 	borderless_window bool
 	always_on_top     bool
-	bg_color          gx.Color
+	bg_color          Color
 	init_fn           FNCb   = voidptr(0)
 	frame_fn          FNCb   = voidptr(0)
 	native_frame_fn   FNCb   = voidptr(0)
@@ -85,7 +84,7 @@ pub:
 }
 
 pub struct PenConfig {
-	color     gx.Color
+	color     Color
 	line_type PenLineType = .solid
 	thickness int = 1
 }
@@ -258,18 +257,18 @@ pub fn (ctx &Context) quit() {
 	sapp.request_quit() // does not require ctx right now, but sokol multi-window might in the future
 }
 
-pub fn (mut ctx Context) set_bg_color(c gx.Color) {
+pub fn (mut ctx Context) set_bg_color(c Color) {
 	ctx.clear_pass = gfx.create_clear_pass(f32(c.r) / 255.0, f32(c.g) / 255.0, f32(c.b) / 255.0,
 		f32(c.a) / 255.0)
 }
 
 [inline]
-pub fn (ctx &Context) draw_square(x f32, y f32, s f32, c gx.Color) {
+pub fn (ctx &Context) draw_square(x f32, y f32, s f32, c Color) {
 	ctx.draw_rect(x, y, s, s, c)
 }
 
 [inline]
-pub fn (ctx &Context) set_pixel(x f32, y f32, c gx.Color) {
+pub fn (ctx &Context) set_pixel(x f32, y f32, c Color) {
 	if c.a != 255 {
 		sgl.load_pipeline(ctx.timage_pip)
 	}
@@ -281,7 +280,7 @@ pub fn (ctx &Context) set_pixel(x f32, y f32, c gx.Color) {
 }
 
 [direct_array_access; inline]
-pub fn (ctx &Context) set_pixels(points []f32, c gx.Color) {
+pub fn (ctx &Context) set_pixels(points []f32, c Color) {
 	assert points.len % 2 == 0
 	len := points.len / 2
 
@@ -298,7 +297,7 @@ pub fn (ctx &Context) set_pixels(points []f32, c gx.Color) {
 	sgl.end()
 }
 
-pub fn (ctx &Context) draw_triangle(x f32, y f32, x2 f32, y2 f32, x3 f32, y3 f32, c gx.Color) {
+pub fn (ctx &Context) draw_triangle(x f32, y f32, x2 f32, y2 f32, x3 f32, y3 f32, c Color) {
 	if c.a != 255 {
 		sgl.load_pipeline(ctx.timage_pip)
 	}
@@ -310,7 +309,7 @@ pub fn (ctx &Context) draw_triangle(x f32, y f32, x2 f32, y2 f32, x3 f32, y3 f32
 	sgl.end()
 }
 
-pub fn (ctx &Context) draw_empty_rect(x f32, y f32, w f32, h f32, c gx.Color) {
+pub fn (ctx &Context) draw_empty_rect(x f32, y f32, w f32, h f32, c Color) {
 	if c.a != 255 {
 		sgl.load_pipeline(ctx.timage_pip)
 	}
@@ -325,15 +324,15 @@ pub fn (ctx &Context) draw_empty_rect(x f32, y f32, w f32, h f32, c gx.Color) {
 }
 
 [inline]
-pub fn (ctx &Context) draw_empty_square(x f32, y f32, s f32, c gx.Color) {
+pub fn (ctx &Context) draw_empty_square(x f32, y f32, s f32, c Color) {
 	ctx.draw_empty_rect(x, y, s, s, c)
 }
 
-pub fn (ctx &Context) draw_circle(x f32, y f32, r f32, c gx.Color) {
+pub fn (ctx &Context) draw_circle(x f32, y f32, r f32, c Color) {
 	ctx.draw_circle_with_segments(x, y, r, 10, c)
 }
 
-pub fn (ctx &Context) draw_circle_with_segments(x f32, y f32, r f32, segments int, c gx.Color) {
+pub fn (ctx &Context) draw_circle_with_segments(x f32, y f32, r f32, segments int, c Color) {
 	if c.a != 255 {
 		sgl.load_pipeline(ctx.timage_pip)
 	}
@@ -355,7 +354,7 @@ pub fn (ctx &Context) draw_circle_with_segments(x f32, y f32, r f32, segments in
 	sgl.end()
 }
 
-pub fn (ctx &Context) draw_arc_line(x f32, y f32, r int, start_angle f32, arc_angle f32, segments int, c gx.Color) {
+pub fn (ctx &Context) draw_arc_line(x f32, y f32, r int, start_angle f32, arc_angle f32, segments int, c Color) {
 	if c.a != 255 {
 		sgl.load_pipeline(ctx.timage_pip)
 	}
@@ -380,7 +379,7 @@ pub fn (ctx &Context) draw_arc_line(x f32, y f32, r int, start_angle f32, arc_an
 	sgl.end()
 }
 
-pub fn (ctx &Context) draw_arc(x f32, y f32, r int, start_angle f32, arc_angle f32, segments int, c gx.Color) {
+pub fn (ctx &Context) draw_arc(x f32, y f32, r int, start_angle f32, arc_angle f32, segments int, c Color) {
 	if c.a != 255 {
 		sgl.load_pipeline(ctx.timage_pip)
 	}
@@ -436,7 +435,7 @@ pub fn (mut ctx Context) resize(width int, height int) {
 }
 
 // draw_line draws a line between the points provided
-pub fn (ctx &Context) draw_line(x f32, y f32, x2 f32, y2 f32, c gx.Color) {
+pub fn (ctx &Context) draw_line(x f32, y f32, x2 f32, y2 f32, c Color) {
 	$if macos {
 		if ctx.native_rendering {
 			// Make the line more clear on hi dpi screens: draw a rectangle
@@ -512,7 +511,7 @@ pub fn (ctx &Context) draw_line_with_config(x f32, y f32, x2 f32, y2 f32, config
 	sgl.pop_matrix()
 }
 
-pub fn (ctx &Context) draw_rounded_rect(x f32, y f32, w f32, h f32, radius f32, color gx.Color) {
+pub fn (ctx &Context) draw_rounded_rect(x f32, y f32, w f32, h f32, radius f32, color Color) {
 	sgl.c4b(color.r, color.g, color.b, color.a)
 	sgl.begin_triangle_strip()
 	mut theta := f32(0)
@@ -580,7 +579,7 @@ pub fn (ctx &Context) draw_rounded_rect(x f32, y f32, w f32, h f32, radius f32, 
 	sgl.end()
 }
 
-pub fn (ctx &Context) draw_empty_rounded_rect(x f32, y f32, w f32, h f32, radius f32, border_color gx.Color) {
+pub fn (ctx &Context) draw_empty_rounded_rect(x f32, y f32, w f32, h f32, radius f32, border_color Color) {
 	mut theta := f32(0)
 	mut xx := f32(0)
 	mut yy := f32(0)
@@ -639,7 +638,7 @@ pub fn (ctx &Context) draw_empty_rounded_rect(x f32, y f32, w f32, h f32, radius
 
 // draw_convex_poly draws a convex polygon, given an array of points, and a color.
 // Note that the points must be given in clockwise order.
-pub fn (ctx &Context) draw_convex_poly(points []f32, c gx.Color) {
+pub fn (ctx &Context) draw_convex_poly(points []f32, c Color) {
 	assert points.len % 2 == 0
 	len := points.len / 2
 	assert len >= 3
@@ -666,7 +665,7 @@ pub fn (ctx &Context) draw_convex_poly(points []f32, c gx.Color) {
 
 // draw_empty_poly - draws the borders of a polygon, given an array of points, and a color.
 // Note that the points must be given in clockwise order.
-pub fn (ctx &Context) draw_empty_poly(points []f32, c gx.Color) {
+pub fn (ctx &Context) draw_empty_poly(points []f32, c Color) {
 	assert points.len % 2 == 0
 	len := points.len / 2
 	assert len >= 3
@@ -688,7 +687,7 @@ pub fn (ctx &Context) draw_empty_poly(points []f32, c gx.Color) {
 // The four points is provided as one `points` array which contains a stream of point pairs (x and y coordinates).
 // Thus a cubic Bézier could be declared as: `points := [x1, y1, control_x1, control_y1, control_x2, control_y2, x2, y2]`.
 // Please see `draw_cubic_bezier_in_steps` to control the amount of steps (segments) used to draw the curve.
-pub fn (ctx &Context) draw_cubic_bezier(points []f32, c gx.Color) {
+pub fn (ctx &Context) draw_cubic_bezier(points []f32, c Color) {
 	ctx.draw_cubic_bezier_in_steps(points, u32(30 * ctx.scale), c)
 }
 
@@ -697,7 +696,7 @@ pub fn (ctx &Context) draw_cubic_bezier(points []f32, c gx.Color) {
 // taken to draw the curve.
 // The four points is provided as one `points` array which contains a stream of point pairs (x and y coordinates).
 // Thus a cubic Bézier could be declared as: `points := [x1, y1, control_x1, control_y1, control_x2, control_y2, x2, y2]`.
-pub fn (ctx &Context) draw_cubic_bezier_in_steps(points []f32, steps u32, c gx.Color) {
+pub fn (ctx &Context) draw_cubic_bezier_in_steps(points []f32, steps u32, c Color) {
 	assert steps > 0
 	assert points.len == 8
 

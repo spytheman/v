@@ -3,7 +3,6 @@
 module gg
 
 import os
-import gx
 
 enum FontVariant {
 	normal = 0
@@ -27,7 +26,7 @@ struct StringToRender {
 	x    int
 	y    int
 	text string
-	cfg  gx.TextCfg
+	cfg  TextCfg
 }
 
 pub fn system_font_path() string {
