@@ -74,6 +74,7 @@ mut:
 	file                   &ast.File
 	fn_decl                &ast.FnDecl // pointer to the FnDecl we are currently inside otherwise 0
 	last_fn_c_name         string
+	counters_0_offset      int    // usually 0, but will be offset to 10_000_000, 20_000_000, etc, for the parallel cgen threads
 	tmp_count              int    // counter for unique tmp vars (_tmp1, _tmp2 etc); resets at the start of each fn.
 	tmp_count2             int    // a separate tmp var counter for autofree fn calls
 	tmp_count_declarations int    // counter for unique tmp names (_d1, _d2 etc); does NOT reset, used for C declarations
@@ -211,6 +212,8 @@ pub fn gen(files []&ast.File, table &ast.Table, pref &pref.Preferences) string {
 	}
 	mut global_g := Gen{
 		file: 0
+		counters_0_offset: 0
+		tmp_count: 0
 		out: strings.new_builder(512000)
 		cheaders: strings.new_builder(15000)
 		includes: strings.new_builder(100)
@@ -493,8 +496,11 @@ pub fn gen(files []&ast.File, table &ast.Table, pref &pref.Preferences) string {
 fn cgen_process_one_file_cb(p &pool.PoolProcessor, idx int, wid int) &Gen {
 	file := p.get_item<&ast.File>(idx)
 	mut global_g := &Gen(p.get_shared_context())
+	counters_0_offset := 1_000_000 * (idx + 1)
 	mut g := &Gen{
 		file: file
+		counters_0_offset: counters_0_offset
+		tmp_count: counters_0_offset
 		out: strings.new_builder(512000)
 		cheaders: strings.new_builder(15000)
 		includes: strings.new_builder(100)
@@ -1340,7 +1346,9 @@ pub fn (mut g Gen) new_tmp_var2() string {
 }
 */
 pub fn (mut g Gen) reset_tmp_count() {
-	g.tmp_count = 0
+	// NB: g.counters_0_offset is usually 0, but will be offset
+	// in the parallel cgen threads
+	g.tmp_count = g.counters_0_offset
 }
 
 fn (mut g Gen) decrement_inside_ternary() {

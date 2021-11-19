@@ -380,7 +380,7 @@ fn (mut g Gen) gen_fn_decl(node &ast.FnDecl, skip bool) {
 	prev_defer_stmts := g.defer_stmts
 	g.defer_stmts = []
 	ctmp := g.tmp_count
-	g.tmp_count = 0
+	g.reset_tmp_count()
 	defer {
 		g.tmp_count = ctmp
 	}
