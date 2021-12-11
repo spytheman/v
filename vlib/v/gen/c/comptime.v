@@ -36,7 +36,7 @@ fn (mut g Gen) comptime_call(mut node ast.ComptimeCall) {
 	}
 	if node.method_name == 'env' {
 		// $env('ENV_VAR_NAME')
-		val := util.cescaped_path(os.getenv(node.args_var))
+		val := util.cescaped_path(os.getenv(node.args_var.clone()))
 		g.write('_SLIT("$val")')
 		return
 	}
