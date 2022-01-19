@@ -37,7 +37,11 @@ fn (mut g Gen) gen_assign_stmt(node ast.AssignStmt) {
 		first_left_type := node.left_types[0]
 		first_left_sym := g.table.sym(node.left_types[0])
 		if first_left_type == ast.string_type || first_left_sym.kind == .array {
-			type_to_free = if first_left_type == ast.string_type { 'string' } else { 'array' }
+			type_to_free = if first_left_type == ast.string_type {
+				'builtin__string'
+			} else {
+				'builtin__array'
+			}
 			mut ok := true
 			left0 := node.left[0]
 			if left0 is ast.Ident {
@@ -257,13 +261,13 @@ fn (mut g Gen) gen_assign_stmt(node ast.AssignStmt) {
 			mut op_expected_right := ast.Type(0)
 			if var_type == ast.string_type_idx && node.op == .plus_assign {
 				if left is ast.IndexExpr {
-					// a[0] += str => `array_set(&a, 0, &(string[]) {string__plus(...))})`
+					// a[0] += str => `builtin__array_set(&a, 0, &(string[]) {builtin__string__plus(...))})`
 					g.expr(left)
-					g.write('string__plus(')
+					g.write('builtin__string__plus(')
 				} else {
-					// str += str2 => `str = string__plus(str, str2)`
+					// str += str2 => `str = builtin__string__plus(str, str2)`
 					g.expr(left)
-					g.write(' = /*f*/string__plus(')
+					g.write(' = /*f*/builtin__string__plus(')
 				}
 				g.is_assign_lhs = false
 				str_add = true
@@ -541,7 +545,7 @@ fn (mut g Gen) gen_assign_vars_autofree(node &ast.AssignStmt) {
 	// here, not in call_expr().
 	// `pos := s.index('x') or { return }`
 	// ==========>
-	// Option_int _t190 = string_index(s, _STR("x")); // _STR() no more used!!
+	// Option_int _t190 = builtin__string_index(s, _STR("x")); // _STR() no more used!!
 	// if (_t190.state != 2) {
 	// Error err = _t190.err;
 	// return;
@@ -593,17 +597,17 @@ fn (mut g Gen) gen_cross_var_assign(node &ast.AssignStmt) {
 						left_typ := node.left_types[i]
 						left_sym := g.table.sym(left_typ)
 						g.write_fn_ptr_decl(left_sym.info as ast.FnType, '_var_$left.pos.pos')
-						g.write(' = *(voidptr*)array_get(')
+						g.write(' = *(voidptr*)builtin__array_get(')
 					} else {
 						styp := g.typ(info.elem_type)
-						g.write('$styp _var_$left.pos.pos = *($styp*)array_get(')
+						g.write('$styp _var_$left.pos.pos = *($styp*)builtin__array_get(')
 					}
 					if left.left_type.is_ptr() {
 						g.write('*')
 					}
 					needs_clone := info.elem_type == ast.string_type && g.is_autofree
 					if needs_clone {
-						g.write('/*1*/string_clone(')
+						g.write('/*1*/builtin__string_clone(')
 					}
 					g.expr(left.left)
 					if needs_clone {

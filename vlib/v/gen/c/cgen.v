@@ -1002,7 +1002,7 @@ fn (mut g Gen) register_thread_void_wait_call() {
 	} else {
 		g.gowrappers.writeln('\tint stat = pthread_join(thread, (void **)NULL);')
 	}
-	g.gowrappers.writeln('\tif (stat != 0) { _v_panic(_SLIT("unable to join thread")); }')
+	g.gowrappers.writeln('\tif (stat != 0) { builtin__panic(_SLIT("unable to join thread")); }')
 	if g.pref.os == .windows {
 		g.gowrappers.writeln('\tCloseHandle(thread);')
 	}
@@ -1068,7 +1068,7 @@ fn (mut g Gen) write_chan_pop_optional_fns() {
 static inline $opt_el_type __Option_${styp}_popval($styp ch) {
 	$opt_el_type _tmp = {0};
 	if (sync__Channel_try_pop_priv(ch, _tmp.data, false)) {
-		return ($opt_el_type){ .state = 2, .err = _v_error(_SLIT("channel closed")), .data = {EMPTY_STRUCT_INITIALIZATION} };
+		return ($opt_el_type){ .state = 2, .err = builtin__error(_SLIT("channel closed")), .data = {EMPTY_STRUCT_INITIALIZATION} };
 	}
 	return _tmp;
 }')
@@ -1090,7 +1090,7 @@ fn (mut g Gen) write_chan_push_optional_fns() {
 		g.channel_definitions.writeln('
 static inline Option_void __Option_${styp}_pushval($styp ch, $el_type e) {
 	if (sync__Channel_try_push_priv(ch, &e, false)) {
-		return (Option_void){ .state = 2, .err = _v_error(_SLIT("channel closed")), .data = {EMPTY_STRUCT_INITIALIZATION} };
+		return (Option_void){ .state = 2, .err = builtin__error(_SLIT("channel closed")), .data = {EMPTY_STRUCT_INITIALIZATION} };
 	}
 	return (Option_void){0};
 }')
@@ -5178,7 +5178,7 @@ fn (mut g Gen) const_decl_precomputed(mod string, name string, ct_value ast.Comp
 			g.definitions.writeln('$styp $cname; // inited later')
 			g.init.writeln('\t$cname = _SLIT("$escaped_val");')
 			if g.is_autofree {
-				g.cleanups[mod].writeln('\tstring_free(&$cname);')
+				g.cleanups[mod].writeln('\tbuiltin__string_free(&$cname);')
 			}
 		}
 		ast.EmptyExpr {
@@ -5228,10 +5228,10 @@ fn (mut g Gen) const_decl_init_later(mod string, name string, expr ast.Expr, typ
 			if sym.has_method_with_generic_parent('free') {
 				g.cleanup.writeln('\t${styp}_free(&$cname);')
 			} else {
-				g.cleanup.writeln('\tarray_free(&$cname);')
+				g.cleanup.writeln('\tbuiltin__array_free(&$cname);')
 			}
 		} else if styp == 'string' {
-			g.cleanup.writeln('\tstring_free(&$cname);')
+			g.cleanup.writeln('\tbuiltin__string_free(&$cname);')
 		} else if sym.kind == .map {
 			g.cleanup.writeln('\tmap_free(&$cname);')
 		} else if styp == 'IError' {
@@ -5677,7 +5677,7 @@ fn (mut g Gen) write_init_function() {
 			g.writeln('\t// Cleanups for module $mod_name :')
 			g.writeln(g.cleanups[mod_name].str())
 		}
-		g.writeln('\tarray_free(&as_cast_type_indexes);')
+		g.writeln('\tbuiltin__array_free(&as_cast_type_indexes);')
 	}
 	g.writeln('}')
 	if g.pref.printfn_list.len > 0 && '_vcleanup' in g.pref.printfn_list {
@@ -6402,7 +6402,7 @@ fn (mut g Gen) go_expr(node ast.GoExpr) {
 			} else {
 				g.gowrappers.writeln('\tint stat = pthread_join(thread, (void **)$c_ret_ptr_ptr);')
 			}
-			g.gowrappers.writeln('\tif (stat != 0) { _v_panic(_SLIT("unable to join thread")); }')
+			g.gowrappers.writeln('\tif (stat != 0) { builtin__panic(_SLIT("unable to join thread")); }')
 			if g.pref.os == .windows {
 				if node.call_expr.return_type == ast.void_type {
 					g.gowrappers.writeln('\tCloseHandle(thread);')
@@ -6880,11 +6880,11 @@ static inline __shared__$interface_name ${shared_fn_name}(__shared__$cctype* x) 
 			pmessage := 'string__plus(string__plus(tos3("`as_cast`: cannot convert "), tos3(v_typeof_interface_${interface_name}(x._typ))), tos3(" to ${util.strip_main_name(vsym.name)}"))'
 			if g.pref.is_debug {
 				// TODO: actually return a valid position here
-				conversion_functions.write_string('\tpanic_debug(1, tos3("builtin.v"), tos3("builtin"), tos3("__as_cast"), ')
+				conversion_functions.write_string('\tbuiltin__panic_debug(1, tos3("builtin.v"), tos3("builtin"), tos3("__as_cast"), ')
 				conversion_functions.write_string(pmessage)
 				conversion_functions.writeln(');')
 			} else {
-				conversion_functions.write_string('\t_v_panic(')
+				conversion_functions.write_string('\tbuiltin__panic(')
 				conversion_functions.write_string(pmessage)
 				conversion_functions.writeln(');')
 			}

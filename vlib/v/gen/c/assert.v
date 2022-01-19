@@ -45,7 +45,7 @@ fn (mut g Gen) gen_assert_stmt(original_assert_statement ast.AssertStmt) {
 		metaname_panic := g.gen_assert_metainfo(node)
 		g.writeln('\t__print_assert_failure(&$metaname_panic);')
 		g.gen_assert_postfailure_mode(node)
-		g.writeln('\t_v_panic(_SLIT("Assertion failed..."));')
+		g.writeln('\tbuiltin__panic(_SLIT("Assertion failed..."));')
 		g.writeln('}')
 	}
 }
@@ -91,7 +91,7 @@ fn (mut g Gen) gen_assert_postfailure_mode(node ast.AssertStmt) {
 			g.writeln('\tabort();')
 		}
 		.backtraces {
-			g.writeln('\tprint_backtrace();')
+			g.writeln('\tbuiltin__print_backtrace();')
 		}
 	}
 }
@@ -102,7 +102,7 @@ fn (mut g Gen) gen_assert_metainfo(node ast.AssertStmt) string {
 	line_nr := node.pos.line_nr
 	src := cestring(node.expr.str())
 	metaname := 'v_assert_meta_info_$g.new_tmp_var()'
-	g.writeln('\tVAssertMetaInfo $metaname = {0};')
+	g.writeln('\tbuiltin__VAssertMetaInfo $metaname = {0};')
 	g.writeln('\t${metaname}.fpath = ${ctoslit(mod_path)};')
 	g.writeln('\t${metaname}.line_nr = $line_nr;')
 	g.writeln('\t${metaname}.fn_name = ${ctoslit(fn_name)};')
@@ -170,7 +170,7 @@ fn (mut g Gen) gen_assert_single_expr(expr ast.Expr, typ ast.Type) {
 				}
 			}
 			if should_clone {
-				g.write('string_clone(')
+				g.write('builtin__string_clone(')
 			}
 			g.gen_expr_to_string(expr, typ)
 			if should_clone {

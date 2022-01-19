@@ -375,7 +375,7 @@ fn (mut g Gen) gen_array_sort(node ast.CallExpr) {
 		verror('.sort() is an array method')
 	}
 	if g.pref.is_bare {
-		g.writeln('bare_panic(_SLIT("sort does not work with -freestanding"))')
+		g.writeln('builtin__bare_panic(_SLIT("sort does not work with -freestanding"))')
 		return
 	}
 	info := rec_sym.info as ast.Array
