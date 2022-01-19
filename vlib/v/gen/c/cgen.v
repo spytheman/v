@@ -5755,6 +5755,7 @@ fn (mut g Gen) write_types(symbols []&ast.TypeSymbol) {
 			g.type_definitions.writeln('\tEMPTY_STRUCT_DECLARATION;')
 			g.type_definitions.writeln('};')
 			g.typedefs.writeln('typedef struct none none;')
+			g.typedefs.writeln('typedef struct none builtin_none;')
 		}
 		// sym := g.table.sym(typ)
 		mut name := sym.cname

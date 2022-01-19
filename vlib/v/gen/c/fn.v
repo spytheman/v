@@ -43,6 +43,7 @@ fn (mut g Gen) fn_decl(node ast.FnDecl) {
 	}
 	if g.is_builtin_mod && g.pref.gc_mode == .boehm_leak && node.name == 'malloc' {
 		g.definitions.write_string('#define _v_malloc GC_MALLOC\n')
+		g.definitions.write_string('#define builtin__malloc GC_MALLOC\n')
 		return
 	}
 	g.gen_attrs(node.attrs)

@@ -654,6 +654,7 @@ typedef uint8_t u8;
 typedef uint16_t u16;
 typedef uint8_t byte;
 typedef uint32_t rune;
+typedef uint32_t builtin__rune;
 typedef size_t usize;
 typedef ptrdiff_t isize;
 #ifndef VNOFLOAT 
@@ -664,10 +665,13 @@ typedef int32_t f32;
 typedef int64_t f64;
 #endif
 typedef int64_t int_literal;
+typedef int64_t builtin__int_literal;
 #ifndef VNOFLOAT
 typedef double float_literal;
+typedef double builtin__float_literal;
 #else
 typedef int64_t float_literal;
+typedef int64_t builtin__float_literal;
 #endif
 typedef unsigned char* byteptr;
 typedef void* voidptr;
@@ -675,6 +679,7 @@ typedef char* charptr;
 typedef byte array_fixed_byte_300 [300];
 
 typedef struct sync__Channel* chan;
+typedef struct sync__Channel* builtin__chan;
 
 #ifndef __cplusplus
 	#ifndef bool
@@ -686,12 +691,18 @@ typedef struct sync__Channel* chan;
 		#define true 1
 		#define false 0
 	#endif
+	typedef bool builtin__bool;
 #endif
 
 typedef u64 (*MapHashFn)(voidptr);
 typedef bool (*MapEqFn)(voidptr, voidptr);
 typedef void (*MapCloneFn)(voidptr, voidptr);
 typedef void (*MapFreeFn)(voidptr);
+
+typedef u64 (*builtin__MapHashFn)(voidptr);
+typedef bool (*builtin__MapEqFn)(voidptr, voidptr);
+typedef void (*builtin__MapCloneFn)(voidptr, voidptr);
+typedef void (*builtin__MapFreeFn)(voidptr);
 '
 
 const c_bare_headers = c_helper_macros + c_unsigned_comparison_functions + c_common_macros +

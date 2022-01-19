@@ -715,7 +715,7 @@ pub fn (t &TypeSymbol) is_heap() bool {
 pub fn (mut t Table) register_builtin_type_symbols() {
 	// reserve index 0 so nothing can go there
 	// save index check, 0 will mean not found
-	t.register_type_symbol(kind: .placeholder, name: 'reserved_0')
+	t.register_type_symbol(kind: .placeholder, name: 'reserved_0', cname: '', mod: '')
 	t.register_type_symbol(kind: .void, name: 'void', cname: 'void', mod: 'builtin')
 	t.register_type_symbol(kind: .voidptr, name: 'voidptr', cname: 'voidptr', mod: 'builtin')
 	t.register_type_symbol(kind: .byteptr, name: 'byteptr', cname: 'byteptr', mod: 'builtin')
@@ -734,36 +734,36 @@ pub fn (mut t Table) register_builtin_type_symbols() {
 	t.register_type_symbol(kind: .f64, name: 'f64', cname: 'f64', mod: 'builtin')
 	t.register_type_symbol(kind: .char, name: 'char', cname: 'char', mod: 'builtin')
 	t.register_type_symbol(kind: .bool, name: 'bool', cname: 'bool', mod: 'builtin')
-	t.register_type_symbol(kind: .none_, name: 'none', cname: 'none', mod: 'builtin')
-	t.register_type_symbol(kind: .string, name: 'string', cname: 'string', mod: 'builtin')
-	t.register_type_symbol(kind: .rune, name: 'rune', cname: 'rune', mod: 'builtin')
-	t.register_type_symbol(kind: .array, name: 'array', cname: 'array', mod: 'builtin')
-	t.register_type_symbol(kind: .map, name: 'map', cname: 'map', mod: 'builtin')
-	t.register_type_symbol(kind: .chan, name: 'chan', cname: 'chan', mod: 'builtin')
-	t.register_type_symbol(kind: .any, name: 'any', cname: 'any', mod: 'builtin')
+	t.register_type_symbol(kind: .none_, name: 'none', cname: 'builtin__none', mod: 'builtin')
+	t.register_type_symbol(kind: .string, name: 'string', cname: 'builtin__string', mod: 'builtin')
+	t.register_type_symbol(kind: .rune, name: 'rune', cname: 'builtin__rune', mod: 'builtin')
+	t.register_type_symbol(kind: .array, name: 'array', cname: 'builtin__array', mod: 'builtin')
+	t.register_type_symbol(kind: .map, name: 'map', cname: 'builtin__map', mod: 'builtin')
+	t.register_type_symbol(kind: .chan, name: 'chan', cname: 'builtin__chan', mod: 'builtin')
+	t.register_type_symbol(kind: .any, name: 'any', cname: 'builtin__any', mod: 'builtin')
 	t.register_type_symbol(
 		kind: .float_literal
 		name: 'float literal'
-		cname: 'float_literal'
+		cname: 'builtin__float_literal'
 		mod: 'builtin'
 	)
 	t.register_type_symbol(
 		kind: .int_literal
 		name: 'int literal'
-		cname: 'int_literal'
+		cname: 'builtin__int_literal'
 		mod: 'builtin'
 	)
 	t.register_type_symbol(
 		kind: .thread
 		name: 'thread'
-		cname: '__v_thread'
+		cname: 'builtin__thread'
 		mod: 'builtin'
 		info: Thread{
 			return_type: ast.void_type
 		}
 	)
-	t.register_type_symbol(kind: .interface_, name: 'IError', cname: 'IError', mod: 'builtin')
-	t.register_type_symbol(kind: .u8, name: 'zu8', cname: 'zu8', mod: 'builtin')
+	t.register_type_symbol(kind: .interface_, name: 'IError', cname: 'builtin__IError', mod: 'builtin')
+	t.register_type_symbol(kind: .u8, name: 'zu8', cname: 'builtin__u8', mod: 'builtin')
 }
 
 [inline]
