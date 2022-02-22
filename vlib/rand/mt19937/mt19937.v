@@ -4,6 +4,7 @@
 module mt19937
 
 import math.bits
+import rand.seed
 
 /*
 C++ functions for MT19937, with initialization improved 2002/2/10.
@@ -55,14 +56,27 @@ const (
 	inv_f64_limit = 1.0 / 9007199254740992.0
 )
 
+const preseeded_rng = new_preseeded_rng()
+
+fn new_preseeded_rng() MT19937RNG {
+	mut res := MT19937RNG{
+		state: []u64{len: mt19937.nn}
+		mti: mt19937.nn
+		next_rnd: 0
+		has_next: false
+	}
+	res.seed(seed.time_seed_array(2))
+	return res
+}
+
 // MT19937RNG is generator that uses the Mersenne Twister algorithm with period 2^19937.
 // **NOTE**: The RNG is not seeded when instantiated so remember to seed it before use.
 pub struct MT19937RNG {
 mut:
-	state    []u64 = []u64{len: mt19937.nn}
-	mti      int   = mt19937.nn
-	next_rnd u32
-	has_next bool
+	state    []u64 = mt19937.preseeded_rng.state.clone()
+	mti      int   = mt19937.preseeded_rng.mti
+	next_rnd u32   = mt19937.preseeded_rng.next_rnd
+	has_next bool  = mt19937.preseeded_rng.has_next
 }
 
 // calculate_state returns a random state array calculated from the `seed_data`.
@@ -83,8 +97,9 @@ pub fn (mut rng MT19937RNG) seed(seed_data []u32) {
 		eprintln('mt19937 needs only two 32bit integers as seed: [lower, higher]')
 		exit(1)
 	}
-	// calculate 2 times because MT19937RNG init didn't call calculate_state.
-	rng.state = calculate_state(seed_data, mut rng.state)
+	for i in 0 .. rng.state.len {
+		rng.state[i] = 0
+	}
 	rng.state = calculate_state(seed_data, mut rng.state)
 	rng.mti = mt19937.nn
 	rng.next_rnd = 0
@@ -327,5 +342,7 @@ pub fn (mut rng MT19937RNG) f64_in_range(min f64, max f64) f64 {
 // free should be called when the generator is no longer needed
 [unsafe]
 pub fn (mut rng MT19937RNG) free() {
-	unsafe { free(rng) }
+	unsafe {
+		rng.state.free()
+	}
 }

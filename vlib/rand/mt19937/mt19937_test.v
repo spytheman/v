@@ -339,3 +339,9 @@ fn test_mt19937_f64_in_range() {
 		}
 	}
 }
+
+fn test_aaaa() {
+	mut zzzzzz := mt19937.MT19937RNG{}
+	dump(zzzzzz.intn(1000))
+	assert true
+}
