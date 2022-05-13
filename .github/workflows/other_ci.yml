@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   code-formatting:
-    uses: .github/workflows/common_ci.yml
+    uses: ./.github/workflows/common_ci.yml
 
   no-gpl-by-accident:
     runs-on: ubuntu-20.04
