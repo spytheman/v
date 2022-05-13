@@ -1,0 +1,19 @@
+name: code_is_formatted
+
+# allow this workflow to be called from other workflows
+on:
+  workflow_call:
+
+jobs:
+  code-should-be-formatted:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+      - name: Environment info
+        run: echo $VFLAGS $GITHUB_SHA $GITHUB_REF
+      - name: Build local v
+        run: make
+      - name: v test-cleancode
+        run: ./v test-cleancode
+      - name: v test-fmt
+        run: ./v test-fmt

@@ -13,6 +13,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  code-formatting:
+    uses: .github/workflows/common_ci.yml
+
   no-gpl-by-accident:
     runs-on: ubuntu-20.04
     timeout-minutes: 15
@@ -21,22 +24,6 @@ jobs:
       - name: No GPL licensed code, should be added accidentally
         run: |
           ! grep -r --exclude="*.yml" "a GPL license" .
-
-  code-formatting:
-    runs-on: ubuntu-20.04
-    timeout-minutes: 15
-    env:
-      VFLAGS: -cc gcc
-    steps:
-      - uses: actions/checkout@v2
-      - name: Environment info
-        run: echo $VFLAGS $GITHUB_SHA $GITHUB_REF
-      - name: Build local v
-        run: make -j4
-      - name: v test-cleancode
-        run: ./v test-cleancode
-      - name: v test-fmt
-        run: ./v test-fmt
 
   performance-regressions:
     runs-on: ubuntu-20.04
@@ -147,4 +134,3 @@ jobs:
           ./v test-parser -S examples/cli_fuzz.v
           ./v test-parser -S examples/regex_example_fuzz.v
           ./v test-parser -S examples/2048/2048_fuzz.v
-
