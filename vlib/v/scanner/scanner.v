@@ -11,7 +11,6 @@ import v.util
 import v.vet
 import v.errors
 import v.ast
-import v.mathutil
 
 const (
 	single_quote = `'`
@@ -60,7 +59,9 @@ pub mut:
 	warnings                    []errors.Warning
 	notices                     []errors.Notice
 	vet_errors                  []vet.Error
-	should_abort                bool // when too many errors/warnings/notices are accumulated, should_abort becomes true, and the scanner should stop
+	should_abort                bool  // when too many errors/warnings/notices are accumulated, should_abort becomes true, and the scanner should stop
+	u_escapes_pos               []int // used by ident_string, pos list of \uXXXX, avoid initialisation on every ident_string() call
+	h_escapes_pos               []int // used by ident_string, pos list of \xXX, avoid initialisation on every ident_string() call
 }
 
 /*
@@ -180,7 +181,7 @@ fn (mut s Scanner) new_token(tok_kind token.Kind, lit string, len int) token.Tok
 		kind: tok_kind
 		lit: lit
 		line_nr: s.line_nr + line_offset
-		col: mathutil.max(1, s.current_column() - len + 1)
+		col: imax(1, s.pos - s.last_nl_pos - len + 1)
 		pos: s.pos - len + 1
 		len: len
 		tidx: cidx
@@ -208,7 +209,7 @@ fn (mut s Scanner) new_multiline_token(tok_kind token.Kind, lit string, len int,
 		kind: tok_kind
 		lit: lit
 		line_nr: start_line + 1
-		col: mathutil.max(1, s.current_column() - len + 1)
+		col: imax(1, s.pos - s.last_nl_pos - len + 1)
 		pos: s.pos - len + 1
 		len: len
 		tidx: cidx
@@ -384,17 +385,23 @@ fn (mut s Scanner) ident_dec_number() string {
 	// scan integer part
 	for s.pos < s.text.len {
 		c := s.text[s.pos]
-		if c == scanner.num_sep && s.text[s.pos - 1] == scanner.num_sep {
-			s.error('cannot use `_` consecutively')
+		if c >= `0` && c <= `9` {
+			s.pos++
+			continue
 		}
-		if !c.is_digit() && c != scanner.num_sep {
-			if !c.is_letter() || c in [`e`, `E`] || s.is_inside_string {
-				break
-			} else if !has_wrong_digit {
-				has_wrong_digit = true
-				first_wrong_digit_pos = s.pos
-				first_wrong_digit = c
+		if c == scanner.num_sep {
+			if s.text[s.pos - 1] == scanner.num_sep {
+				s.error('cannot use `_` consecutively')
 			}
+			s.pos++
+			continue
+		}
+		if !c.is_letter() || c in [`e`, `E`] || s.is_inside_string {
+			break
+		} else if !has_wrong_digit {
+			has_wrong_digit = true
+			first_wrong_digit_pos = s.pos
+			first_wrong_digit = c
 		}
 		s.pos++
 	}
@@ -409,13 +416,14 @@ fn (mut s Scanner) ident_dec_number() string {
 		s.pos++
 		if s.pos < s.text.len {
 			// 5.5, 5.5.str()
-			if s.text[s.pos].is_digit() {
+			c := s.text[s.pos]
+			if c.is_digit() {
 				for s.pos < s.text.len {
-					c := s.text[s.pos]
-					if !c.is_digit() {
-						if !c.is_letter() || c in [`e`, `E`] || s.is_inside_string {
+					cc := s.text[s.pos]
+					if !cc.is_digit() {
+						if !cc.is_letter() || cc in [`e`, `E`] || s.is_inside_string {
 							// 5.5.str()
-							if c == `.` && s.pos + 1 < s.text.len && s.text[s.pos + 1].is_letter() {
+							if cc == `.` && s.pos + 1 < s.text.len && s.text[s.pos + 1].is_letter() {
 								call_method = true
 							}
 							break
@@ -427,13 +435,13 @@ fn (mut s Scanner) ident_dec_number() string {
 					}
 					s.pos++
 				}
-			} else if s.text[s.pos] == `.` {
+			} else if c == `.` {
 				// 5.. (a range)
 				is_range = true
 				s.pos--
-			} else if s.text[s.pos] in [`e`, `E`] {
+			} else if c in [`e`, `E`] {
 				// 5.e5
-			} else if s.text[s.pos].is_letter() {
+			} else if c.is_letter() {
 				// 5.str()
 				call_method = true
 				s.pos--
@@ -450,10 +458,12 @@ fn (mut s Scanner) ident_dec_number() string {
 	}
 	// scan exponential part
 	mut has_exp := false
-	if s.pos < s.text.len && s.text[s.pos] in [`e`, `E`] {
+	ec := s.text[s.pos]
+	if s.pos < s.text.len && ec in [`e`, `E`] {
 		has_exp = true
 		s.pos++
-		if s.pos < s.text.len && s.text[s.pos] in [`-`, `+`] {
+		pmc := s.text[s.pos]
+		if s.pos < s.text.len && pmc in [`-`, `+`] {
 			s.pos++
 		}
 		for s.pos < s.text.len {
@@ -680,9 +690,11 @@ fn (mut s Scanner) text_scan() token.Token {
 			}
 			// end of `$expr`
 			// allow `'$a.b'` and `'$a.c()'`
-			if s.is_inter_start && next_char == `\\`
-				&& s.look_ahead(2) !in [`x`, `n`, `r`, `\\`, `t`, `e`, `"`, `'`] {
-				s.warn('unknown escape sequence \\${s.look_ahead(2)}')
+			if s.is_inter_start && next_char == `\\` {
+				afternextc := s.look_ahead(2)
+				if afternextc !in [`x`, `n`, `r`, `\\`, `t`, `e`, `"`, `'`] {
+					s.warn('unknown escape sequence \\$afternextc')
+				}
 			}
 			if s.is_inter_start && next_char == `(` {
 				if s.look_ahead(2) != `)` {
@@ -693,7 +705,7 @@ fn (mut s Scanner) text_scan() token.Token {
 				s.is_inter_start = false
 			}
 			return s.new_token(.name, name, name.len)
-		} else if c.is_digit() || (c == `.` && nextc.is_digit()) {
+		} else if (c >= `0` && c <= `9`) || (c == `.` && (nextc >= `0` && nextc <= `9`)) {
 			// `123`, `.123`
 			if !s.is_inside_string {
 				// In C ints with `0` prefix are octal (in V they're decimal), so discarding heading zeros is needed.
@@ -1041,7 +1053,8 @@ fn (mut s Scanner) text_scan() token.Token {
 						// Find out if this comment is on its own line (for vfmt)
 						mut is_separate_line_comment := true
 						for j := start - 2; j >= 0 && s.text[j] != scanner.b_lf; j-- {
-							if s.text[j] !in [`\t`, ` `] {
+							cj := s.text[j]
+							if cj !in [`\t`, ` `] {
 								is_separate_line_comment = false
 							}
 						}
@@ -1107,15 +1120,17 @@ fn (mut s Scanner) text_scan() token.Token {
 
 fn (mut s Scanner) invalid_character() {
 	len := utf8_char_len(s.text[s.pos])
-	end := mathutil.min(s.pos + len, s.text.len)
+	end := imin(s.pos + len, s.text.len)
 	c := s.text[s.pos..end]
 	s.error('invalid character `$c`')
 }
 
+[inline]
 fn (s &Scanner) current_column() int {
 	return s.pos - s.last_nl_pos
 }
 
+[direct_array_access]
 fn (s &Scanner) count_symbol_before(p int, sym u8) int {
 	mut count := 0
 	for i := p; i >= 0; i-- {
@@ -1155,8 +1170,6 @@ fn (mut s Scanner) ident_string() string {
 		s.inc_line_number()
 	}
 	s.is_inside_string = false
-	mut u_escapes_pos := []int{} // pos list of \uXXXX
-	mut h_escapes_pos := []int{} // pos list of \xXX
 	mut backslash_count := if start_char == scanner.backslash { 1 } else { 0 }
 	for {
 		s.pos++
@@ -1194,7 +1207,7 @@ fn (mut s Scanner) ident_string() string {
 					&& s.text[s.pos + 2].is_hex_digit()) {
 					s.error(r'`\x` used without two following hex digits')
 				}
-				h_escapes_pos << s.pos - 1
+				s.h_escapes_pos << s.pos - 1
 			}
 			// Escape `\u`
 			if c == `u` {
@@ -1204,7 +1217,7 @@ fn (mut s Scanner) ident_string() string {
 					|| !s.text[s.pos + 3].is_hex_digit() || !s.text[s.pos + 4].is_hex_digit() {
 					s.error(r'`\u` incomplete unicode character value')
 				}
-				u_escapes_pos << s.pos - 1
+				s.u_escapes_pos << s.pos - 1
 			}
 		}
 		// ${var} (ignore in vfmt mode) (skip \$)
@@ -1235,11 +1248,11 @@ fn (mut s Scanner) ident_string() string {
 	}
 	if start <= s.pos {
 		mut string_so_far := s.text[start..end]
-		if !s.is_fmt && u_escapes_pos.len > 0 {
-			string_so_far = decode_u_escapes(string_so_far, start, u_escapes_pos)
+		if !s.is_fmt && s.u_escapes_pos.len > 0 {
+			string_so_far = decode_u_escapes(string_so_far, start, s.u_escapes_pos)
 		}
-		if !s.is_fmt && h_escapes_pos.len > 0 {
-			string_so_far = decode_h_escapes(string_so_far, start, h_escapes_pos)
+		if !s.is_fmt && s.h_escapes_pos.len > 0 {
+			string_so_far = decode_h_escapes(string_so_far, start, s.h_escapes_pos)
 		}
 		if n_cr_chars > 0 {
 			string_so_far = string_so_far.replace('\r', '')
@@ -1250,6 +1263,8 @@ fn (mut s Scanner) ident_string() string {
 			lit = string_so_far
 		}
 	}
+	s.h_escapes_pos.clear()
+	s.u_escapes_pos.clear()
 	return lit
 }
 
@@ -1454,7 +1469,7 @@ fn (mut s Scanner) eat_to_end_of_line() {
 
 [inline]
 fn (mut s Scanner) inc_line_number() {
-	s.last_nl_pos = mathutil.min(s.text.len - 1, s.pos)
+	s.last_nl_pos = imin(s.text.len - 1, s.pos)
 	if s.is_crlf {
 		s.last_nl_pos++
 	}
@@ -1585,4 +1600,14 @@ fn (mut s Scanner) trace(fbase string, message string) {
 	if s.file_base == fbase {
 		println('> s.trace | ${fbase:-10s} | $message')
 	}
+}
+
+[inline]
+fn imin(x int, y int) int {
+	return if x < y { x } else { y }
+}
+
+[inline]
+fn imax(x int, y int) int {
+	return if x < y { y } else { x }
 }
