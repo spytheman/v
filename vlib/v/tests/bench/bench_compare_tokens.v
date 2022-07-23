@@ -6,7 +6,7 @@ const max_repetitions = 4_000_000
 fn main() {
 	km := token.new_keywords_matcher(token.keywords)
 	for kw in ['for', 'val', 'int', 'f32', 'struct', 'return', 'if', 'in', 'as', 'or', 'else',
-		'unsafe', 'return', 'assert', 'Abc', 'my_identifier', 'a'] {
+		'unsafe', 'return', 'assert', 'Abc', 'my_identifier', 'a', 'assez', 'returned'] {
 		mut res := token.Kind{}
 
 		mut bmark := benchmark.start()
