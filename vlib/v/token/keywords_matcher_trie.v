@@ -5,7 +5,7 @@ module token
 // See the module description for more details.
 [heap]
 pub struct KeywordsMatcherTrie {
-mut:
+pub mut:
 	nodes   []&TrieNode
 	min_len int = 999999
 	max_len int
@@ -13,7 +13,7 @@ mut:
 
 // TrieNode is a single node from a trie, used by KeywordsMatcherTrie
 pub struct TrieNode {
-mut:
+pub mut:
 	children [123]&TrieNode
 	value    int // when positive, it is a leaf node representing a match
 }

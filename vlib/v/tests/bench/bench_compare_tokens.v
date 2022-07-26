@@ -1,4 +1,5 @@
 import v.token
+import v.token.matching
 import benchmark
 
 const max_repetitions = 4_000_000
@@ -18,6 +19,11 @@ fn main() {
 			res = token.Kind(km_trie.find(kw))
 		}
 		bmark.measure('$max_repetitions repetitions of km_trie.find("$kw") = $res')
+
+		for _ in 0 .. max_repetitions {
+			res = token.Kind(matching.token_by_keyword(kw))
+		}
+		bmark.measure('$max_repetitions repetitions of matching.token_by_keyword("$kw") = $res')
 
 		println('--------------------------------')
 	}
