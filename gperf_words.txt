@@ -1,0 +1,54 @@
+struct GPerfResult
+  {
+  const char* name;
+  int code;
+  };
+%%
+as, 67
+asm, 68
+assert, 69
+atomic, 70
+break, 71
+const, 72
+continue, 73
+defer, 74
+else, 75
+enum, 76
+false, 77
+for, 78
+fn, 79
+__global, 80
+go, 81
+goto, 82
+if, 83
+import, 84
+in, 85
+interface, 86
+is, 87
+match, 88
+module, 89
+mut, 90
+nil, 91
+shared, 92
+lock, 93
+rlock, 94
+none, 95
+return, 96
+select, 97
+sizeof, 98
+isreftype, 99
+_likely_, 100
+_unlikely_, 101
+__offsetof, 102
+struct, 103
+true, 104
+type, 105
+typeof, 106
+dump, 107
+or, 108
+union, 109
+pub, 110
+static, 111
+volatile, 112
+unsafe, 113
+%%
