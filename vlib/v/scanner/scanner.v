@@ -6,6 +6,7 @@ module scanner
 import os
 import strconv
 import v.token
+import v.token.matching
 import v.pref
 import v.util
 import v.vet
@@ -665,7 +666,7 @@ fn (mut s Scanner) text_scan() token.Token {
 			// tmp hack to detect . in ${}
 			// Check if not .eof to prevent panic
 			next_char := s.look_ahead(1)
-			kind := token.scanner_matcher.find(name)
+			kind := matching.token_by_keyword(name)
 			// '$type' '$struct'... will be recognized as ident (not keyword token)
 			if kind != -1 && !(s.is_inter_start && next_char == s.quote) {
 				return s.new_token(token.Kind(kind), name, name.len)
