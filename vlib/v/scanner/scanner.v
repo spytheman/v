@@ -5,6 +5,8 @@ module scanner
 
 import os
 import strconv
+import strings
+import hash
 import v.token
 import v.pref
 import v.util
@@ -555,6 +557,15 @@ fn (mut s Scanner) end_of_file() token.Token {
 }
 
 fn (mut s Scanner) scan_all_tokens_in_buffer() {
+	chash := hash.sum64_string(s.text, 7).hex_full()
+	scan_ckey := '${chash}_${s.comments_mode}_$s.file_path'
+	if fpath := s.pref.cache_manager.exists('.tokens', scan_ckey) {
+		if _ := s.load_tokens_from_path(fpath, chash) {
+			// eprintln('>>> loaded tokens from $fpath')
+			return
+		}
+	}
+
 	mut timers := util.get_timers()
 	timers.measure_pause('PARSE')
 	util.timing_start('SCAN')
@@ -562,12 +573,246 @@ fn (mut s Scanner) scan_all_tokens_in_buffer() {
 		util.timing_measure_cumulative('SCAN')
 		timers.measure_resume('PARSE')
 	}
+
 	s.scan_remaining_text()
 	s.tidx = 0
+	s.save_tokens_to_cache(scan_ckey, chash)
 	$if debugscanner ? {
 		for t in s.all_tokens {
 			eprintln('> tidx:${t.tidx:-5} | kind: ${t.kind:-10} | lit: $t.lit')
 		}
+	}
+}
+
+enum TokensState {
+	start
+	chash
+	chash_value
+	file_path
+	file_path_value
+	comments_mode
+	comments_mode_value
+	tokens_len
+	tokens_len_value
+	tokens
+	token_start
+	token_tidx
+	token_tline
+	token_tcol
+	token_tpos
+	token_tkind
+	token_tlen
+	token_tlit
+	token_end
+	end
+}
+
+fn (mut s Scanner) load_tokens_from_path(fpath string, wanted_chash string) ?bool {
+	util.timing_start('SCAN')
+	defer {
+		util.timing_measure_cumulative('SCAN')
+	}
+	cached_token_content := os.read_file(fpath)?
+	if !cached_token_content.starts_with('chash: ') {
+		return error('invalid .tokens file')
+	}
+	// eprintln('> cached_token_content: ${cached_token_content#[..256]}')
+	mut rchash := ''
+	//	mut rfpath := ''
+	//	mut rcmode := ''
+	//	mut rtlen := ''
+	//
+
+	mut tkind := 0
+	mut tidx := 0
+	mut tline_nr := 0
+	mut tpos := 0
+	mut tcol := 0
+	mut tlen := 0
+	mut tlit := ''
+	//
+	mut idx := 0
+	mut state := TokensState.start
+	mut cline := 0
+	for cidx, c in cached_token_content {
+		if c == scanner.b_lf {
+			cline++
+		}
+		// eprintln('> cidx: ${cidx:5} | c: `$c.ascii_str()` | state: $state')
+		match state {
+			.start {
+				state = .chash
+			}
+			.chash {
+				if c == ` ` {
+					state = .chash_value
+					idx = cidx + 1
+				}
+			}
+			.chash_value {
+				if c == scanner.b_lf {
+					rchash = cached_token_content#[idx..cidx]
+					// eprintln('> wanted_chash: `$wanted_chash` | rchash: `$rchash`')
+					if wanted_chash != rchash {
+						return error('hash mismatch: wanted_chash: $wanted_chash != rchash: $rchash')
+					}
+					state = .file_path
+				}
+			}
+			.file_path {
+				if c == ` ` {
+					state = .file_path_value
+					idx = cidx + 1
+				}
+			}
+			.file_path_value {
+				if c == scanner.b_lf {
+					// rfpath = cached_token_content#[idx..cidx]
+					// eprintln('> rfpath: `$rfpath`')
+					state = .comments_mode
+				}
+			}
+			.comments_mode {
+				if c == ` ` {
+					state = .comments_mode_value
+					idx = cidx + 1
+				}
+			}
+			.comments_mode_value {
+				if c == scanner.b_lf {
+					// rcmode = cached_token_content#[idx..cidx]
+					// eprintln('> rcmode: `$rcmode`')
+					state = .tokens_len
+				}
+			}
+			.tokens_len {
+				if c == ` ` {
+					state = .tokens_len_value
+					idx = cidx + 1
+				}
+			}
+			.tokens_len_value {
+				if c == scanner.b_lf {
+					tokens_len := cached_token_content#[idx..cidx].int()
+					// eprintln('> rtlen: `$rtlen`')
+					s.all_tokens = []token.Token{cap: tokens_len}
+					state = .tokens
+				}
+			}
+			.tokens {
+				if c == scanner.b_lf {
+					state = .token_start
+				}
+			}
+			.token_start {
+				if c != `@` {
+					state = .token_tidx
+					idx = cidx
+					//
+					tkind = 0
+					tidx = 0
+					tline_nr = 0
+					tpos = 0
+					tcol = 0
+					tlen = 0
+					tlit = ''
+				}
+			}
+			.token_tidx {
+				if c == `,` {
+					tidx = cached_token_content#[idx..cidx].int()
+					// eprintln('> tidx: `$tidx`')
+					state = .token_tline
+					idx = cidx + 1
+				}
+			}
+			.token_tline {
+				if c == `,` {
+					tline_nr = cached_token_content#[idx..cidx].int()
+					// eprintln('> tline_nr: `$tline_nr`')
+					state = .token_tcol
+					idx = cidx + 1
+				}
+			}
+			.token_tcol {
+				if c == `,` {
+					tcol = cached_token_content#[idx..cidx].int()
+					// eprintln('> tcol: `$tcol`')
+					state = .token_tpos
+					idx = cidx + 1
+				}
+			}
+			.token_tpos {
+				if c == `,` {
+					tpos = cached_token_content#[idx..cidx].int()
+					// eprintln('> tpos: `$tpos`')
+					state = .token_tkind
+					idx = cidx + 1
+				}
+			}
+			.token_tkind {
+				if c == `,` {
+					tkind = cached_token_content#[idx..cidx].int()
+					// eprintln('> tkind: `$tkind`')
+					state = .token_tlen
+					idx = cidx + 1
+				}
+			}
+			.token_tlen {
+				if c == `,` {
+					tlen = cached_token_content#[idx..cidx].int()
+					// eprintln('> tlen: `$tlen`')
+					state = .token_tlit
+					idx = cidx + 1
+				}
+			}
+			.token_tlit {
+				if c == `@` && cached_token_content[cidx + 1] == `@`
+					&& cached_token_content[cidx + 2] == scanner.b_lf {
+					tlit = cached_token_content#[idx..cidx]
+					// eprintln('> tlit: `$tlit`')
+					state = .token_end
+				}
+			}
+			.token_end {
+				if c == scanner.b_lf {
+					idx = cidx + 1
+					state = .token_start
+					// println('>> cline: $cline | $tidx,$tline_nr,$tcol,$tpos,$tkind,$tlen,$tlit')
+					tok := token.Token{
+						kind: token.Kind(tkind)
+						tidx: tidx
+						line_nr: tline_nr
+						pos: tpos
+						col: tcol
+						len: tlen
+						lit: tlit
+					}
+					s.all_tokens << tok
+				}
+			}
+			.end {
+				break
+			}
+		}
+	}
+	// eprintln('fpath: ${fpath:30s} | state: ${state:20s} | idx: ${idx:5} | cached_token_content.len: ${cached_token_content.len:7} | rfpath :$rfpath | rchash: $rchash | rcmode: $rcmode | rtlen: $rtlen | s.all_tokens.len: $s.all_tokens.len')
+	return true
+}
+
+fn (mut s Scanner) save_tokens_to_cache(scan_ckey string, chash string) {
+	mut sb := strings.new_builder(s.all_tokens.len * 40)
+	sb.write_string('chash: $chash\n')
+	sb.write_string('file_path: $s.file_path\n')
+	sb.write_string('comments_mode: $s.comments_mode\n')
+	sb.write_string('tokens.len: $s.all_tokens.len\n')
+	sb.write_string('tokens:\n')
+	for t in s.all_tokens {
+		sb.write_string('@@$t.tidx,$t.line_nr,$t.col,$t.pos,${int(t.kind)},$t.len,$t.lit@@\n')
+	}
+	s.pref.cache_manager.save('.tokens', scan_ckey, sb.str()) or {
+		eprintln('could not save tokens')
+		return
 	}
 }
 
