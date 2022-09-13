@@ -693,7 +693,7 @@ fn (mut s Scanner) load_tokens_from_path(fpath string, wanted_chash string) ?boo
 			}
 			.tokens_len_value {
 				if c == scanner.b_lf {
-					tokens_len := cached_token_content#[idx..cidx].int()
+					tokens_len := fast_int(cached_token_content, idx, cidx)
 					// eprintln('> rtlen: `$rtlen`')
 					s.all_tokens = []token.Token{cap: tokens_len}
 					state = .tokens
@@ -720,7 +720,7 @@ fn (mut s Scanner) load_tokens_from_path(fpath string, wanted_chash string) ?boo
 			}
 			.token_tidx {
 				if c == `,` {
-					tidx = cached_token_content#[idx..cidx].int()
+					tidx = fast_int(cached_token_content, idx, cidx)
 					// eprintln('> tidx: `$tidx`')
 					state = .token_tline
 					idx = cidx + 1
@@ -728,7 +728,7 @@ fn (mut s Scanner) load_tokens_from_path(fpath string, wanted_chash string) ?boo
 			}
 			.token_tline {
 				if c == `,` {
-					tline_nr = cached_token_content#[idx..cidx].int()
+					tline_nr = fast_int(cached_token_content, idx, cidx)
 					// eprintln('> tline_nr: `$tline_nr`')
 					state = .token_tcol
 					idx = cidx + 1
@@ -736,7 +736,7 @@ fn (mut s Scanner) load_tokens_from_path(fpath string, wanted_chash string) ?boo
 			}
 			.token_tcol {
 				if c == `,` {
-					tcol = cached_token_content#[idx..cidx].int()
+					tcol = fast_int(cached_token_content, idx, cidx)
 					// eprintln('> tcol: `$tcol`')
 					state = .token_tpos
 					idx = cidx + 1
@@ -744,7 +744,7 @@ fn (mut s Scanner) load_tokens_from_path(fpath string, wanted_chash string) ?boo
 			}
 			.token_tpos {
 				if c == `,` {
-					tpos = cached_token_content#[idx..cidx].int()
+					tpos = fast_int(cached_token_content, idx, cidx)
 					// eprintln('> tpos: `$tpos`')
 					state = .token_tkind
 					idx = cidx + 1
@@ -752,7 +752,7 @@ fn (mut s Scanner) load_tokens_from_path(fpath string, wanted_chash string) ?boo
 			}
 			.token_tkind {
 				if c == `,` {
-					tkind = cached_token_content#[idx..cidx].int()
+					tkind = fast_int(cached_token_content, idx, cidx)
 					// eprintln('> tkind: `$tkind`')
 					state = .token_tlen
 					idx = cidx + 1
@@ -760,7 +760,7 @@ fn (mut s Scanner) load_tokens_from_path(fpath string, wanted_chash string) ?boo
 			}
 			.token_tlen {
 				if c == `,` {
-					tlen = cached_token_content#[idx..cidx].int()
+					tlen = fast_int(cached_token_content, idx, cidx)
 					// eprintln('> tlen: `$tlen`')
 					state = .token_tlit
 					idx = cidx + 1
@@ -798,6 +798,19 @@ fn (mut s Scanner) load_tokens_from_path(fpath string, wanted_chash string) ?boo
 	}
 	// eprintln('fpath: ${fpath:30s} | state: ${state:20s} | idx: ${idx:5} | cached_token_content.len: ${cached_token_content.len:7} | rfpath :$rfpath | rchash: $rchash | rcmode: $rcmode | rtlen: $rtlen | s.all_tokens.len: $s.all_tokens.len')
 	return true
+}
+
+[direct_array_access]
+fn fast_int(s string, idx_start int, idx_end int) int {
+	mut n := 0
+	for i in idx_start .. idx_end {
+		ch := s[i] - `0`
+		if ch > 9 {
+			return -1
+		}
+		n = n * 10 + int(ch)
+	}
+	return n
 }
 
 fn (mut s Scanner) save_tokens_to_cache(scan_ckey string, chash string) {
