@@ -558,7 +558,7 @@ fn (mut s Scanner) end_of_file() token.Token {
 
 fn (mut s Scanner) scan_all_tokens_in_buffer() {
 	chash := hash.sum64_string(s.text, 7).hex_full()
-	scan_ckey := '${chash}_${s.comments_mode}_$s.file_path'
+	scan_ckey := '${chash}_${s.is_fmt}_${s.comments_mode}_$s.file_path'
 	if fpath := s.pref.cache_manager.exists('.tokens', scan_ckey) {
 		if _ := s.load_tokens_from_path(fpath, chash) {
 			// eprintln('>>> loaded tokens from $fpath')
