@@ -31,6 +31,7 @@ fn main() {
 		user_data: app
 		frame_fn: app.frame
 		click_fn: app.click
+		keydown_fn: app.key_down
 	)
 	app.gg = context
 	app.init_boids()
@@ -101,7 +102,7 @@ fn (mut app App) frame() {
 	app.width = sapp.width()
 	app.height = sapp.height()
 	app.update()
-	//
+
 	app.gg.begin()
 	app.draw_boids()
 	app.draw_right_clicks()
@@ -111,9 +112,9 @@ fn (mut app App) frame() {
 
 fn (mut app App) draw_top_banner() {
 	for _ in 0 .. 2 {
-		app.gg.draw_rect_filled(8, 8, 620, 18, right_click_color)
+		app.gg.draw_rect_filled(25, 1, 620, 18, right_click_color)
 	}
-	app.gg.draw_text_def(10, 10, 'Boids: ${app.boids.len:05}. Left click to create more boids at that spot. Right click to attract near boids.')
+	app.gg.draw_text_def(30, 3, 'Boids: ${app.boids.len:05}. Esc to exit. Left click creates more boids. Right click attracts near boids.')
 }
 
 fn (mut app App) draw_right_clicks() {
@@ -229,7 +230,7 @@ fn new_boid() Boid {
 	return Boid{
 		x: rand.f32() * (win_width - 20) + 10
 		y: rand.f32() * (win_height - 20) + 10
-		r: rand.f32() * 2 + 10
+		r: rand.f32() * 2 + 4
 		vx: f32_around_zero()
 		vy: f32_around_zero()
 		ax: 0.02 * f32_around_zero()
@@ -245,4 +246,11 @@ fn f32_around_zero() f32 {
 
 fn rcolor() u8 {
 	return u8(127 + 127 * rand.f32())
+}
+
+fn (mut app App) key_down(key gg.KeyCode, modifier gg.Modifier, x voidptr) {
+	match key {
+		.escape { app.gg.quit() }
+		else {}
+	}
 }
