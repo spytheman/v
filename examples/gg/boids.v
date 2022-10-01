@@ -8,7 +8,7 @@ import rand
 import math
 
 const (
-	start_boids          = 500
+	start_boids          = 100
 	left_click_new_boids = 100
 	max_boids            = 16000
 	win_width            = 800
