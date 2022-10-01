@@ -127,10 +127,9 @@ fn (mut app App) frame() {
 }
 
 fn (mut app App) draw_top_banner() {
-	for _ in 0 .. 2 {
-		app.gg.draw_rect_filled(25, 1, 620, 18, right_click_color)
-	}
-	app.gg.draw_text_def(30, 3, 'Boids: ${app.boids.len:05}. Esc to exit. Left click creates more boids. Right click attracts near boids.')
+	app.gg.draw_rect_filled(24, 0, 800, 20, app.gg.fps.background_color)
+	app.gg.draw_text(410, 10, 'Boids: ${app.boids.len:05}. Esc to exit. Left click creates more boids. Right click attracts near boids.',
+		app.gg.fps.text_config)
 }
 
 fn (mut app App) draw_right_clicks() {
