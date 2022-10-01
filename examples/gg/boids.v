@@ -67,10 +67,7 @@ fn (mut app App) click(x f32, y f32, btn gg.MouseButton, _ voidptr) {
 				return
 			}
 			for _ in 0 .. left_click_new_boids {
-				mut boid := new_boid()
-				boid.position.x = x
-				boid.position.y = y
-				app.boids << boid
+				app.boids << new_boid_at(x, y)
 			}
 		}
 		.right {
@@ -93,8 +90,26 @@ fn (mut app App) click(x f32, y f32, btn gg.MouseButton, _ voidptr) {
 
 fn (mut app App) key_down(key gg.KeyCode, modifier gg.Modifier, x voidptr) {
 	match key {
-		.escape { app.gg.quit() }
-		.c { app.boids = [] }
+		.escape {
+			app.gg.quit()
+		}
+		.c {
+			app.boids = []
+		}
+		.left_bracket {
+			app.increase_boid_size(-1)
+		}
+		.right_bracket {
+			app.increase_boid_size(1)
+		}
+		.period {
+			app.boids << new_boid_at(app.gg.mouse_pos_x, app.gg.mouse_pos_y)
+		}
+		.m {
+			for app.boids.len < max_boids {
+				app.boids << new_boid_at(app.gg.mouse_pos_x, app.gg.mouse_pos_y)
+			}
+		}
 		else {}
 	}
 }
@@ -139,11 +154,12 @@ fn make_wave() []f32 {
 fn (mut app App) draw_boids() {
 	for idx, mut b in app.boids {
 		f := sinf_wave[(int(app.gg.frame) + idx) % period]
-		r := b.size + f
+		f2 := f * 2
+		r := b.size + f / 2
 		sgl.push_matrix()
 		sgl.translate(b.position.x, b.position.y, 0)
 		sgl.rotate(b.angle, 0, 0, 1.0)
-		app.gg.draw_triangle_filled(0, -r * 2, -r, r * 2, r, r * 2, b.color)
+		app.gg.draw_triangle_filled(0, -r * 2, -r - f2, r * 2, r + f2, r * 2, b.color)
 		sgl.pop_matrix()
 	}
 }
@@ -208,6 +224,18 @@ fn (mut app App) wrap_around_borders() {
 	}
 }
 
+fn (mut app App) increase_boid_size(step f32) {
+	for mut b in app.boids {
+		b.size += step
+		if b.size < 0 {
+			b.size = 0
+		}
+		if b.size > 30 {
+			b.size = 30
+		}
+	}
+}
+
 //
 
 struct Vector2D {
@@ -266,6 +294,13 @@ fn new_boid() Boid {
 		angle: rand.f32() * math.tau
 		color: gx.rgb(rcolor(), rcolor(), rcolor())
 	}
+}
+
+fn new_boid_at(x f32, y f32) Boid {
+	mut boid := new_boid()
+	boid.position.x = x
+	boid.position.y = y
+	return boid
 }
 
 fn f32_around_zero() f32 {
