@@ -56,9 +56,8 @@ fn (mut app App) init_boids() {
 
 struct Click {
 mut:
-	x f32
-	y f32
-	r f32
+	position Vector2D
+	r        f32
 }
 
 fn (mut app App) click(x f32, y f32, btn gg.MouseButton, _ voidptr) {
@@ -69,8 +68,8 @@ fn (mut app App) click(x f32, y f32, btn gg.MouseButton, _ voidptr) {
 			}
 			for _ in 0 .. left_click_new_boids {
 				mut boid := new_boid()
-				boid.x = x
-				boid.y = y
+				boid.position.x = x
+				boid.position.y = y
 				app.boids << boid
 			}
 		}
@@ -79,18 +78,15 @@ fn (mut app App) click(x f32, y f32, btn gg.MouseButton, _ voidptr) {
 		}
 		.right {
 			c := Click{
-				x: x
-				y: y
+				position: Vector2D{x, y}
 				r: right_click_radius
 			}
 			app.right_clicks << c
 			for mut b in app.boids {
-				dx := c.x - b.x
-				dy := c.y - b.y
-				d := math.pow(math.pow(dx, 2) + math.pow(dy, 2), 0.5)
-				if d != 0 && d < c.r {
-					b.ax = f32(dx / d)
-					b.ay = f32(dy / d)
+				d := c.position - b.position
+				distance := d.length()
+				if distance != 0 && distance < c.r {
+					b.acceleration = d.divide_by(distance)
 				}
 			}
 		}
@@ -119,7 +115,7 @@ fn (mut app App) draw_top_banner() {
 
 fn (mut app App) draw_right_clicks() {
 	for c in app.right_clicks {
-		app.gg.draw_circle_filled(c.x, c.y, c.r, right_click_color)
+		app.gg.draw_circle_filled(c.position.x, c.position.y, c.r, right_click_color)
 	}
 }
 
@@ -138,9 +134,9 @@ fn make_wave() []f32 {
 fn (mut app App) draw_boids() {
 	for idx, mut b in app.boids {
 		f := sinf_wave[(int(app.gg.frame) + idx) % period]
-		r := b.r + f
+		r := b.size + f
 		sgl.push_matrix()
-		sgl.translate(b.x, b.y, 0)
+		sgl.translate(b.position.x, b.position.y, 0)
 		sgl.rotate(b.angle, 0, 0, 1.0)
 		app.gg.draw_triangle_filled(0, -r * 2, -r, r * 2, r, r * 2, b.color)
 		sgl.pop_matrix()
@@ -167,74 +163,101 @@ fn (mut app App) attract_to_right_click_zones() {
 
 fn (mut app App) orient_towards_velocity_vector() {
 	for mut b in app.boids {
-		b.angle = f32(math.atan2(b.vy, b.vx)) + math.pi_2
+		b.angle = f32(math.atan2(b.velocity.y, b.velocity.x)) + math.pi_2
 	}
 }
 
 fn (mut app App) move() {
 	for mut b in app.boids {
-		b.vx += b.ax
-		b.vy += b.ay
-		//
-		b.x += b.vx
-		b.y += b.vy
+		b.velocity += b.acceleration
+		b.position += b.velocity
 	}
 }
 
 fn (mut app App) limit_speeds() {
 	for mut b in app.boids {
-		if b.ax == 0 && b.ay == 0 {
+		if b.acceleration.is_zero() {
 			continue
 		}
-		if b.vx * b.vx + b.vy * b.vy > max_speed2 {
-			t := math.atan2(b.vy, b.vx)
-			b.vx = f32(math.cos(t) * max_speed)
-			b.vy = f32(math.sin(t) * max_speed)
-			b.ax = 0
-			b.ay = 0
+		if b.velocity.magnitude2() > max_speed2 {
+			b.velocity = b.velocity.limit_to(max_speed)
+			b.acceleration = Vector2D{0, 0}
 		}
 	}
 }
 
 fn (mut app App) wrap_around_borders() {
 	for mut b in app.boids {
-		if b.x < -b.r {
-			b.x = app.width + b.r
+		if b.position.x < -b.size {
+			b.position.x = app.width + b.size
 		}
-		if b.y < -b.r {
-			b.y = app.height + b.r
+		if b.position.y < -b.size {
+			b.position.y = app.height + b.size
 		}
-		if b.x > app.width + b.r {
-			b.x = -b.r
+		if b.position.x > app.width + b.size {
+			b.position.x = -b.size
 		}
-		if b.y > app.height + b.r {
-			b.y = -b.r
+		if b.position.y > app.height + b.size {
+			b.position.y = -b.size
 		}
 	}
 }
 
+//
+
+struct Vector2D {
+mut:
+	x f32
+	y f32
+}
+
+fn (a Vector2D) is_zero() bool {
+	return a.x == 0 && a.y == 0
+}
+
+fn (a Vector2D) magnitude2() f32 {
+	return a.x * a.x + a.y * a.y
+}
+
+fn (a Vector2D) limit_to(max_speed f32) Vector2D {
+	t := f32(math.atan2(a.y, a.x))
+	return Vector2D{math.cosf(t) * max_speed, math.sinf(t) * max_speed}
+}
+
+fn (a Vector2D) + (b Vector2D) Vector2D {
+	return Vector2D{a.x + b.x, a.y + b.y}
+}
+
+fn (a Vector2D) - (b Vector2D) Vector2D {
+	return Vector2D{a.x - b.x, a.y - b.y}
+}
+
+fn (a Vector2D) length() f32 {
+	return math.sqrtf(math.powf(a.x, 2) + math.powf(a.y, 2))
+}
+
+fn (a Vector2D) divide_by(piece f32) Vector2D {
+	return Vector2D{f32(a.x / piece), f32(a.y / piece)}
+}
+
+//
+
 struct Boid {
 mut:
-	x     f32 // position
-	y     f32
-	vx    f32 // velocity
-	vy    f32
-	ax    f32 // acceleration
-	ay    f32
-	r     f32      = 6.0 // size
-	angle f32      = 0.0
-	color gx.Color = gx.blue
+	position     Vector2D
+	velocity     Vector2D
+	acceleration Vector2D
+	size         f32 = 6.0
+	angle        f32 = 0.0
+	color        gx.Color
 }
 
 fn new_boid() Boid {
 	return Boid{
-		x: rand.f32() * (win_width - 20) + 10
-		y: rand.f32() * (win_height - 20) + 10
-		r: rand.f32() * 2 + 4
-		vx: f32_around_zero()
-		vy: f32_around_zero()
-		ax: 0.02 * f32_around_zero()
-		ay: 0.02 * f32_around_zero()
+		position: Vector2D{rand.f32() * (win_width - 20) + 10, rand.f32() * (win_height - 20) + 10}
+		velocity: Vector2D{f32_around_zero(), f32_around_zero()}
+		acceleration: Vector2D{0.02 * f32_around_zero(), 0.02 * f32_around_zero()}
+		size: rand.f32() * 2 + 4
 		angle: rand.f32() * math.tau
 		color: gx.rgb(rcolor(), rcolor(), rcolor())
 	}
