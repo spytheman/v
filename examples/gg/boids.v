@@ -73,9 +73,6 @@ fn (mut app App) click(x f32, y f32, btn gg.MouseButton, _ voidptr) {
 				app.boids << boid
 			}
 		}
-		.middle {
-			app.boids = []
-		}
 		.right {
 			c := Click{
 				position: Vector2D{x, y}
@@ -94,11 +91,19 @@ fn (mut app App) click(x f32, y f32, btn gg.MouseButton, _ voidptr) {
 	}
 }
 
+fn (mut app App) key_down(key gg.KeyCode, modifier gg.Modifier, x voidptr) {
+	match key {
+		.escape { app.gg.quit() }
+		.c { app.boids = [] }
+		else {}
+	}
+}
+
 fn (mut app App) frame() {
 	app.width = sapp.width()
 	app.height = sapp.height()
 	app.update()
-
+	//
 	app.gg.begin()
 	app.draw_boids()
 	app.draw_right_clicks()
@@ -269,11 +274,4 @@ fn f32_around_zero() f32 {
 
 fn rcolor() u8 {
 	return u8(127 + 127 * rand.f32())
-}
-
-fn (mut app App) key_down(key gg.KeyCode, modifier gg.Modifier, x voidptr) {
-	match key {
-		.escape { app.gg.quit() }
-		else {}
-	}
 }
