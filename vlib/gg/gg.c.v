@@ -84,7 +84,7 @@ pub:
 	// wait_events       bool // set this to true for UIs, to save power
 	fullscreen    bool
 	scale         f32 = 1.0
-	sample_count  int
+	sample_count  int // whether to use MSAA (Multisample anti-aliasing); `sample_count: 2` usually produces good enough/not jagged edges
 	swap_interval int = 1 // 1 = 60fps, 2 = 30fps etc. The preferred swap interval (ignored on some platforms)
 	// ved needs this
 	// init_text bool
