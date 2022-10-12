@@ -6,6 +6,7 @@ import sokol.sgl
 import sokol.sapp
 import rand
 import math
+import time
 
 const (
 	start_boids          = 100
@@ -19,6 +20,25 @@ const (
 	right_click_color    = gx.rgba(250, 250, 250, 64)
 	right_click_radius   = 200
 )
+
+struct ValueWindow {
+mut:
+	idx    int
+	values [32]int
+}
+
+fn (mut v ValueWindow) store(value int) {
+	v.idx = (v.idx + 1) & 31
+	v.values[v.idx] = value
+}
+
+fn (mut v ValueWindow) average() int {
+	mut res := 0.0
+	for x in v.values {
+		res += x
+	}
+	return int(res / 32)
+}
 
 fn main() {
 	mut app := &App{}
@@ -46,6 +66,8 @@ mut:
 	gg           &gg.Context = unsafe { nil }
 	width        f32
 	height       f32
+	updates      ValueWindow
+	draws        ValueWindow
 }
 
 fn (mut app App) init_boids() {
@@ -117,18 +139,27 @@ fn (mut app App) key_down(key gg.KeyCode, modifier gg.Modifier, x voidptr) {
 fn (mut app App) frame() {
 	app.width = sapp.width()
 	app.height = sapp.height()
+	usw := time.new_stopwatch()
 	app.update()
+	app.updates.store(int(usw.elapsed().microseconds()))
 	//
+	dsw := time.new_stopwatch()
 	app.gg.begin()
 	app.draw_boids()
 	app.draw_right_clicks()
 	app.draw_top_banner()
 	app.gg.end()
+	app.draws.store(int(dsw.elapsed().microseconds()))
 }
 
 fn (mut app App) draw_top_banner() {
 	app.gg.draw_rect_filled(24, 0, 800, 20, app.gg.fps.background_color)
 	app.gg.draw_text(410, 10, 'Boids: ${app.boids.len:05}. Esc to exit. Left click creates more boids. Right click attracts near boids.',
+		app.gg.fps.text_config)
+	app.gg.draw_rect_filled(int(app.width - 280), int(app.height - 50), 200, 40, app.gg.fps.background_color)
+	app.gg.draw_text(int(app.width - 190), int(app.height - 40), 'moving: ${app.updates.average():5}us',
+		app.gg.fps.text_config)
+	app.gg.draw_text(int(app.width - 190), int(app.height - 20), 'drawing: ${app.draws.average():5}us',
 		app.gg.fps.text_config)
 }
 
