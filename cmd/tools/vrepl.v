@@ -387,7 +387,7 @@ fn run_repl(workdir string, vrepl_prefix string) int {
 		if r.line.starts_with('print') {
 			source_code := r.current_source_code(false, false) + '\n$r.line\n'
 			os.write_file(temp_file, source_code) or { panic(err) }
-			s := repl_run_vfile(temp_file) or { return 1 }
+			s := repl_run_vfile(temp_file) or { continue }
 			if s.output.len > r.last_output.len {
 				cur_line_output := s.output[r.last_output.len..]
 				print_output(cur_line_output)
@@ -441,7 +441,7 @@ fn run_repl(workdir string, vrepl_prefix string) int {
 				temp_line = 'println($r.line)'
 				source_code := r.current_source_code(false, false) + '\n$temp_line\n'
 				os.write_file(temp_file, source_code) or { panic(err) }
-				s := repl_run_vfile(temp_file) or { return 1 }
+				s := repl_run_vfile(temp_file) or { continue }
 				if s.output.len > r.last_output.len {
 					cur_line_output := s.output[r.last_output.len..]
 					print_output(cur_line_output)
@@ -466,7 +466,11 @@ fn run_repl(workdir string, vrepl_prefix string) int {
 				temp_source_code = r.current_source_code(true, false) + '\n$temp_line\n'
 			}
 			os.write_file(temp_file, temp_source_code) or { panic(err) }
-			s := repl_run_vfile(temp_file) or { return 1 }
+			s := repl_run_vfile(temp_file) or {
+				println('V repl error: $err')
+				os.flush()
+				continue
+			}
 			if s.exit_code == 0 {
 				for r.temp_lines.len > 0 {
 					if !r.temp_lines[0].starts_with('print') {
@@ -546,11 +550,6 @@ fn main() {
 	exit(run_repl(replfolder, replprefix))
 }
 
-fn rerror(s string) {
-	println('V repl error: $s')
-	os.flush()
-}
-
 fn (mut r Repl) get_one_line(prompt string) ?string {
 	if is_stdin_a_pipe {
 		iline := os.get_raw_line()
@@ -581,9 +580,8 @@ fn repl_run_vfile(file string) ?os.Result {
 		eprintln('>> repl_run_vfile file: $file')
 	}
 	s := os.execute('${os.quoted_path(vexe)} -repl run ${os.quoted_path(file)}')
-	if s.exit_code < 0 {
-		rerror(s.output)
-		return error(s.output)
+	if s.exit_code != 0 {
+		return error_with_code(s.output, s.exit_code)
 	}
 	return s
 }
