@@ -32,17 +32,3 @@ jobs:
         run: ./v symlink
       - name: Build vpm
         run: git clone --depth 1 https://github.com/vlang/vpm && cd vpm && ../v . && cd ..
-      - name: Verify `v test` works
-        run: |
-          echo $VFLAGS
-          ./v cmd/tools/test_if_v_test_system_works.v
-          ./cmd/tools/test_if_v_test_system_works
-      - name: All code is formatted
-        run: VJOBS=1 ./v test-cleancode
-      - name: Test ved
-        run: |
-          git clone --depth 1 https://github.com/vlang/ved
-          cd ved && ../v -o ved .
-          ../v -autofree .
-          ../v -prod .
-          cd ..
