@@ -18,24 +18,23 @@ jobs:
     timeout-minutes: 121
     env:
       VFLAGS: -cc clang
-      PKG_CONFIG_PATH: /usr/local/opt/openssl@3/lib/pkgconfig:/opt/homebrew/opt/openssl@3/lib/pkgconfig:/opt/homebrew/lib/pkgconfig
+      PKG_CONFIG_PATH: /usr/local/opt/pkgconfig:/usr/local/opt/openssl@3/lib/pkgconfig:/opt/homebrew/lib/pkgconfig:/opt/homebrew/opt/openssl@3/lib/pkgconfig
     steps:
       - uses: actions/checkout@v2
       - name: Install dependencies
         run: |
-          brew install libpq postgresql openssl
-          export LIBRARY_PATH="$LIBRARY_PATH:/usr/local/opt/openssl/lib/"
           echo "PKG_CONFIG_PATH is '$PKG_CONFIG_PATH'"
+          brew reinstall libpq openssl
+          export LIBRARY_PATH="$LIBRARY_PATH:/usr/local/opt/openssl/lib/"
+          echo "LIBRARY_PATH is '$LIBRARY_PATH'"
       - name: Build V
         run: make
       - name: Test symlink
         run: ./v symlink
-      - name: Explore filesystem /usr/local/opt/
-        run: find /usr/local/opt/ || true
-      - name: Explore filesystem /opt/homebrew/
-        run: find /opt/homebrew/ || true
-      - name: Locate libpq-fe.h
-        run: locate libpq-fe.h || true
+      - name: Explore filesystem /usr/local
+        run: find /usr/local || true
+      - name: Explore filesystem /usr/include
+        run: find /usr/include || true
       - name: brew list
         run: brew list || true
       - name: Build vpm

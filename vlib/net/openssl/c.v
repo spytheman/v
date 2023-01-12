@@ -20,6 +20,9 @@ $if $pkgconfig('openssl') {
 // Brew
 #flag darwin -I/usr/local/opt/openssl/include
 #flag darwin -L/usr/local/opt/openssl/lib
+// brew on macos-12 (ci runner)
+#flag darwin -I/usr/local/opt/openssl@3/include
+#flag darwin -L/usr/local/opt/openssl@3/lib
 // Brew arm64
 #flag darwin -I /opt/homebrew/opt/openssl/include
 #flag darwin -L /opt/homebrew/opt/openssl/lib
