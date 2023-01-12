@@ -21,9 +21,6 @@ jobs:
       PKG_CONFIG_PATH: /usr/local/opt/openssl@3/lib/pkgconfig:/opt/homebrew/opt/openssl@3/lib/pkgconfig:/opt/homebrew/lib/pkgconfig
     steps:
       - uses: actions/checkout@v2
-      - uses: actions/setup-node@v1
-        with:
-          node-version: 12.x
       - name: Install dependencies
         run: |
           brew install libpq postgresql openssl
@@ -33,6 +30,8 @@ jobs:
         run: make
       - name: Test symlink
         run: ./v symlink
+      - name: Build vpm
+        run: git clone --depth 1 https://github.com/vlang/vpm && cd vpm && ../v . && cd ..
       - name: Verify `v test` works
         run: |
           echo $VFLAGS
@@ -47,5 +46,3 @@ jobs:
           ../v -autofree .
           ../v -prod .
           cd ..
-      - name: Build vpm
-        run: git clone --depth 1 https://github.com/vlang/vpm && cd vpm && ../v . && cd ..
