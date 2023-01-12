@@ -34,5 +34,9 @@ jobs:
         run: find /usr/local/opt/ || true
       - name: Explore filesystem /opt/homebrew/
         run: find /opt/homebrew/ || true
+      - name: Locate libpq-fe.h
+        run: locate libpq-fe.h || true
+      - name: brew list
+        run: brew list || true
       - name: Build vpm
         run: git clone --depth 1 https://github.com/vlang/vpm && cd vpm && ../v . && cd ..
