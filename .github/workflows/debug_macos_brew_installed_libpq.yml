@@ -30,5 +30,9 @@ jobs:
         run: make
       - name: Test symlink
         run: ./v symlink
+      - name: Explore filesystem /usr/local/opt/
+        run: find /usr/local/opt/ || true
+      - name: Explore filesystem /opt/homebrew/
+        run: find /opt/homebrew/ || true
       - name: Build vpm
         run: git clone --depth 1 https://github.com/vlang/vpm && cd vpm && ../v . && cd ..
