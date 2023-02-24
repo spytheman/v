@@ -31,8 +31,8 @@ fn test_local_to_utc() {
 }
 
 fn test_utc_to_local() {
-	z := time.Time{}
-	assert z.is_local == false, 'simply constructing a time instance, should construct an UTC time'
+	mut z := time.zero
+	assert z.is_local == false, 'a zeroed time instance, should construct an UTC time'
 	l := z.utc_to_local()
 	dump(l)
 	o := time.offset()

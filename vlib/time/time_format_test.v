@@ -1,15 +1,7 @@
 import time
 
 const (
-	time_to_test = time.Time{
-		year: 1980
-		month: 7
-		day: 11
-		hour: 21
-		minute: 23
-		second: 42
-		unix: 332198622
-	}
+	time_to_test = time.parse_rfc3339('1980-07-11T21:23:42.000000Z')!
 )
 
 fn test_now_format() {

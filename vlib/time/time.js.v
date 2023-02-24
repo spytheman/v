@@ -1,7 +1,7 @@
 module time
 
 pub fn now() Time {
-	mut res := Time{}
+	mut res := zero
 	#let date = new Date()
 	#res.year.val = date.getFullYear()
 	#res.month.val = date.getMonth()
@@ -16,7 +16,7 @@ pub fn now() Time {
 }
 
 pub fn utc() Time {
-	mut res := Time{}
+	mut res := zero
 	#let date = new Date()
 	#res.year.val = date.getUTCFullYear()
 	#res.month.val = date.getUTCMonth()

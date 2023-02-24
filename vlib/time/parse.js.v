@@ -5,7 +5,7 @@ module time
 // TODO(playX): JS Date expects iso8061 format of strings and other formats
 // are implementation dependent, we probably want to implement parsing in JS.
 pub fn parse(s string) Time {
-	mut res := Time{}
+	mut res := zero
 	#let date = new Date(s.str)
 	#res.year.val = date.getFullYear()
 	#res.month.val = date.getMonth()

@@ -63,7 +63,8 @@ pub fn utc() Time {
 }
 
 // new_time returns a time struct with calculated Unix time.
-pub fn new_time(t Time) Time {
+// Use time.parse or time.parse_rfc3339 if you need to construct your own custom time.Time values.
+fn new_time(t Time) Time {
 	if t.unix != 0 {
 		return t
 	}

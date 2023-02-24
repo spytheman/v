@@ -343,7 +343,9 @@ fn test_orm() {
 	assert data.len == 1
 	assert tnow.unix == data[0].create.unix
 
-	mod := Module{}
+	mod := Module{
+		created: time.zero
+	}
 
 	sql db {
 		insert mod into Module

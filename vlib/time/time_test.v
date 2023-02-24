@@ -1,18 +1,7 @@
 import time
 import math
 
-const (
-	time_to_test = time.Time{
-		year: 1980
-		month: 7
-		day: 11
-		hour: 21
-		minute: 23
-		second: 42
-		microsecond: 123456
-		unix: 332198622
-	}
-)
+const time_to_test = time.parse_rfc3339('1980-07-11T21:23:42.123456Z')!
 
 fn test_is_leap_year() {
 	// 1996 % 4 = 0 and 1996 % 100 > 0
@@ -112,15 +101,7 @@ fn test_smonth() {
 		'Dec']
 	for i, name in month_names {
 		month_num := i + 1
-		t := time.Time{
-			year: 1980
-			month: month_num
-			day: 1
-			hour: 0
-			minute: 0
-			second: 0
-			unix: 0
-		}
+		t := time.parse_rfc3339('1980-${month_num:02d}-01T00:00:00.000000Z')!
 		assert t.smonth() == name
 	}
 }
@@ -129,15 +110,7 @@ fn test_day_of_week() {
 	for i in 0 .. 7 {
 		day_of_week := i + 1
 		// 2 Dec 2019 is Monday
-		t := time.Time{
-			year: 2019
-			month: 12
-			day: 2 + i
-			hour: 0
-			minute: 0
-			second: 0
-			unix: 0
-		}
+		t := time.parse_rfc3339('2019-12-${2 + i:02d}T00:00:00.000000Z')!
 		assert day_of_week == t.day_of_week()
 	}
 }
@@ -146,15 +119,7 @@ fn test_weekday_str() {
 	day_names := ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 	for i, name in day_names {
 		// 2 Dec 2019 is Monday
-		t := time.Time{
-			year: 2019
-			month: 12
-			day: 2 + i
-			hour: 0
-			minute: 0
-			second: 0
-			unix: 0
-		}
+		t := time.parse_rfc3339('2019-12-${2 + i:2d}T00:00:00.000000Z')!
 		assert t.weekday_str() == name
 	}
 }

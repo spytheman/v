@@ -40,5 +40,6 @@ pub fn date_from_days_after_unix_epoch(days int) Time {
 		year: year
 		month: month
 		day: day
+		unix: 0
 	}
 }

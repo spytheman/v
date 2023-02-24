@@ -12,9 +12,9 @@ pub fn parse_rfc3339(s string) !Time {
 	}
 	// Normalize the input before parsing. Good since iso8601 doesn't permit lower case `t` and `z`.
 	sn := s.replace_each(['t', 'T', 'z', 'Z'])
-	mut t := parse_iso8601(sn) or { Time{} }
+	mut t := parse_iso8601(sn) or { zero }
 	// If parse_iso8601 DID NOT result in default values (i.e. date was parsed correctly)
-	if t != Time{} {
+	if t != zero {
 		return t
 	}
 
@@ -28,6 +28,7 @@ pub fn parse_rfc3339(s string) !Time {
 			year: year
 			month: month
 			day: day
+			unix: 0
 		})
 		return t
 	}
@@ -35,12 +36,13 @@ pub fn parse_rfc3339(s string) !Time {
 	if !parts[0].contains('-') && parts[0].contains(':') {
 		mut hour_, mut minute_, mut second_, mut microsecond_, mut unix_offset, mut is_local_time := 0, 0, 0, 0, i64(0), true
 		hour_, minute_, second_, microsecond_, unix_offset, is_local_time = parse_iso8601_time(parts[0])!
-		t = new_time(Time{
+		t = new_time(
+			unix: 0
 			hour: hour_
 			minute: minute_
 			second: second_
 			microsecond: microsecond_
-		})
+		)
 		if is_local_time {
 			return t // Time is already local time
 		}
@@ -102,14 +104,15 @@ pub fn parse(s string) !Time {
 	if isecond > 59 || isecond < 0 {
 		return error_invalid_time(8)
 	}
-	res := new_time(Time{
+	res := new_time(
 		year: iyear
 		month: imonth
 		day: iday
 		hour: ihour
 		minute: iminute
 		second: isecond
-	})
+		unix: 0
+	)
 	return res
 }
 
@@ -140,6 +143,7 @@ pub fn parse_iso8601(s string) !Time {
 		minute: minute_
 		second: second_
 		microsecond: microsecond_
+		unix: 0
 	)
 	if is_local_time {
 		return t // Time already local time

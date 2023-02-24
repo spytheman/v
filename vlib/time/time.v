@@ -47,8 +47,12 @@ pub:
 	minute      int
 	second      int
 	microsecond int
-	unix        i64
+	unix        i64  [required]
 	is_local    bool // used to make time.now().local().local() == time.now().local()
+}
+
+pub const zero = Time{
+	unix: 0
 }
 
 // FormatDelimiter contains different time formats.

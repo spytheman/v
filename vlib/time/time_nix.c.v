@@ -96,12 +96,12 @@ fn linux_utc() Time {
 
 // dummy to compile with all compilers
 pub fn win_now() Time {
-	return Time{}
+	return zero
 }
 
 // dummy to compile with all compilers
 pub fn win_utc() Time {
-	return Time{}
+	return zero
 }
 
 // dummy to compile with all compilers
