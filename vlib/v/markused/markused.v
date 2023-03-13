@@ -278,7 +278,7 @@ pub fn mark_used(mut table ast.Table, pref_ &pref.Preferences, ast_files []&ast.
 				for typ in interface_types {
 					interface_implementation_method_name := '${int(typ)}.${method.name}'
 					$if trace_skip_unused_interface_methods ? {
-						eprintln('>> isym.name: ${isym.name} | interface_implementation_method_name: ${interface_implementation_method_name}')
+						eprintln('>> isym.name: ${isym.name:-12} | concrete: ${table.type_str(typ):-12s} | interface_implementation_method_name: ${interface_implementation_method_name:20} ')
 					}
 					all_fn_root_names << interface_implementation_method_name
 				}
