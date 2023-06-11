@@ -373,7 +373,7 @@ pub fn (t &Table) find_method_with_embeds(sym &TypeSymbol, method_name string) !
 }
 
 // find_enum_field_val finds the int value from the enum name and enum field
-pub fn (t &Table) find_enum_field_val(name string, field_ string) i64 {
+pub fn (t &Table) find_enum_field_val(name string, field_ string) ?i64 {
 	mut val := i64(0)
 	enum_decl := t.enum_decls[name]
 	mut enum_vals := []i64{}
@@ -383,6 +383,10 @@ pub fn (t &Table) find_enum_field_val(name string, field_ string) i64 {
 				if field.expr is IntegerLiteral {
 					val = field.expr.val.i64()
 					break
+				} else if field.expr is Ident {
+					if field.expr.language == .c {
+						return none
+					}
 				}
 			} else {
 				if enum_vals.len > 0 {

@@ -250,8 +250,11 @@ fn (mut c Checker) array_init(mut node ast.ArrayInit) ast.Type {
 						fixed_size = init_expr.expr.val.int()
 					}
 					ast.EnumVal {
-						fixed_size = c.table.find_enum_field_val(init_expr.expr.enum_name,
+						if found_fixed_size := c.table.find_enum_field_val(init_expr.expr.enum_name,
 							init_expr.expr.val)
+						{
+							fixed_size = found_fixed_size
+						}
 					}
 					else {}
 				}
