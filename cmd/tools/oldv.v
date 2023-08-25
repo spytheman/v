@@ -4,27 +4,42 @@ import scripting
 import vgit
 
 const (
-	tool_version     = '0.0.4'
+	tool_version     = '0.0.5'
 	tool_description = '  Checkout an old V and compile it as it was on specific commit.
 |     This tool is useful, when you want to discover when something broke.
 |     It is also useful, when you just want to experiment with an older historic V.
 |
 |     The VCOMMIT argument can be a git commitish like HEAD or master and so on.
 |     When oldv is used with git bisect, you probably want to give HEAD. For example:
+|       ## Setup:
 |          git bisect start
 |          git bisect bad
 |          git checkout known_good_commit
 |          git bisect good
-|              ## Now git will automatically checkout a middle commit between the bad and the good
+|              ## -> git will automatically checkout a middle commit between the bad and the good
+|
+|       ## Manual inspection loop:
 |          cmd/tools/oldv --bisect --command="run commands in oldv folder, to verify if the commit is good or bad"
 |              ## See what the result is, and either do: ...
 |          git bisect good
 |              ## ... or do:
 |          git bisect bad
-|              ## Now you just repeat the above steps, each time running oldv with the same command, then mark the result as good or bad,
+|              ## Now you just repeat the above steps in the manual inspection loop, each time running oldv
+|              ## with the same command, then mark the result as good or bad,
 |              ## until you find the commit, where the problem first occurred.
-|              ## When you finish, do not forget to do:
-|          git bisect reset'.strip_margin()
+|
+|       ## Automatic bisect mode, for finding regressions:
+|              ## The setup is the same as above, but you can do everything automatically, with a single command.
+|              ## To do that, you have to be sure, that you have a *reliable* script command, that can be run each time,
+|              ## without user intervention, and whose exit code is 0 when the commit is good, and non 0, when it is bad.
+|              ## In this case, to save you some interaction time, you can let the tool run the bisecting loop for you with:
+|          cmd/tools/oldv -a --command="run command that exits with 0 for good commits"
+|
+|       ## Cleanup:
+|              ## When you finish (in both manual or automatic mode), do not forget to:
+|          git bisect reset
+|       
+|'.strip_margin()
 )
 
 struct Context {
@@ -41,6 +56,13 @@ mut:
 	use_cache     bool   // use local cached copies for --vrepo and --vcrepo in
 	fresh_tcc     bool   // do use `make fresh_tcc`
 	is_bisect     bool   // bisect mode; usage: `cmd/tools/oldv -b -c './v run bug.v'`
+	auto_bisect   bool   // auto bisect mode; it requires that the command/script exits with 0 for good commits, and != 0 for bad ones.
+	// In this mode, oldv will run the script command repeatedly doing either `git bisect good` or `git bisect bad` based on its exit code.
+	// Oldv will stop, when the bisection ends. This mode is very convenient for finding regressions, where some code did compile at some
+	// known point in the past, but stopped to compile after that.
+	// usage: `cmd/tools/oldv -a -c './v run bug.v'`
+	auto_ibisect bool // auto inverted bisect mode; similar to auto_bisect, but if the script command exits with 0, do `git bisect bad`,
+	// and if it exits with !=0, do `git bisect good` (inverse mode).
 }
 
 fn (mut c Context) compile_oldv_if_needed() {
@@ -61,6 +83,30 @@ fn (mut c Context) compile_oldv_if_needed() {
 		// it is used to inform git bisect that the current commit leads to a build failure.
 		exit(125)
 	}
+}
+
+fn (mut c Context) auto_bisect_loop() {
+	os.setenv('VCOLORS', 'always', true)
+	oldv_exe := os.executable()
+	subcmd := "${os.quoted_path(oldv_exe)} --bisect --command '${c.cmd_to_run}'"
+	g_label := if c.auto_bisect { 'good' } else { 'bad' }
+	b_label := if c.auto_bisect { 'bad' } else { 'good' }
+	mut step := 0
+	for {
+		step++
+		println('>>>>> auto bisecting step: ${step:3} | command: ${subcmd}')
+		res := os.execute(subcmd)
+		println(res.output)
+		git_bisect_cmd := 'git bisect ' + if res.exit_code == 0 { g_label } else { b_label }
+		println('>>>>>>>>> git command: ${git_bisect_cmd}')
+		git_bisect_res := os.execute(git_bisect_cmd)
+		println(git_bisect_res.output)
+		if !git_bisect_res.output.starts_with('Bisecting:') {
+			break
+		}
+		println('----------------------------------------------------------------------------------')
+	}
+	exit(0)
 }
 
 const cache_oldv_folder = os.join_path(os.cache_dir(), 'oldv')
@@ -128,6 +174,11 @@ fn main() {
 	}
 	should_sync := fp.bool('cache-sync', `s`, false, 'Update the local cache')
 	context.is_bisect = fp.bool('bisect', `b`, false, 'Bisect mode. Use the current commit in the repo where oldv is.')
+	context.auto_bisect = fp.bool('auto-bisect', `a`, false, 'Auto bisect mode. Run the script command repeatedly, and do `git bisect good` for exit code 0, and `git bisect bad` for anything else. Implies -b. Useful for finding regressions, where something worked before, but it now does not.')
+	context.auto_ibisect = fp.bool('auto-ibisect', `i`, false, 'Auto inverse bisect mode. Run the script command repeatedly, and do `git bisect bad` for exit code 0, and `git bisect good` for anything else. Implies -b. Useful for finding when exactly something started working.')
+	if context.auto_bisect || context.auto_ibisect {
+		context.is_bisect = true
+	}
 	if !should_sync && !context.is_bisect {
 		fp.limit_free_args(1, 1)!
 	}
@@ -164,6 +215,9 @@ fn main() {
 	ecc := os.getenv('CC')
 	if ecc != '' {
 		context.cc = ecc
+	}
+	if context.auto_bisect || context.auto_ibisect {
+		context.auto_bisect_loop()
 	}
 	if context.cleanup {
 		scripting.rmrf(context.path_v)
