@@ -274,19 +274,19 @@ pub fn (ctx &Context) draw_rounded_rect_empty(x f32, y f32, w f32, h f32, radius
 		new_radius = w / 2
 	}
 	r := new_radius * ctx.scale
-	sx := x * ctx.scale // start point x
-	sy := y * ctx.scale
+	mut sx := x * ctx.scale // start point x
+	mut sy := y * ctx.scale
 	width := w * ctx.scale
 	height := h * ctx.scale
 	// circle center coordinates
-	ltx := sx + r
-	lty := sy + r
-	rtx := sx + width - r
-	rty := lty
-	rbx := rtx
-	rby := sy + height - r
-	lbx := ltx
-	lby := rby
+	mut ltx := sx + r
+	mut lty := sy + r
+	mut rtx := sx + width - r
+	mut rty := lty
+	mut rbx := rtx
+	mut rby := sy + height - r
+	mut lbx := ltx
+	mut lby := rby
 
 	mut rad := f32(0)
 	mut dx := f32(0)
@@ -333,6 +333,18 @@ pub fn (ctx &Context) draw_rounded_rect_empty(x f32, y f32, w f32, h f32, radius
 		}
 		sgl.end()
 	}
+
+//ltx += 0.5
+lty += 0.5
+
+//rtx += 0.5
+rty += 0.5
+
+//lbx += 0.5
+lby += 0.5
+
+sy += 0.5
+//sx += 0.5
 
 	// Currently don't use 'gg.draw_line()' directly, it will repeatedly execute '*ctx.scale'.
 	sgl.begin_lines()
