@@ -228,7 +228,7 @@ static inline int atomic_compare_exchange_strong_u64(unsigned long long* object,
                                                  unsigned long long desired)
 {
 	unsigned long long old = *expected;
-    *expected = InterlockedCompareExchange64(object, desired, old);
+    *expected = InterlockedCompareExchange64((voidptr)object, desired, old);
     return *expected == old;
 }
 
@@ -270,7 +270,7 @@ static inline int atomic_compare_exchange_strong_u32(unsigned* object, unsigned*
                                                  unsigned desired)
 {
 	unsigned old = *expected;
-    *expected = InterlockedCompareExchange(object, desired, old);
+    *expected = InterlockedCompareExchange((voidptr)(object), desired, old);
     return *expected == old;
 }
 
@@ -312,7 +312,7 @@ static inline int atomic_compare_exchange_strong_u16(unsigned short* object, uns
                                                  unsigned short desired)
 {
 	unsigned short old = *expected;
-    *expected = InterlockedCompareExchange16(object, desired, old);
+    *expected = InterlockedCompareExchange16((voidptr)object, desired, old);
     return *expected == old;
 }
 

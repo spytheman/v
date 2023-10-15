@@ -282,7 +282,7 @@ static INT connect_to_server(TlsContext *tls_ctx, LPWSTR host, INT port_number) 
 	int res = wsprintf(service_name, L"%d", port_number);
 
 	if(WSAConnectByNameW(Socket,connect_name, service_name, &local_address_length, 
-		&local_address, &remote_address_length, &remote_address, &tv, NULL) == SOCKET_ERROR) {
+		(voidptr)(&local_address), &remote_address_length, (voidptr)&remote_address, &tv, NULL) == SOCKET_ERROR) {
 		wprintf(L"Error %d connecting to \"%s\" (%s)\n", 
 			WSAGetLastError(),
 			connect_name, 
@@ -296,22 +296,22 @@ static INT connect_to_server(TlsContext *tls_ctx, LPWSTR host, INT port_number) 
 		DWORD cbMessage;
 
 		// Build message for proxy server
-		strcpy(pbMessage, "CONNECT ");
-		strcat(pbMessage, host);
-		strcat(pbMessage, ":");
-		_itoa(port_number, pbMessage + strlen(pbMessage), 10);
-		strcat(pbMessage, " HTTP/1.0\r\nUser-Agent: webclient\r\n\r\n");
-		cbMessage = (DWORD)strlen(pbMessage);
+		strcpy((char*)pbMessage, "CONNECT ");
+		strcat((char*)pbMessage, (char*)host);
+		strcat((char*)pbMessage, ":");
+		_itoa(port_number, (char*)pbMessage + strlen((char*)pbMessage), 10);
+		strcat((char*)pbMessage, " HTTP/1.0\r\nUser-Agent: webclient\r\n\r\n");
+		cbMessage = (DWORD)strlen((char*)pbMessage);
 
 		// Send message to proxy server
-		if(send(Socket, pbMessage, cbMessage, 0) == SOCKET_ERROR) {
+		if(send(Socket, (char*)pbMessage, cbMessage, 0) == SOCKET_ERROR) {
 			wprintf(L"Error %d sending message to proxy!\n", WSAGetLastError());
 			return WSAGetLastError();
 		}
 
 		// Receive message from proxy server
-		cbMessage = recv(Socket, pbMessage, 200, 0);
-		if(cbMessage == SOCKET_ERROR) {
+		cbMessage = recv(Socket, (char*)pbMessage, 200, 0);
+		if((u64)cbMessage == (u64)SOCKET_ERROR) {
 			wprintf(L"Error %d receiving message from proxy\n", WSAGetLastError());
 			return WSAGetLastError();
 		}
@@ -390,8 +390,8 @@ static LONG disconnect_from_server(TlsContext *tls_ctx) {
 	// Send the close notify message to the server.
 
 	if(pbMessage != NULL && cbMessage != 0) {
-		cbData = send(tls_ctx->socket, pbMessage, cbMessage, 0);
-		if(cbData == SOCKET_ERROR || cbData == 0) {
+		cbData = send(tls_ctx->socket, (char*)pbMessage, cbMessage, 0);
+		if(((u64)cbData == (u64)SOCKET_ERROR) || (cbData == 0)) {
 			Status = WSAGetLastError();
 			wprintf(L"Error %d sending close notify\n", Status);
 			goto cleanup;
@@ -465,8 +465,8 @@ static SECURITY_STATUS perform_client_handshake(TlsContext *tls_ctx, WCHAR *host
 	// Send response to server if there is one.
 	if(OutBuffers[0].cbBuffer != 0 && OutBuffers[0].pvBuffer != NULL)
 	{
-		cbData = send(tls_ctx->socket, OutBuffers[0].pvBuffer, OutBuffers[0].cbBuffer, 0);
-		if(cbData == SOCKET_ERROR || cbData == 0) {
+		cbData = send(tls_ctx->socket, (char*)OutBuffers[0].pvBuffer, OutBuffers[0].cbBuffer, 0);
+		if(((u64)cbData == (u64)SOCKET_ERROR) || (cbData == 0)) {
 			wprintf(L"Error %d sending data to server (1)\n", WSAGetLastError());
 			tls_ctx->sspi->FreeContextBuffer(OutBuffers[0].pvBuffer);
 			tls_ctx->sspi->DeleteSecurityContext(&tls_ctx->h_context);
@@ -534,10 +534,10 @@ static SECURITY_STATUS client_handshake_loop(TlsContext *tls_ctx, BOOL fDoInitia
 		if(0 == cbIoBuffer || scRet == SEC_E_INCOMPLETE_MESSAGE) {
 			if(fDoRead) {
 				cbData = recv(tls_ctx->socket, 
-							  IoBuffer + cbIoBuffer, 
+							  (char*)IoBuffer + (int)cbIoBuffer, 
 							  IO_BUFFER_SIZE - cbIoBuffer, 
 							  0);
-				if(cbData == SOCKET_ERROR) {
+				if((u64)cbData == (u64)SOCKET_ERROR) {
 					wprintf(L"Error %d reading data from server\n", WSAGetLastError());
 					scRet = SEC_E_INTERNAL_ERROR;
 					break;
@@ -596,13 +596,13 @@ static SECURITY_STATUS client_handshake_loop(TlsContext *tls_ctx, BOOL fDoInitia
 
 		if(scRet == SEC_E_OK ||
 		   scRet == SEC_I_CONTINUE_NEEDED ||
-		   FAILED(scRet) && (dwSSPIOutFlags & ISC_RET_EXTENDED_ERROR)) {
+		   (FAILED(scRet) && (dwSSPIOutFlags & ISC_RET_EXTENDED_ERROR)) ){
 			if(OutBuffers[0].cbBuffer != 0 && OutBuffers[0].pvBuffer != NULL) {
 				cbData = send(tls_ctx->socket,
-							  OutBuffers[0].pvBuffer,
+							  (char*)OutBuffers[0].pvBuffer,
 							  OutBuffers[0].cbBuffer,
 							  0);
-				if(cbData == SOCKET_ERROR || cbData == 0) {
+				if(((u64)cbData == (u64)SOCKET_ERROR) || (cbData == 0)) {
 					wprintf(L"Error %d sending data to server (2)\n", 
 						WSAGetLastError());
 					tls_ctx->sspi->FreeContextBuffer(OutBuffers[0].pvBuffer);
@@ -787,8 +787,8 @@ static SECURITY_STATUS https_make_request(TlsContext *tls_ctx, CHAR *req, DWORD 
 	}
 
 	// Send the encrypted data to the server.
-	cbData = send(tls_ctx->socket, pbIoBuffer, Buffers[0].cbBuffer + Buffers[1].cbBuffer + Buffers[2].cbBuffer, 0);
-	if(cbData == SOCKET_ERROR || cbData == 0) {
+	cbData = send(tls_ctx->socket, (char*)pbIoBuffer, Buffers[0].cbBuffer + Buffers[1].cbBuffer + Buffers[2].cbBuffer, 0);
+	if(((u64)cbData == (u64)SOCKET_ERROR) || (cbData == 0)) {
 		wprintf(L"Error %d sending data to server (3)\n",  WSAGetLastError());
 		tls_ctx->sspi->DeleteSecurityContext(&tls_ctx->h_context);
 		return SEC_E_INTERNAL_ERROR;
@@ -800,8 +800,8 @@ static SECURITY_STATUS https_make_request(TlsContext *tls_ctx, CHAR *req, DWORD 
 	while(TRUE){
 		// Read some data.
 		if(0 == cbIoBuffer || scRet == SEC_E_INCOMPLETE_MESSAGE) {
-			cbData = recv(tls_ctx->socket, pbIoBuffer + cbIoBuffer, cbIoBufferLength - cbIoBuffer, 0);
-			if(cbData == SOCKET_ERROR) {
+			cbData = recv(tls_ctx->socket, (char*)pbIoBuffer + (u64)cbIoBuffer, cbIoBufferLength - cbIoBuffer, 0);
+			if((u64)cbData == (u64)SOCKET_ERROR) {
 				wprintf(L"Error %d reading data from server\n", WSAGetLastError());
 				scRet = SEC_E_INTERNAL_ERROR;
 				break;
