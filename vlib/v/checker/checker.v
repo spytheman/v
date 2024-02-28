@@ -2045,6 +2045,7 @@ fn (mut c Checker) stmt(mut node ast.Stmt) {
 				c.table.cur_fn.defer_stmts << unsafe { &node }
 			}
 			if c.locked_names.len != 0 || c.rlocked_names.len != 0 {
+				// TODO: allow defers, whose scope is entirely within the locks
 				c.error('defers are not allowed in lock statements', node.pos)
 			}
 			for i, ident in node.defer_vars {

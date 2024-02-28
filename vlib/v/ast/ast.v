@@ -1427,6 +1427,8 @@ pub mut:
 	defer_vars []Ident
 	ifdef      string
 	idx_in_fn  int = -1 // index in FnDecl.defer_stmts
+	is_scoped  bool // true: `defer {}`, will be executed at the end of the current scope; false: `defer fn {}` - the older one, will be executed at the end of the function
+	scope      &Scope = unsafe { nil }
 }
 
 // `(3+4)`

@@ -1105,6 +1105,11 @@ fn (mut p Parser) stmt(is_top_level bool) ast.Stmt {
 				p.next()
 				spos := p.tok.pos()
 				p.inside_defer = true
+				mut is_scoped := true
+				if p.tok.kind == .key_fn {
+					is_scoped = false
+					p.next()
+				}
 				p.defer_vars = []ast.Ident{}
 				stmts := p.parse_block()
 				p.inside_defer = false
@@ -1112,6 +1117,8 @@ fn (mut p Parser) stmt(is_top_level bool) ast.Stmt {
 					stmts: stmts
 					defer_vars: p.defer_vars.clone()
 					pos: spos.extend_with_last_line(p.tok.pos(), p.prev_tok.line_nr)
+					is_scoped: is_scoped
+					scope: p.scope
 				}
 			}
 		}

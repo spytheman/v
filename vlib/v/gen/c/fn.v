@@ -484,7 +484,7 @@ fn (mut g Gen) gen_fn_decl(node &ast.FnDecl, skip bool) {
 	// clear g.fn_mut_arg_names
 
 	if !node.has_return {
-		g.write_defer_stmts_when_needed()
+		g.write_fn_defer_stmts_when_needed()
 	}
 	if node.is_anon {
 		g.defer_stmts = prev_defer_stmts
@@ -676,11 +676,11 @@ fn (g &Gen) defer_flag_var(stmt &ast.DeferStmt) string {
 	return '${g.last_fn_c_name}_defer_${stmt.idx_in_fn}'
 }
 
-fn (mut g Gen) write_defer_stmts_when_needed() {
+fn (mut g Gen) write_fn_defer_stmts_when_needed() {
 	// unlock all mutexes, in case we are in a lock statement. defers are not allowed in lock statements
 	g.unlock_locks()
 	if g.defer_stmts.len > 0 {
-		g.write_defer_stmts()
+		g.write_fn_defer_stmts()
 	}
 	if g.defer_profile_code.len > 0 {
 		g.writeln('')

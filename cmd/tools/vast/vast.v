@@ -792,7 +792,9 @@ fn (t Tree) defer_stmt(node ast.DeferStmt) &Node {
 	obj.add_terse('stmts', t.array_node_stmt(node.stmts))
 	obj.add_terse('defer_vars', t.array_node_ident(node.defer_vars))
 	obj.add_terse('ifdef', t.string_node(node.ifdef))
-	obj.add('idx_in_fn', t.number_node(node.idx_in_fn))
+	obj.add_terse('idx_in_fn', t.number_node(node.idx_in_fn))
+	obj.add_terse('is_scoped', t.bool_node(node.is_scoped))
+	obj.add_terse('scope', t.scope(node.scope))
 	obj.add('pos', t.pos(node.pos))
 	return obj
 }
