@@ -41,6 +41,7 @@ fn (mut g Gen) for_c_stmt(node ast.ForCStmt) {
 		g.is_vlines_enabled = true
 		g.inside_for_c_stmt = false
 		g.stmts(node.stmts)
+		g.on_leave_current_scope(.loops, node.pos)
 		if node.label.len > 0 {
 			g.writeln('${node.label}__continue: {}')
 		}
@@ -99,6 +100,7 @@ fn (mut g Gen) for_c_stmt(node ast.ForCStmt) {
 		g.is_vlines_enabled = true
 		g.inside_for_c_stmt = false
 		g.stmts(node.stmts)
+		g.on_leave_current_scope(.loops, node.pos)
 		if node.label.len > 0 {
 			g.writeln('${node.label}__continue: {}')
 		}
@@ -127,6 +129,7 @@ fn (mut g Gen) for_stmt(node ast.ForStmt) {
 	}
 	g.is_vlines_enabled = true
 	g.stmts(node.stmts)
+	g.on_leave_current_scope(.loops, node.pos)
 	if node.label.len > 0 {
 		g.writeln('\t${node.label}__continue: {}')
 	}
@@ -480,6 +483,7 @@ fn (mut g Gen) for_in_stmt(node_ ast.ForInStmt) {
 		g.error('for in: unhandled symbol `${node.cond}` of type `${typ_str}`', node.pos)
 	}
 	g.stmts(node.stmts)
+	g.on_leave_current_scope(.loops, node.pos)
 	if node.label.len > 0 {
 		g.writeln('\t${node.label}__continue: {}')
 	}

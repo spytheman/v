@@ -986,7 +986,11 @@ pub fn (mut f Fmt) const_decl(node ast.ConstDecl) {
 }
 
 pub fn (mut f Fmt) defer_stmt(node ast.DeferStmt) {
-	f.write('defer {')
+	if node.is_scoped {
+		f.write('defer scoped {')
+	} else {
+		f.write('defer {')
+	}
 	if node.stmts.len > 0 || node.pos.line_nr < node.pos.last_line {
 		f.writeln('')
 		f.stmts(node.stmts)

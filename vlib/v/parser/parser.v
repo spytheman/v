@@ -1105,9 +1105,13 @@ fn (mut p Parser) stmt(is_top_level bool) ast.Stmt {
 				p.next()
 				spos := p.tok.pos()
 				p.inside_defer = true
-				mut is_scoped := true
+				mut is_scoped := false
 				if p.tok.kind == .key_fn {
 					is_scoped = false
+					p.next()
+				}
+				if p.tok.kind == .name && p.tok.lit == 'scoped' {
+					is_scoped = true
 					p.next()
 				}
 				p.defer_vars = []ast.Ident{}

@@ -9,6 +9,7 @@ pub mut:
 	// mut:
 	objects              map[string]ScopeObject
 	struct_fields        map[string]ScopeStructField
+	defer_stmts          []&DeferStmt
 	parent               &Scope = unsafe { nil }
 	detached_from_parent bool
 	children             []&Scope
@@ -24,6 +25,7 @@ pub fn (s &Scope) free() {
 	unsafe {
 		s.objects.free()
 		s.struct_fields.free()
+		s.defer_stmts.free()
 		for child in s.children {
 			child.free()
 		}
@@ -145,6 +147,10 @@ pub fn (mut s Scope) update_smartcasts(name string, typ Type) {
 	}
 }
 
+pub fn (mut s Scope) register_defer_statement(mut d DeferStmt) {
+	s.defer_stmts << d
+}
+
 // selector_expr:  name.field_name
 pub fn (mut s Scope) register_struct_field(name string, field ScopeStructField) {
 	if f := s.struct_fields[name] {
@@ -240,6 +246,9 @@ pub fn (sc &Scope) show(depth int, max_depth int) string {
 	}
 	for _, field in sc.struct_fields {
 		out += '${indent}  * struct_field: ${field.struct_type} ${field.name} - ${field.typ}\n'
+	}
+	for _, dstmt in sc.defer_stmts {
+		out += '${indent}  * defer: ${dstmt.stmts.len}\n'
 	}
 	if max_depth == 0 || depth < max_depth - 1 {
 		for i, _ in sc.children {

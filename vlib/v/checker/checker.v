@@ -2070,6 +2070,9 @@ fn (mut c Checker) stmt(mut node ast.Stmt) {
 			c.inside_defer = true
 			c.stmts(mut node.stmts)
 			c.inside_defer = false
+			if node.is_scoped {
+				node.scope.register_defer_statement(mut node)
+			}
 		}
 		ast.EnumDecl {
 			c.enum_decl(mut node)

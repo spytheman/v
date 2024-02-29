@@ -251,6 +251,7 @@ mut:
 	reflection_strings   &map[string]int
 	defer_return_tmp_var string
 	vweb_filter_fn_name  string // vweb__filter or x__vweb__filter, used by $vweb.html() for escaping strings in the templates, depending on which `vweb` import is used
+	scope_leaves         int
 }
 
 // global or const variable definition string
@@ -2067,6 +2068,7 @@ fn (mut g Gen) stmt(node ast.Stmt) {
 				g.writeln('{')
 			}
 			g.stmts(node.stmts)
+			g.on_leave_current_scope(.block_ends, node.pos)
 			g.writeln('}')
 		}
 		ast.BranchStmt {
@@ -2266,24 +2268,31 @@ fn (mut g Gen) write_fn_defer_stmts() {
 	g.indent++
 	for i := g.defer_stmts.len - 1; i >= 0; i-- {
 		defer_stmt := g.defer_stmts[i]
-		g.writeln('// Defer begin')
-		g.writeln('if (${g.defer_flag_var(defer_stmt)}) {')
-		g.indent++
-		if defer_stmt.ifdef.len > 0 {
-			g.writeln(defer_stmt.ifdef)
-			g.stmts(defer_stmt.stmts)
-			g.writeln('')
-			g.writeln('#endif')
-		} else {
-			g.indent--
-			g.stmts(defer_stmt.stmts)
-			g.indent++
+		if defer_stmt.is_scoped {
+			continue
 		}
-		g.indent--
-		g.writeln('}')
-		g.writeln('// Defer end')
+		g.write_defer_stmt(defer_stmt)
 	}
 	g.indent--
+}
+
+fn (mut g Gen) write_defer_stmt(defer_stmt ast.DeferStmt) {
+	g.writeln('// Defer begin')
+	g.writeln('if (${g.defer_flag_var(defer_stmt)}) {')
+	g.indent++
+	if defer_stmt.ifdef.len > 0 {
+		g.writeln(defer_stmt.ifdef)
+		g.stmts(defer_stmt.stmts)
+		g.writeln('')
+		g.writeln('#endif')
+	} else {
+		g.indent--
+		g.stmts(defer_stmt.stmts)
+		g.indent++
+	}
+	g.indent--
+	g.writeln('}')
+	g.writeln('// Defer end')
 }
 
 struct SumtypeCastingFn {
@@ -5095,6 +5104,13 @@ fn (mut g Gen) hash_stmt(node ast.HashStmt) {
 }
 
 fn (mut g Gen) branch_stmt(node ast.BranchStmt) {
+	g.indent--
+	if node.kind == .key_break {
+		g.on_leave_current_scope(.l_breaks, node.pos)
+	} else {
+		g.on_leave_current_scope(.l_continues, node.pos)
+	}
+	g.indent++
 	if node.label != '' {
 		x := g.labeled_loops[node.label] or {
 			panic('${node.label} doesn\'t exist ${g.file.path}, ${node.pos}')
@@ -5117,7 +5133,6 @@ fn (mut g Gen) branch_stmt(node ast.BranchStmt) {
 			}
 			else {}
 		}
-
 		if node.kind == .key_break {
 			g.writeln('goto ${node.label}__break;')
 		} else {
@@ -5155,6 +5170,9 @@ fn (mut g Gen) branch_stmt(node ast.BranchStmt) {
 fn (mut g Gen) return_stmt(node ast.Return) {
 	g.set_current_pos_as_last_stmt_pos()
 	g.write_v_source_line_info(node.pos)
+	g.indent--
+	g.on_leave_current_scope(.returns, node.pos)
+	g.indent++
 
 	g.inside_return = true
 	defer {
@@ -5164,6 +5182,7 @@ fn (mut g Gen) return_stmt(node ast.Return) {
 	if node.exprs.len > 0 {
 		// skip `return $vweb.html()`
 		if node.exprs[0] is ast.ComptimeCall && node.exprs[0].is_vweb {
+			g.write_fn_defer_stmts_when_needed()
 			g.inside_return_tmpl = true
 			g.expr(node.exprs[0])
 			g.inside_return_tmpl = false
@@ -5571,7 +5590,7 @@ fn (mut g Gen) return_stmt(node ast.Return) {
 			has_semicolon = false
 		}
 	} else {
-		println('this should never happen')
+		eprintln('this should never happen')
 		g.write('/*F*/return')
 	}
 	if !has_semicolon {
@@ -6826,6 +6845,7 @@ fn (mut g Gen) or_block(var_name string, or_block ast.OrExpr, return_type ast.Ty
 			// `opt() or { return err }`
 			// Since we *do* return, first we have to ensure that
 			// the deferred statements are generated.
+			g.on_leave_current_scope(.propagates, or_block.pos)
 			g.write_fn_defer_stmts()
 			// Now that option types are distinct we need a cast here
 			if g.fn_decl.return_type == ast.void_type {
@@ -6855,6 +6875,7 @@ fn (mut g Gen) or_block(var_name string, or_block ast.OrExpr, return_type ast.Ty
 			// `opt() or { return err }`
 			// Since we *do* return, first we have to ensure that
 			// the deferred statements are generated.
+			g.on_leave_current_scope(.propagates, or_block.pos)
 			g.write_fn_defer_stmts()
 			// Now that option types are distinct we need a cast here
 			if g.fn_decl.return_type == ast.void_type {

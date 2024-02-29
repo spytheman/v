@@ -484,6 +484,7 @@ fn (mut g Gen) gen_fn_decl(node &ast.FnDecl, skip bool) {
 	// clear g.fn_mut_arg_names
 
 	if !node.has_return {
+		g.on_leave_current_scope(.fn_ends, node.pos)
 		g.write_fn_defer_stmts_when_needed()
 	}
 	if node.is_anon {
