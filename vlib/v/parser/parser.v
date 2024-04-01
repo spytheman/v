@@ -3012,7 +3012,7 @@ fn (mut p Parser) name_expr() ast.Expr {
 			if peek_tok2.kind == .name && peek_tok2.lit.len > 0 && peek_tok2.lit[0].is_capital()
 				&& peek_tok3.kind == .lcbr
 				&& (mod.len > p.tok.lit.len || !p.known_import(p.tok.lit)) {
-				mut msg := 'unknown module `${mod}`'
+				mut msg := util.new_suggestion(mod, p.all_known_module_names_for_current_file()).say('unknown module `${mod}`')
 				if mod.len > p.tok.lit.len && p.known_import(p.tok.lit) {
 					msg += '; did you mean `${p.tok.lit}`?'
 				}

@@ -70,3 +70,14 @@ fn (mut p Parser) check_unused_imports() {
 		}
 	}
 }
+
+fn (p &Parser) all_known_module_names_for_current_file() []string {
+	mut allmods := map[string]u8{}
+	for k in p.imports.keys() {
+		allmods[k]++
+	}
+	for k in p.imports.values() {
+		allmods[k]++
+	}
+	return allmods.keys().sorted()
+}

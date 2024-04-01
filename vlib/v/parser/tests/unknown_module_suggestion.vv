@@ -1,0 +1,10 @@
+import term as zt
+import os as zo
+import math as zm
+
+fn f[T]() int {
+	return 42
+}
+
+a := f[Coord]()
+dump(a)
