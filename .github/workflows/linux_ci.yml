@@ -5,7 +5,7 @@ on:
 
 jobs:
   tcc:
-    runs-on: self-hosted
+    runs-on: ubuntu-20.04
     if: github.event_name != 'push' || github.event.ref == 'refs/heads/master' || github.event.repository.full_name != 'vlang/v'
     timeout-minutes: 121
     env:
@@ -85,7 +85,7 @@ jobs:
         run: ./v test examples/readline/
 
   tcc-boehm-gc:
-    runs-on: self-hosted
+    runs-on: ubuntu-20.04
     if: github.event_name != 'push' || github.event.ref == 'refs/heads/master' || github.event.repository.full_name != 'vlang/v'
     timeout-minutes: 121
     env:
