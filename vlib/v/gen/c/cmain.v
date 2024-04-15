@@ -34,6 +34,7 @@ pub fn (mut g Gen) gen_c_main() {
 }
 
 fn (mut g Gen) gen_vlines_reset() {
+	g.vlines_path = util.vlines_escape_path(g.pref.out_name_c, g.pref.ccompiler)
 	if g.pref.is_vlines {
 		// At this point, the v files are transpiled.
 		// The rest is auto generated code, which will not have
@@ -42,7 +43,6 @@ fn (mut g Gen) gen_vlines_reset() {
 		// TODO: calculate the proper line here, based on
 		// the actual C lines in all the buffers
 		lines_so_far := 1000000
-		g.vlines_path = util.vlines_escape_path(g.pref.out_name_c, g.pref.ccompiler)
 		g.writeln('')
 		g.writeln('\n// Reset the file/line numbers')
 		g.writeln('\n#line ${lines_so_far} "${g.vlines_path}"')

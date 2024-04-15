@@ -174,6 +174,7 @@ fn (mut g Gen) gen_fn_decl(node &ast.FnDecl, skip bool) {
 	defer {
 		g.is_autofree = old_g_autofree
 	}
+
 	if node.generic_names.len > 0 && g.cur_concrete_types.len == 0 {
 		// need the cur_concrete_type check to avoid inf. recursion
 		// loop thru each generic type and generate a function

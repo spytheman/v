@@ -177,6 +177,7 @@ pub mut:
 	// Disabling `free()` insertion results in better performance in some applications (e.g. compilers)
 	trace_calls bool     // -trace-calls true = the transformer stage will generate and inject print calls for tracing function calls
 	trace_fns   []string // when set, tracing will be done only for functions, whose names match the listed patterns.
+	trace_lines bool     // -trace-lines true = trace the start of each V line that is executed
 	compress    bool     // when set, use `upx` to compress the generated executable
 	// generating_vh    bool
 	no_builtin       bool   // Skip adding the `builtin` module implicitly. The generated C code may not compile.
@@ -551,6 +552,10 @@ pub fn parse_args_and_show_errors(known_external_commands []string, args []strin
 				res.autofree = true
 				res.gc_mode = .no_gc
 				res.build_options << arg
+			}
+			'-trace-lines' {
+				res.build_options << arg
+				res.trace_lines = true
 			}
 			'-trace-calls' {
 				res.build_options << arg

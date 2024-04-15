@@ -746,8 +746,8 @@ pub fn (mut g Gen) free_builders() {
 pub fn (mut g Gen) gen_file() {
 	g.timers.start('cgen_file ${g.file.path}')
 	g.unique_file_path_hash = fnv1a.sum64_string(g.file.path)
+	g.vlines_path = util.vlines_escape_path(g.file.path, g.pref.ccompiler)
 	if g.pref.is_vlines {
-		g.vlines_path = util.vlines_escape_path(g.file.path, g.pref.ccompiler)
 		g.is_vlines_enabled = true
 		g.inside_ternary = 0
 	}
@@ -2057,6 +2057,9 @@ fn (mut g Gen) write_v_source_line_info(pos token.Pos) {
 			eprintln('> lineinfo: ${lineinfo.replace('\n', '')}')
 		}
 		g.writeln(lineinfo)
+	}
+	if g.pref.trace_lines && g.cur_fn != unsafe { nil } {
+		eprintln('>> write_v_source_line_info | g.vlines_path: ${g.vlines_path:-45} | pos.line_nr: ${pos.line_nr:5} | fname: ${g.cur_fn.name}')
 	}
 }
 
