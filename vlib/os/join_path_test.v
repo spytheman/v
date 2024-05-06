@@ -22,6 +22,8 @@ fn test_join_path() {
 		assert os.join_path('v', '', 'dir') == r'v\dir'
 		assert os.join_path('foo\\bar', '.\\file.txt') == r'foo\bar\file.txt'
 		assert os.join_path('/opt/v', './x') == r'\opt\v\x'
+		assert os.join_path('./b/../../c', '../d') == r'b\..\..\c\..\d'
+		assert os.join_path('../b', 'c') == r'..\b\c'
 	} $else {
 		assert os.join_path('./b', '') == 'b'
 		assert os.join_path('/b', '') == '/b'
@@ -33,6 +35,8 @@ fn test_join_path() {
 		assert os.join_path('foo/bar', './file.txt') == 'foo/bar/file.txt'
 		assert os.join_path('/opt/v', './x') == '/opt/v/x'
 		assert os.join_path('./a', './b') == 'a/b'
+		assert os.join_path('./b/../../c', '../d') == 'b/../../c/../d'
+		assert os.join_path('../b', 'c') == '../b/c'
 	}
 }
 
@@ -49,6 +53,8 @@ fn test_join_path_single() {
 		assert os.join_path_single('/', 'test') == r'\test'
 		assert os.join_path_single('foo\\bar', '.\\file.txt') == r'foo\bar\file.txt'
 		assert os.join_path_single('/opt/v', './x') == r'\opt\v\x'
+		assert os.join_path_single('./b/../../c', '../d') == r'b\..\..\c\..\d'
+		assert os.join_path_single('../b', 'c') == r'..\b\c'
 	} $else {
 		assert os.join_path_single('./b', '') == r'b'
 		assert os.join_path_single('/b', '') == r'/b'
@@ -58,5 +64,7 @@ fn test_join_path_single() {
 		assert os.join_path_single('/opt/v', './x') == '/opt/v/x'
 		assert os.join_path_single('./a', './b') == 'a/b'
 		assert os.join_path_single('a', './b') == 'a/b'
+		assert os.join_path_single('./b/../../c', '../d') == 'b/../../c/../d'
+		assert os.join_path_single('../b', 'c') == '../b/c'
 	}
 }
