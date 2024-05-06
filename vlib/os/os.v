@@ -638,10 +638,10 @@ fn normalize_path_in_builder(mut sb strings.Builder) {
 		}
 	}
 	// Let `/foo/./bar.txt` be `/foo/bar.txt` in place:
-	for idx in 0 .. sb.len - 3 {
-		if sb[idx] == rs && sb[idx + 1] == `.` && sb[idx + 2] == rs {
+	for idx in 0 .. sb.len - 2 {
+		if sb[idx] == `.` && sb[idx + 1] == rs {
 			unsafe {
-				for j := idx + 1; j < sb.len - 2; j++ {
+				for j := idx; j < sb.len - 2; j++ {
 					sb[j] = sb[j + 2]
 				}
 				sb.len -= 2
