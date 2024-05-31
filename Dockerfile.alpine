@@ -8,10 +8,22 @@ ENV PATH /opt/vlang:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 ## install development packages
 RUN apk --no-cache add \
-  musl-dev libc-dev libc6-compat gcompat
+  musl-dev libc-dev libc6-compat gcompat \
+  build-base
 
 RUN apk --no-cache add \
-  openssl-dev sqlite-dev mbedtls \
+  openssl-dev openssl-libs-static \
+  bearssl-dev bearssl-static \
+  sqlite-dev sqlite-libs sqlite-static \
+  mbedtls mbedtls-static \
+  jsoncpp-dev jsoncpp-static \
+  simdjson-dev simdjson-static \
+  mariadb-connector-c-dev mariadb-client mariadb-dev mariadb-static \
+  libpq-dev \
+  zeromq-dev libzmq-static \
+  zstd-dev zstd-static \
+  zlib-dev zlib-static \
+  zlib-ng zlib-ng-dev \
   libuv-dev libev-dev libevent-dev libmemcached-dev
 
 RUN apk --no-cache add \
@@ -70,6 +82,9 @@ RUN du -b -s .
 RUN time v -prod -skip-unused doctor
 RUN time v -prod -skip-unused self
 RUN time v -prod -skip-unused cmd/tools/vfmt.v
+RUN time v -prod -skip-unused cmd/tools/vpm/
+RUN time v install markdown
+RUN time v install sqlite
 RUN find . -type f -name *_test.v -or -name *.vv -or -name *.out | xargs rm
 RUN rm -rf v_old vc/ .git/
 RUN du -b -s .
