@@ -30,7 +30,7 @@ enum ActionKind {
 fn (mut state AppState) draw_band(yymin int, yymax int) {
 	for y in yymin .. yymax {
 		if state.action != .drawing {
-			break
+			return
 		}
 		for x in 0 .. pwidth {
 			mut zx := 1.5 * (x - pwidth / 2) / (0.5 * state.zoom * pwidth) + state.mx
