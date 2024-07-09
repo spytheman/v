@@ -18,6 +18,9 @@ mut:
 	my          f64 = 0.0
 	max_iter    u32 = 255
 	volatile action      ActionKind
+	//
+	work chan Tile = chan Tile{cap: 200}
+	done chan bool = chan bool{cap: 200}
 }
 
 enum ActionKind {
@@ -27,7 +30,7 @@ enum ActionKind {
 }
 
 @[direct_array_access]
-fn (mut state AppState) draw_band(yymin int, yymax int, xxmin int, xxmax int) {
+fn (mut state AppState) draw_tile(yymin int, yymax int, xxmin int, xxmax int) {
 	for y in yymin .. yymax {
 		if state.action != .drawing {
 			return
@@ -46,20 +49,47 @@ fn (mut state AppState) draw_band(yymin int, yymax int, xxmin int, xxmax int) {
 	}
 }
 
+struct Tile {
+	n    int
+	ymin int
+	ymax int
+	xmin int
+	xmax int
+}
+
+fn (mut state AppState) worker() {
+	for {
+		tile := <-state.work
+		// eprintln('> tile ${tile.n:5}: ${tile.ymin}, ${tile.ymax}, ${tile.xmin}, ${tile.xmax}')
+		state.draw_tile(tile.ymin, tile.ymax, tile.xmin, tile.xmax)
+		state.done <- true
+	}
+}
+
 fn (mut state AppState) update() {
 	unsafe { vmemset(&state.pixels, 0xFF, sizeof(state.pixels)) }
+	mut tasks := []thread{}
+	for _ in 0 .. 4 {
+		tasks << spawn state.worker()
+	}
 	for {
 		state.action = .drawing
 		sw := time.new_stopwatch()
-		mut tasks := []thread{}
-		ntiles := 5
+		ntiles := 10
 		for i in 0 .. ntiles {
 			for j in 0 .. ntiles {
-				tasks << spawn state.draw_band(pheight * i / ntiles, pheight * (i + 1) / ntiles,
-					pwidth * j / ntiles, pwidth * (j + 1) / ntiles)
+				state.work <- Tile{
+					n: i * ntiles + j
+					ymin: pheight * i / ntiles
+					ymax: pheight * (i + 1) / ntiles
+					xmin: pwidth * j / ntiles
+					xmax: pwidth * (j + 1) / ntiles
+				}
 			}
 		}
-		tasks.wait()
+		for _ in 0 .. ntiles * ntiles {
+			_ := <-state.done
+		}
 		println('> calculation time: ${sw.elapsed().milliseconds():5}ms, zoom: ${state.zoom:6.3f}, action: ${state.action}')
 		state.action = .idle
 		time.sleep(10 * time.millisecond)
