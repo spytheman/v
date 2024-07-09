@@ -3,7 +3,7 @@ import time
 
 const pwidth = 1920
 
-const pheight = 1080
+const pheight = 1024
 
 @[heap]
 struct AppState {
@@ -11,7 +11,7 @@ mut:
 	gg          &gg.Context = unsafe { nil }
 	istream_idx int
 	pixels      [pheight][pwidth]u32
-	zoom        f64 = 1.0
+	zoom        f64 = 0.5
 	cx          f64 = -0.7
 	cy          f64 = 0.27015
 	mx          f64 = 0.0
