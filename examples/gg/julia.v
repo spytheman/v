@@ -1,5 +1,6 @@
 import gg
 import time
+import runtime
 
 const pwidth = 1920
 
@@ -69,7 +70,7 @@ fn (mut state AppState) worker() {
 fn (mut state AppState) update() {
 	unsafe { vmemset(&state.pixels, 0xFF, sizeof(state.pixels)) }
 	mut tasks := []thread{}
-	for _ in 0 .. 4 {
+	for _ in 0 .. runtime.nr_jobs() {
 		tasks << spawn state.worker()
 	}
 	for {
@@ -90,7 +91,7 @@ fn (mut state AppState) update() {
 		for _ in 0 .. ntiles * ntiles {
 			_ := <-state.done
 		}
-		println('> calculation time: ${sw.elapsed().milliseconds():5}ms, zoom: ${state.zoom:6.3f}, action: ${state.action}')
+		println('> tasks: ${tasks.len}, calculation time: ${sw.elapsed().milliseconds():5}ms, zoom: ${state.zoom:6.3f}, action: ${state.action}')
 		state.action = .idle
 		time.sleep(10 * time.millisecond)
 	}
