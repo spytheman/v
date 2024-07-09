@@ -27,13 +27,13 @@ enum ActionKind {
 }
 
 @[direct_array_access]
-fn (mut state AppState) draw_band(yymin int, yymax int) {
+fn (mut state AppState) draw_band(yymin int, yymax int, xxmin int, xxmax int) {
 	for y in yymin .. yymax {
 		if state.action != .drawing {
 			return
 		}
-		for x in 0 .. pwidth {
-			mut zx := 1.5 * (x - pwidth / 2) / (0.5 * state.zoom * pwidth) + state.mx
+		for x in xxmin .. xxmax {
+			mut zx := 1.5 * (f64(x) - pwidth / 2) / (0.5 * state.zoom * pwidth) + state.mx
 			mut zy := 1.0 * (f64(y) - pheight / 2) / (0.5 * state.zoom * pheight) + state.my
 			mut i := state.max_iter
 			for zx * zx + zy * zy < 4 && i > 1 {
@@ -52,9 +52,12 @@ fn (mut state AppState) update() {
 		state.action = .drawing
 		sw := time.new_stopwatch()
 		mut tasks := []thread{}
-		nbands := 10
-		for i in 0 .. nbands {
-			tasks << spawn state.draw_band(pheight * i / nbands, pheight * (i + 1) / nbands)
+		ntiles := 5
+		for i in 0 .. ntiles {
+			for j in 0 .. ntiles {
+				tasks << spawn state.draw_band(pheight * i / ntiles, pheight * (i + 1) / ntiles,
+					pwidth * j / ntiles, pwidth * (j + 1) / ntiles)
+			}
 		}
 		tasks.wait()
 		println('> calculation time: ${sw.elapsed().milliseconds():5}ms, zoom: ${state.zoom:6.3f}, action: ${state.action}')
