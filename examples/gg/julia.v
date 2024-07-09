@@ -23,8 +23,9 @@ mut:
 	max_iter    u32 = 255
 	volatile action      ActionKind
 	//
-	work chan Tile = chan Tile{cap: ntiles * ntiles}
-	done chan bool = chan bool{cap: ntiles * ntiles}
+	tiles []Tile
+	work  chan int = chan int{cap: ntiles * ntiles}
+	done  chan int = chan int{cap: ntiles * ntiles}
 }
 
 enum ActionKind {
@@ -63,10 +64,11 @@ struct Tile {
 
 fn (mut state AppState) worker() {
 	for {
-		tile := <-state.work
+		tidx := <-state.work
+		tile := state.tiles[tidx]
 		// eprintln('> tile ${tile.n:5}: ${tile.ymin}, ${tile.ymax}, ${tile.xmin}, ${tile.xmax}')
 		state.draw_tile(tile.ymin, tile.ymax, tile.xmin, tile.xmax)
-		state.done <- true
+		state.done <- tidx
 	}
 }
 
@@ -76,10 +78,10 @@ fn (mut state AppState) update() {
 	for _ in 0 .. runtime.nr_jobs() {
 		tasks << spawn state.worker()
 	}
-	mut all_tiles := []Tile{cap: ntiles * ntiles}
+	state.tiles = []Tile{cap: ntiles * ntiles}
 	for i in 0 .. ntiles {
 		for j in 0 .. ntiles {
-			all_tiles << Tile{
+			state.tiles << Tile{
 				n: i * ntiles + j
 				ymin: pheight * i / ntiles
 				ymax: pheight * (i + 1) / ntiles
@@ -88,17 +90,17 @@ fn (mut state AppState) update() {
 			}
 		}
 	}
-	rand.shuffle(mut all_tiles) or {}
+	rand.shuffle(mut state.tiles) or {}
 	for {
 		state.action = .drawing
 		sw := time.new_stopwatch()
-		for tile in all_tiles {
-			state.work <- tile
+		for tidx, _ in state.tiles {
+			state.work <- tidx
 		}
 		for _ in 0 .. ntiles * ntiles {
 			_ := <-state.done
 		}
-		println('> tasks: ${tasks.len}, tiles: ${all_tiles.len}, calculation time: ${sw.elapsed().milliseconds():5}ms, zoom: ${state.zoom:6.3f}, action: ${state.action}')
+		println('> tasks: ${tasks.len}, tiles: ${state.tiles.len}, calculation time: ${sw.elapsed().milliseconds():5}ms, zoom: ${state.zoom:6.3f}, action: ${state.action}')
 		state.action = .idle
 		time.sleep(10 * time.millisecond)
 	}
