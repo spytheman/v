@@ -5,6 +5,7 @@ const pwidth = 1920
 
 const pheight = 1080
 
+@[heap]
 struct AppState {
 mut:
 	gg          &gg.Context = unsafe { nil }
@@ -26,28 +27,36 @@ enum ActionKind {
 }
 
 @[direct_array_access]
+fn (mut state AppState) draw_band(yymin int, yymax int) {
+	for y in yymin .. yymax {
+		if state.action != .drawing {
+			break
+		}
+		for x in 0 .. pwidth {
+			mut zx := 1.5 * (x - pwidth / 2) / (0.5 * state.zoom * pwidth) + state.mx
+			mut zy := 1.0 * (f64(y) - pheight / 2) / (0.5 * state.zoom * pheight) + state.my
+			mut i := state.max_iter
+			for zx * zx + zy * zy < 4 && i > 1 {
+				tmp := zx * zx - zy * zy + state.cx
+				zy, zx = 2.0 * zx * zy + state.cy, tmp
+				i--
+			}
+			state.pixels[y][x] = 0xFF_00_00_00 | (i << 21) + (i << 10) + i * 8
+		}
+	}
+}
+
 fn (mut state AppState) update() {
 	unsafe { vmemset(&state.pixels, 0xFF, sizeof(state.pixels)) }
-
 	for {
 		state.action = .drawing
 		sw := time.new_stopwatch()
-		for y in 0 .. pheight {
-			if state.action != .drawing {
-				break
-			}
-			for x in 0 .. pwidth {
-				mut zx := 1.5 * (x - pwidth / 2) / (0.5 * state.zoom * pwidth) + state.mx
-				mut zy := 1.0 * (y - pheight / 2) / (0.5 * state.zoom * pheight) + state.my
-				mut i := state.max_iter
-				for zx * zx + zy * zy < 4 && i > 1 {
-					tmp := zx * zx - zy * zy + state.cx
-					zy, zx = 2.0 * zx * zy + state.cy, tmp
-					i--
-				}
-				state.pixels[y][x] = 0xFF_00_00_00 | (i << 21) + (i << 10) + i * 8
-			}
+		mut tasks := []thread{}
+		nbands := 10
+		for i in 0 .. nbands {
+			tasks << spawn state.draw_band(pheight * i / nbands, pheight * (i + 1) / nbands)
 		}
+		tasks.wait()
 		println('> calculation time: ${sw.elapsed().milliseconds():5}ms, zoom: ${state.zoom:6.3f}, action: ${state.action}')
 		state.action = .idle
 		time.sleep(10 * time.millisecond)
