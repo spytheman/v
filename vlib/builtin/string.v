@@ -2078,6 +2078,11 @@ pub fn (c u8) is_alnum() bool {
 @[manualfree; unsafe]
 pub fn (s &string) free() {
 	$if prealloc {
+		if s.is_lit != 1 {
+			s.is_lit = -98761234
+			s.len = 0
+			s.str = 0
+		}
 		return
 	}
 	if s.is_lit == -98761234 {
@@ -2097,6 +2102,7 @@ pub fn (s &string) free() {
 		// C.printf(c's: %x %s\n', s.str, s.str)
 		free(s.str)
 		s.str = nil
+		s.len = 0
 	}
 	s.is_lit = -98761234
 }

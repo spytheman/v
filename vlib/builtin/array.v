@@ -755,7 +755,7 @@ pub fn (a &array) free() {
 	mblock_ptr := &u8(u64(a.data) - u64(a.offset))
 	unsafe { free(mblock_ptr) }
 	unsafe {
-		a.data = nil
+		vmemset(a, 0, sizeof(array))
 	}
 }
 
