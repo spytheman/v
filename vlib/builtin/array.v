@@ -638,12 +638,12 @@ pub fn (a &array) clone() array {
 pub fn (a &array) clone_to_depth(depth int) array {
 	mut arr := array{
 		element_size: a.element_size
-		data: vcalloc(u64(a.cap) * u64(a.element_size))
+		data: vcalloc(u64(a.len) * u64(a.element_size))
 		len: a.len
-		cap: a.cap
+		cap: a.len
 	}
 	// Recursively clone-generated elements if array element is array type
-	if depth > 0 && a.element_size == sizeof(array) && a.len >= 0 && a.cap >= a.len {
+	if depth > 0 && a.element_size == sizeof(array) && a.len >= 0 {
 		for i in 0 .. a.len {
 			ar := array{}
 			unsafe { vmemcpy(&ar, a.get_unsafe(i), int(sizeof(array))) }
@@ -653,7 +653,7 @@ pub fn (a &array) clone_to_depth(depth int) array {
 		return arr
 	} else {
 		if a.data != 0 {
-			unsafe { vmemcpy(&u8(arr.data), a.data, u64(a.cap) * u64(a.element_size)) }
+			unsafe { vmemcpy(&u8(arr.data), a.data, u64(a.len) * u64(a.element_size)) }
 		}
 		return arr
 	}
