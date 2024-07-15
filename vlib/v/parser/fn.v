@@ -42,7 +42,7 @@ fn (mut p Parser) call_expr(language ast.Language, mod string) ast.CallExpr {
 	}
 	p.expr_mod = ''
 
-	mut concrete_types := []ast.Type{}
+	mut concrete_types := []ast.Type{cap: 1}
 	mut concrete_list_pos := p.tok.pos()
 	if p.tok.kind in [.lt, .lsbr] {
 		// `foo<int>(10)`
@@ -70,7 +70,7 @@ fn (mut p Parser) call_expr(language ast.Language, mod string) ast.CallExpr {
 	last_pos := p.tok.pos()
 	p.next()
 	mut pos := first_pos.extend(last_pos)
-	mut or_stmts := []ast.Stmt{} // TODO: remove unnecessary allocations by just using .absent
+	mut or_stmts := []ast.Stmt{cap: 1} // TODO: remove unnecessary allocations by just using .absent
 	mut or_pos := p.tok.pos()
 	if p.tok.kind == .key_orelse {
 		// `foo() or {}``
@@ -118,7 +118,7 @@ fn (mut p Parser) call_args() []ast.CallArg {
 	defer {
 		p.inside_call_args = prev_inside_call_args
 	}
-	mut args := []ast.CallArg{}
+	mut args := []ast.CallArg{cap: 3}
 	for p.tok.kind != .rpar && p.tok.kind != .comma {
 		if p.tok.kind == .eof {
 			return args
@@ -293,7 +293,7 @@ fn (mut p Parser) fn_decl() ast.FnDecl {
 	}
 	mut is_method := false
 	mut is_static_type_method := false
-	mut params := []ast.Param{}
+	mut params := []ast.Param{cap: 3}
 	if p.tok.kind == .lpar {
 		is_method = true
 		p.fn_receiver(mut params, mut rec) or { return ast.FnDecl{
@@ -591,7 +591,7 @@ run them via `v file.v` instead',
 	}
 	// Body
 	p.cur_fn_name = name
-	mut stmts := []ast.Stmt{}
+	mut stmts := []ast.Stmt{cap: 5}
 	body_start_pos := p.tok.pos()
 	if p.tok.kind == .lcbr {
 		if language != .v && !(language == .js && type_sym.info is ast.Interface) {
@@ -824,7 +824,7 @@ fn (mut p Parser) anon_fn() ast.AnonFn {
 				p.tok.pos())
 		}
 	}
-	mut stmts := []ast.Stmt{}
+	mut stmts := []ast.Stmt{cap: 5}
 	no_body := p.tok.kind != .lcbr
 	same_line = p.tok.line_nr == p.prev_tok.line_nr
 	if no_body && same_line {
@@ -880,7 +880,7 @@ fn (mut p Parser) anon_fn() ast.AnonFn {
 // part of fn declaration
 fn (mut p Parser) fn_params() ([]ast.Param, bool, bool, bool) {
 	p.check(.lpar)
-	mut params := []ast.Param{}
+	mut params := []ast.Param{cap: 3}
 	mut is_variadic := false
 	mut is_c_variadic := false
 	// `int, int, string` (no names, just types)
@@ -1176,7 +1176,7 @@ fn (mut p Parser) go_expr() ast.GoExpr {
 
 fn (mut p Parser) closure_vars() []ast.Param {
 	p.check(.lsbr)
-	mut vars := []ast.Param{cap: 5}
+	mut vars := []ast.Param{cap: 3}
 	for {
 		is_shared := p.tok.kind == .key_shared
 		is_atomic := p.tok.kind == .key_atomic

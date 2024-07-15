@@ -21,7 +21,7 @@ fn (mut p Parser) if_expr(is_comptime bool) ast.IfExpr {
 		p.next() // `$`
 		pos = p.prev_tok.pos().extend(p.tok.pos())
 	}
-	mut branches := []ast.IfBranch{}
+	mut branches := []ast.IfBranch{cap: 2}
 	mut has_else := false
 	mut comments := []ast.Comment{}
 	mut prev_guard := false
@@ -87,8 +87,8 @@ fn (mut p Parser) if_expr(is_comptime bool) ast.IfExpr {
 		if !is_comptime && p.peek_token_after_var_list().kind == .decl_assign {
 			p.open_scope()
 			is_guard = true
-			mut vars := []ast.IfGuardVar{}
-			mut var_names := []string{}
+			mut vars := []ast.IfGuardVar{cap: 2}
+			mut var_names := []string{cap: 2}
 			for {
 				mut var := ast.IfGuardVar{}
 				mut is_mut := false
@@ -249,10 +249,10 @@ fn (mut p Parser) match_expr() ast.MatchExpr {
 		p.check(.lcbr)
 	}
 	comments := p.eat_comments() // comments before the first branch
-	mut branches := []ast.MatchBranch{}
+	mut branches := []ast.MatchBranch{cap: 3}
 	for p.tok.kind != .eof {
 		branch_first_pos := p.tok.pos()
-		mut exprs := []ast.Expr{}
+		mut exprs := []ast.Expr{cap: 1}
 		mut ecmnts := [][]ast.Comment{}
 		p.open_scope()
 		// final else
@@ -263,7 +263,7 @@ fn (mut p Parser) match_expr() ast.MatchExpr {
 		} else if p.is_match_sumtype_type() || p.is_only_array_type()
 			|| p.tok.kind == .key_fn
 			|| (p.tok.kind == .lsbr && p.peek_token(2).kind == .amp) {
-			mut types := []ast.Type{}
+			mut types := []ast.Type{cap: 2}
 			for {
 				// Sum type match
 				parsed_type := p.parse_type()
@@ -389,7 +389,7 @@ fn (mut p Parser) select_expr() ast.SelectExpr {
 	if !no_lcbr {
 		p.check(.lcbr)
 	}
-	mut branches := []ast.SelectBranch{}
+	mut branches := []ast.SelectBranch{cap: 3}
 	mut has_else := false
 	mut has_timeout := false
 	for {

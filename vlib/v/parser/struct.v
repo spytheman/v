@@ -80,11 +80,11 @@ fn (mut p Parser) struct_decl(is_anon bool) ast.StructDecl {
 	} else {
 		name = p.prepend_mod(name)
 	}
-	mut ast_fields := []ast.StructField{}
-	mut fields := []ast.StructField{}
-	mut embed_types := []ast.Type{}
-	mut embeds := []ast.Embed{}
-	mut embed_field_names := []string{}
+	mut ast_fields := []ast.StructField{cap: 5}
+	mut fields := []ast.StructField{cap: 5}
+	mut embed_types := []ast.Type{cap: 1}
+	mut embeds := []ast.Embed{cap: 1}
+	mut embed_field_names := []string{cap: 1}
 	mut mut_pos := -1
 	mut pub_pos := -1
 	mut pub_mut_pos := -1
@@ -411,7 +411,7 @@ fn (mut p Parser) struct_init(typ_str string, kind ast.StructInitKind, is_option
 		p.check(.lcbr)
 	}
 	pre_comments := p.eat_comments()
-	mut init_fields := []ast.StructInitField{}
+	mut init_fields := []ast.StructInitField{cap: 5}
 	mut i := 0
 	no_keys := p.peek_tok.kind != .colon && p.tok.kind != .rcbr && p.tok.kind != .ellipsis // `Vec{a,b,c}
 	saved_is_amp := p.is_amp
@@ -568,7 +568,7 @@ fn (mut p Parser) interface_decl() ast.InterfaceDecl {
 	// Parse fields or methods
 	mut fields := []ast.StructField{cap: 20}
 	mut methods := []ast.FnDecl{cap: 20}
-	mut embeds := []ast.InterfaceEmbedding{}
+	mut embeds := []ast.InterfaceEmbedding{cap: 1}
 	mut is_mut := false
 	mut mut_pos := -1
 	for p.tok.kind != .rcbr && p.tok.kind != .eof {
