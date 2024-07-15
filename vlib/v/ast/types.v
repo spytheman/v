@@ -163,6 +163,7 @@ pub mut:
 	generic_types  []Type
 	concrete_types []Type
 	parent_type    Type
+	fields_map     map[string]int
 }
 
 // instantiation of a generic struct
@@ -1787,9 +1788,20 @@ pub fn (i &Interface) has_method(name string) bool {
 	return false
 }
 
-pub fn (s Struct) find_field(name string) ?StructField {
-	for mut field in unsafe { s.fields } {
+pub fn (s &Struct) find_field(name string) ?StructField {
+	if s.fields_map.len > 0 {
+		if idx := s.fields_map[name] {
+			if s.fields[idx].name == name {
+				return s.fields[idx]
+			}
+			eprintln('>>> found name mismatch: ${name} | idx: ${idx} | field.name: ${s.fields[idx].name}')
+		}
+	}
+	for idx, mut field in unsafe { s.fields } {
 		if field.name == name {
+			unsafe {
+				s.fields_map[name] = idx
+			}
 			return field
 		}
 	}
