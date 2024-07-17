@@ -114,7 +114,7 @@ fn (mut p Process) _spawn() int {
 	}
 	p.pid = pid
 	p.status = .running
-	return 0
+	return pid
 }
 
 // is_alive - query whether the process p.pid is still alive
@@ -329,9 +329,9 @@ fn (mut p Process) _is_alive() bool {
 }
 
 // run - starts the new process
-pub fn (mut p Process) run() {
+pub fn (mut p Process) run() int {
 	if p.status != .not_started {
-		return
+		return p.pid
 	}
-	p._spawn()
+	return p._spawn()
 }

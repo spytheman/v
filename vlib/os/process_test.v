@@ -70,10 +70,12 @@ fn test_done() {
 fn test_run() {
 	mut p := os.new_process(test_os_process)
 	p.set_args(['-timeout_ms', '150', '-period_ms', '50'])
-	p.run()
+	child_pid := p.run()
 	assert p.status == .running
 	assert p.pid > 0
 	assert p.pid != os.getpid()
+	assert child_pid != 0
+	assert p.pid == child_pid
 	mut i := 0
 	for {
 		if !p.is_alive() {
