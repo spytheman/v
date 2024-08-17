@@ -148,6 +148,7 @@ fn __new_array_with_map_default(mylen int, cap int, elm_size int, val map) array
 }
 
 // Private function, used by V (`nums := [1, 2, 3]`)
+@[markused]
 fn new_array_from_c_array(len int, cap int, elm_size int, c_array voidptr) array {
 	cap_ := if cap < len { len } else { cap }
 	arr := array{
@@ -162,6 +163,7 @@ fn new_array_from_c_array(len int, cap int, elm_size int, c_array voidptr) array
 }
 
 // Private function, used by V (`nums := [1, 2, 3] !`)
+@[markused]
 fn new_array_from_c_array_no_alloc(len int, cap int, elm_size int, c_array voidptr) array {
 	arr := array{
 		element_size: elm_size

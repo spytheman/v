@@ -6208,7 +6208,7 @@ fn (mut g Gen) const_decl_init_later(mod string, name string, expr ast.Expr, typ
 			g.cleanup.writeln('\tstring_free(&${cname});')
 		} else if sym.kind == .map {
 			g.cleanup.writeln('\tmap_free(&${cname});')
-		} else if styp == 'IError' {
+		} else if styp == 'IError' && cname != '_const_none__' {
 			g.cleanup.writeln('\tIError_free(&${cname});')
 		}
 	}
