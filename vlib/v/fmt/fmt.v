@@ -105,11 +105,8 @@ pub fn fmt(file ast.File, mut table ast.Table, pref_ &pref.Preferences, is_debug
 // Having it here and not in Table saves cpu cycles when not running the compiler in vfmt mode.
 pub fn (f &Fmt) type_to_str_using_aliases(typ ast.Type, import_aliases map[string]string) string {
 	mut s := f.table.type_to_str_using_aliases(typ, import_aliases)
-	if s.contains('Result') {
-		println('${s}')
-	}
 	if s.starts_with('x.vweb') {
-		s = s.replace_once('x.vweb', 'veb.')
+		s = s.replace_once('x.vweb.', 'veb.')
 	}
 	return s
 }
