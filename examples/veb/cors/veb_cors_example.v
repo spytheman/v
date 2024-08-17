@@ -7,7 +7,7 @@ import veb
 // >  a server to indicate any origins (domain, scheme, or port) other than its own from
 // >  which a browser should permit loading resources...
 
-// Usage: do `./v run examples/xveb/cors/` to start the app,
+// Usage: do `./v run examples/veb/cors/` to start the app,
 // then check the headers in another shell:
 //
 // 1) `curl -vvv -X OPTIONS http://localhost:45678/time`
