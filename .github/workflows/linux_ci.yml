@@ -20,11 +20,10 @@ on:
 jobs:
   check-error-integration:
     runs-on: ubuntu-latest
-    timeout-minutes: 121
+    timeout-minutes: 20
     env:
       VFLAGS: -cc tcc -no-retry-compilation
     steps:
-      - uses: actions/checkout@v4
       - name: Show custom error
         run: echo '::error file=./vlib/flag/flag_test.v,line=98::this is a custom error message'
       - name: Show custom warning
@@ -61,11 +60,11 @@ jobs:
         run: echo "::notice file=vlib/flag/flag_test.v,line=60::nmessage 44 https://github.com/vlang/v/blob/${GITHUB_SHA}/vlib/flag/flag_test.v#L60"
 
       - name: Show custom error content url 444
-        run: echo "::error file=vlib/flag/flag_test.v,line=98::emessage 444 [vlib/flag/flag_test.v:98](https://github.com/vlang/v/blob/${GITHUB_SHA}/vlib/flag/flag_test.v#L98 'some title')"
+        run: echo -ne "::error file=vlib/flag/flag_test.v,line=98::emessage 444 \n https://github.com/vlang/v/blob/${GITHUB_SHA}/vlib/flag/flag_test.v#L98 stuff\nabc"
       - name: Show custom warning content url 444
-        run: echo "::warning file=vlib/flag/flag_test.v,line=7::wmessage 444 [vlib/flag/flag_test.v:7](https://github.com/vlang/v/blob/${GITHUB_SHA}/vlib/flag/flag_test.v#L7)"
+        run: echo -ne "::warning file=vlib/flag/flag_test.v,line=7::wmessage 444 \n https://github.com/vlang/v/blob/${GITHUB_SHA}/vlib/flag/flag_test.v#L7 stuff\ndef"
       - name: Show custom notice content url 444
-        run: echo "::notice file=vlib/flag/flag_test.v,line=60::nmessage 444 [vlib/flag/flag_test.v:L60](https://github.com/vlang/v/blob/${GITHUB_SHA}/vlib/flag/flag_test.v#L60)"
+        run: echo -ne "::notice file=vlib/flag/flag_test.v,line=60::nmessage 444 \n https://github.com/vlang/v/blob/${GITHUB_SHA}/vlib/flag/flag_test.v#L60 stuff\nxyz"
 
       - name: Show custom error content rel url
         run: echo '::error file=vlib/flag/flag_test.v,line=98::this is a custom error message 5 [a relative link](/vlib/flag/flag_test.v#L98)'
@@ -73,8 +72,3 @@ jobs:
         run: echo '::warning file=vlib/flag/flag_test.v,line=7::this is a custom warning message 5 [a relative link](/vlib/flag/flag_test.v#L7)'
       - name: Show custom notice content url
         run: echo '::notice file=vlib/flag/flag_test.v,line=60::this is a custom notice message 5 [a relative link](/vlib/flag/flag_test.v#L60)'
-
-      - name: Build v
-        run: make && ./v symlink
-      - name: Check compilation failure
-        run: echo 'invalid code' > invalid_code.v && v run invalid_code.v
