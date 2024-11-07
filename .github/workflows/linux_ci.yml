@@ -54,11 +54,11 @@ jobs:
         run: echo '::notice file=vlib/flag/flag_test.v,line=60::this is a custom notice message 4 https://github.com/vlang/v/blob/master/vlib/flag/flag_test.v#L60'
 
       - name: Show custom error content rel url
-        run: echo '::error file=vlib/flag/flag_test.v,line=98::this is a custom error message 5 [a relative link](vlib/flag/flag_test.v#L98)'
+        run: echo '::error file=vlib/flag/flag_test.v,line=98::this is a custom error message 5 [a relative link](/vlib/flag/flag_test.v#L98)'
       - name: Show custom warning content url
-        run: echo '::warning file=vlib/flag/flag_test.v,line=7::this is a custom warning message 5 [a relative link](vlib/flag/flag_test.v#L7)'
+        run: echo '::warning file=vlib/flag/flag_test.v,line=7::this is a custom warning message 5 [a relative link](/vlib/flag/flag_test.v#L7)'
       - name: Show custom notice content url
-        run: echo '::notice file=vlib/flag/flag_test.v,line=60::this is a custom notice message 5 [a relative link](vlib/flag/flag_test.v#L60)'
+        run: echo '::notice file=vlib/flag/flag_test.v,line=60::this is a custom notice message 5 [a relative link](/vlib/flag/flag_test.v#L60)'
 
       - name: Build v
         run: make && ./v symlink
