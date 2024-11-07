@@ -202,10 +202,11 @@ const is_github_job = os.getenv('GITHUB_JOB') != '' && os.getenv('VNOGH') == '' 
 @[noreturn]
 pub fn verror(kind string, s string) {
 	final_kind := bold(color(kind, kind))
+	eprintln('${final_kind}: ${s}')
 	if is_github_job {
 		println('::error::${final_kind}: ${s}')
+		flush_stdout()
 	}
-	eprintln('${final_kind}: ${s}')
 	exit(1)
 }
 
@@ -222,13 +223,13 @@ pub fn vlines_escape_path(path string, ccompiler string) string {
 
 pub fn show_compiler_message(kind string, err errors.CompilerMessage) {
 	ferror := formatted_error(kind, err.message, err.file_path, err.pos)
-	if is_github_job {
-		// add a message that will be visible right away in the github actions job summary:
-		println('::${kind} file=${err.file_path},line=${err.pos.line_nr + 1}::${err.message}')
-	} else {
-		eprintln(ferror)
-	}
+	eprintln(ferror)
 	if err.details.len > 0 {
 		eprintln(bold('Details: ') + color('details', err.details))
+	}
+	if is_github_job {
+		// add a message that will be visible right away in the github actions job summary:
+		println('::${kind.replace(':', '')} file=${err.file_path},line=${err.pos.line_nr + 1}::${kind} ${err.message}')
+		flush_stdout()
 	}
 }
