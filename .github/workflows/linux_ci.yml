@@ -26,11 +26,40 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Show custom error
-        run: echo '::error file=vlib/flag/flag_test.v,line=98::this is a custom error message'
+        run: echo '::error file=./vlib/flag/flag_test.v,line=98::this is a custom error message'
       - name: Show custom warning
-        run: echo '::warning file=vlib/flag/flag_test.v,line=7::this is a custom warning message'
+        run: echo '::warning file=./vlib/flag/flag_test.v,line=7::this is a custom warning message'
       - name: Show custom notice
-        run: echo '::notice file=vlib/flag/flag_test.v,line=60::this is a custom warning message'
+        run: echo '::notice file=./vlib/flag/flag_test.v,line=60::this is a custom notice message'
+
+      - name: Show custom error file url
+        run: echo '::error file=https://github.com/vlang/v/blob/master/vlib/flag/flag_test.v,line=98::this is a custom error message 2'
+      - name: Show custom warning file url
+        run: echo '::warning file=https://github.com/vlang/v/blob/master/vlib/flag/flag_test.v,line=7::this is a custom warning message 2'
+      - name: Show custom notice file url
+        run: echo '::notice file=https://github.com/vlang/v/blob/master/vlib/flag/flag_test.v,line=60::this is a custom notice message 2'
+
+      - name: Show custom error title
+        run: echo '::error file=./vlib/flag/flag_test.v,line=98,title=vlib/flag/flag_test.v::this is a custom error message 3'
+      - name: Show custom warning title
+        run: echo '::warning file=./vlib/flag/flag_test.v,line=7,title=vlib/flag/flag_test.v::this is a custom warning message 3'
+      - name: Show custom notice title
+        run: echo '::notice file=./vlib/flag/flag_test.v,line=60,title=vlib/flag/flag_test.v::this is a custom notice message 3'
+
+      - name: Show custom error content url
+        run: echo '::error file=vlib/flag/flag_test.v,line=98::this is a custom error message 4 https://github.com/vlang/v/blob/master/vlib/flag/flag_test.v#L98'
+      - name: Show custom warning content url
+        run: echo '::warning file=vlib/flag/flag_test.v,line=7::this is a custom warning message 4 https://github.com/vlang/v/blob/master/vlib/flag/flag_test.v#L7'
+      - name: Show custom notice content url
+        run: echo '::notice file=vlib/flag/flag_test.v,line=60::this is a custom notice message 4 https://github.com/vlang/v/blob/master/vlib/flag/flag_test.v#L60'
+
+      - name: Show custom error content rel url
+        run: echo '::error file=vlib/flag/flag_test.v,line=98::this is a custom error message 5 [a relative link](vlib/flag/flag_test.v#L98)'
+      - name: Show custom warning content url
+        run: echo '::warning file=vlib/flag/flag_test.v,line=7::this is a custom warning message 5 [a relative link](vlib/flag/flag_test.v#L7)'
+      - name: Show custom notice content url
+        run: echo '::notice file=vlib/flag/flag_test.v,line=60::this is a custom notice message 5 [a relative link](vlib/flag/flag_test.v#L60)'
+
       - name: Build v
         run: make && ./v symlink
       - name: Check compilation failure
