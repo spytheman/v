@@ -25,6 +25,12 @@ jobs:
       VFLAGS: -cc tcc -no-retry-compilation
     steps:
       - uses: actions/checkout@v4
+      - name: Show custom error
+        run: echo '::error file=vlib/flag/flag_test.v,line=98::this is a custom error message'
+      - name: Show custom warning
+        run: echo '::warning file=vlib/flag/flag_test.v,line=7::this is a custom warning message'
+      - name: Show custom notice
+        run: echo '::notice file=vlib/flag/flag_test.v,line=60::this is a custom warning message'
       - name: Build v
         run: make && ./v symlink
       - name: Check compilation failure
