@@ -193,9 +193,18 @@ pub fn source_file_context(kind string, filepath string, pos token.Pos) []string
 	return clines
 }
 
+// See https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/workflow-commands-for-github-actions
+// for details about the available options for the output, when running in a job, executed inside a github actions worker.
+// The TLDR is that you can add error/warning/notice messages, that will be visible *right away* in the github actions job summary,
+// if you output to *stdout* in the following format: `::error:: some text` .
+const is_github_job = os.getenv('GITHUB_JOB') != '' && os.getenv('VNOGH') == '' // setting VNOGH=1 allows for overriding the integration in specific tests
+
 @[noreturn]
 pub fn verror(kind string, s string) {
 	final_kind := bold(color(kind, kind))
+	if is_github_job {
+		println('::error::${final_kind}: ${s}')
+	}
 	eprintln('${final_kind}: ${s}')
 	exit(1)
 }
@@ -213,7 +222,12 @@ pub fn vlines_escape_path(path string, ccompiler string) string {
 
 pub fn show_compiler_message(kind string, err errors.CompilerMessage) {
 	ferror := formatted_error(kind, err.message, err.file_path, err.pos)
-	eprintln(ferror)
+	if is_github_job {
+		// add a message that will be visible right away in the github actions job summary:
+		println('::${kind} file=${err.file_path},line=${err.pos.line_nr + 1}::${err.message}')
+	} else {
+		eprintln(ferror)
+	}
 	if err.details.len > 0 {
 		eprintln(bold('Details: ') + color('details', err.details))
 	}
