@@ -60,6 +60,13 @@ jobs:
       - name: Show custom notice content url 44
         run: echo "::notice file=vlib/flag/flag_test.v,line=60::nmessage 44 https://github.com/vlang/v/blob/${GITHUB_SHA}/vlib/flag/flag_test.v#L60"
 
+      - name: Show custom error content url 444
+        run: echo "::error file=vlib/flag/flag_test.v,line=98::emessage 444 [vlib/flag/flag_test.v:98](https://github.com/vlang/v/blob/${GITHUB_SHA}/vlib/flag/flag_test.v#L98 'some title')"
+      - name: Show custom warning content url 444
+        run: echo "::warning file=vlib/flag/flag_test.v,line=7::wmessage 444 [vlib/flag/flag_test.v:7](https://github.com/vlang/v/blob/${GITHUB_SHA}/vlib/flag/flag_test.v#L7)"
+      - name: Show custom notice content url 444
+        run: echo "::notice file=vlib/flag/flag_test.v,line=60::nmessage 444 [vlib/flag/flag_test.v:L60](https://github.com/vlang/v/blob/${GITHUB_SHA}/vlib/flag/flag_test.v#L60)"
+
       - name: Show custom error content rel url
         run: echo '::error file=vlib/flag/flag_test.v,line=98::this is a custom error message 5 [a relative link](/vlib/flag/flag_test.v#L98)'
       - name: Show custom warning content url
