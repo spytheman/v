@@ -47,11 +47,18 @@ jobs:
         run: echo '::notice file=./vlib/flag/flag_test.v,line=60,title=vlib/flag/flag_test.v::this is a custom notice message 3'
 
       - name: Show custom error content url
-        run: echo '::error file=vlib/flag/flag_test.v,line=98::this is a custom error message 4 https://github.com/vlang/v/blob/master/vlib/flag/flag_test.v#L98'
+        run: echo "::error file=vlib/flag/flag_test.v,line=98::emessage 4 https://github.com/vlang/v/blob/$GITHUB_SHA/vlib/flag/flag_test.v#L98"
       - name: Show custom warning content url
-        run: echo '::warning file=vlib/flag/flag_test.v,line=7::this is a custom warning message 4 https://github.com/vlang/v/blob/master/vlib/flag/flag_test.v#L7'
+        run: echo "::warning file=vlib/flag/flag_test.v,line=7::wmessage 4 https://github.com/vlang/v/blob/$GITHUB_SHA/vlib/flag/flag_test.v#L7"
       - name: Show custom notice content url
-        run: echo '::notice file=vlib/flag/flag_test.v,line=60::this is a custom notice message 4 https://github.com/vlang/v/blob/master/vlib/flag/flag_test.v#L60'
+        run: echo "::notice file=vlib/flag/flag_test.v,line=60::nmessage 4 https://github.com/vlang/v/blob/$GITHUB_SHA/vlib/flag/flag_test.v#L60"
+
+      - name: Show custom error content url 44
+        run: echo "::error file=vlib/flag/flag_test.v,line=98::emessage 44 https://github.com/vlang/v/blob/${GITHUB_SHA}/vlib/flag/flag_test.v#L98"
+      - name: Show custom warning content url 44
+        run: echo "::warning file=vlib/flag/flag_test.v,line=7::wmessage 44 https://github.com/vlang/v/blob/${GITHUB_SHA}/vlib/flag/flag_test.v#L7"
+      - name: Show custom notice content url 44
+        run: echo "::notice file=vlib/flag/flag_test.v,line=60::nmessage 44 https://github.com/vlang/v/blob/${GITHUB_SHA}/vlib/flag/flag_test.v#L60"
 
       - name: Show custom error content rel url
         run: echo '::error file=vlib/flag/flag_test.v,line=98::this is a custom error message 5 [a relative link](/vlib/flag/flag_test.v#L98)'
