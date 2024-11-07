@@ -60,18 +60,25 @@ jobs:
         run: echo "::notice file=vlib/flag/flag_test.v,line=60::nmessage 44 https://github.com/vlang/v/blob/${GITHUB_SHA}/vlib/flag/flag_test.v#L60"
 
       - name: Show custom error content url 444
-        run: echo -ne "::error file=vlib/flag/flag_test.v,line=98::emessage 444 \n https://github.com/vlang/v/blob/${GITHUB_SHA}/vlib/flag/flag_test.v#L98 stuff\nabc\n"
-      - name: Show custom warning content url 444
-        run: echo -ne "::warning file=vlib/flag/flag_test.v,line=7::wmessage 444 \n https://github.com/vlang/v/blob/${GITHUB_SHA}/vlib/flag/flag_test.v#L7 stuff\ndef\n"
-      - name: Show custom notice content url 444
-        run: echo -ne "::notice file=vlib/flag/flag_test.v,line=60::nmessage 444 \n https://github.com/vlang/v/blob/${GITHUB_SHA}/vlib/flag/flag_test.v#L60 stuff\nxyz\n"
+        run: |
+          echo -ne "::error file=vlib/flag/flag_test.v,line=98::emessage 444 https://github.com/vlang/v/blob/${GITHUB_SHA}/vlib/flag/flag_test.v#L98 abc\nline 2\n"
+          echo -ne "::warning file=vlib/flag/flag_test.v,line=7::wmessage 444 https://github.com/vlang/v/blob/${GITHUB_SHA}/vlib/flag/flag_test.v#L7 def\nline 2\n"
+          echo -ne "::notice file=vlib/flag/flag_test.v,line=60::nmessage 444 https://github.com/vlang/v/blob/${GITHUB_SHA}/vlib/flag/flag_test.v#L60 xyz\nline 2\n"
 
       - name: Show custom error content url 4441
-        run: echo -ne "::error file=vlib/flag/flag_test.v,line=98::https://github.com/vlang/v/blob/${GITHUB_SHA}/vlib/flag/flag_test.v#L98 stuff\nabc\n"
-      - name: Show custom warning content url 4442
-        run: echo -ne "::warning file=vlib/flag/flag_test.v,line=7::https://github.com/vlang/v/blob/${GITHUB_SHA}/vlib/flag/flag_test.v#L7 stuff\ndef\n"
-      - name: Show custom notice content url 4443
-        run: echo -ne "::notice file=vlib/flag/flag_test.v,line=60::https://github.com/vlang/v/blob/${GITHUB_SHA}/vlib/flag/flag_test.v#L60 stuff\nxyz\n"
+        run: |
+          echo -ne "::error file=vlib/flag/flag_test.v,line=98::https://github.com/vlang/v/blob/${GITHUB_SHA}/vlib/flag/flag_test.v#L98 abc\nline2\n"
+          echo -ne "::warning file=vlib/flag/flag_test.v,line=7::https://github.com/vlang/v/blob/${GITHUB_SHA}/vlib/flag/flag_test.v#L7 def\nline2\n"
+          echo -ne "::notice file=vlib/flag/flag_test.v,line=60::https://github.com/vlang/v/blob/${GITHUB_SHA}/vlib/flag/flag_test.v#L60 xyz\nline2\n"
+
+      - name: Generate list using Markdown
+        run: |
+          echo "GITHUB_STEP_SUMMARY: $GITHUB_STEP_SUMMARY"
+          echo "This is the lead in sentence for the list" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY # this is a blank line
+          echo "- Lets add a bullet point" >> $GITHUB_STEP_SUMMARY
+          echo "- Lets add a second bullet point" >> $GITHUB_STEP_SUMMARY
+          echo "- How about a third one?" >> $GITHUB_STEP_SUMMARY
 
       - name: Show custom error content rel url
         run: echo '::error file=vlib/flag/flag_test.v,line=98::this is a custom error message 5 [a relative link](/vlib/flag/flag_test.v#L98)'
