@@ -334,6 +334,9 @@ pub:
 	pos        token.Pos
 	name_pos   token.Pos // `name` in import name
 	is_skipped bool      // module main can be skipped in single file programs
+pub mut:
+	ct_expr ?Expr // module had `@[if abc || def]`
+	ct_skip ?bool // is ct_expr evaluated already, and if it is, was it *false* ?
 }
 
 pub struct SemicolonStmt {
@@ -1001,6 +1004,8 @@ pub mut:
 	//
 	is_parse_text    bool // true for files, produced by parse_text
 	is_template_text bool // true for files, produced by parse_comptime
+	//
+	ignore_file bool // true for `@[if impossible ?] module some_name`, after the module statement is processed, the rest of the statements do not matter
 }
 
 @[unsafe]

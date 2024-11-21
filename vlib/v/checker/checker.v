@@ -205,11 +205,30 @@ fn (mut c Checker) reset_checker_state_at_start_of_new_file() {
 }
 
 pub fn (mut c Checker) check(mut ast_file ast.File) {
+	if ast_file.ignore_file {
+		return
+	}
 	$if trace_checker ? {
 		eprintln('start checking file: ${ast_file.path}')
 	}
 	c.reset_checker_state_at_start_of_new_file()
 	c.change_current_file(ast_file)
+
+	for mut stmt in ast_file.stmts {
+		if mut stmt is ast.Module {
+			if stmt.ct_expr != none {
+				mut ct_expr := stmt.ct_expr or { return }
+				ct_value := c.comptime_if_cond(mut ct_expr, stmt.pos)
+				should_ignore_file := ct_value == .skip
+				stmt.ct_skip = should_ignore_file
+				if should_ignore_file {
+					ast_file.ignore_file = true
+					println('>>>> ignoring the rest of file ${c.file.path}')
+					return
+				}
+			}
+		}
+	}
 	for i, ast_import in ast_file.imports {
 		// Imports with the same path and name (self-imports and module name conflicts with builtin module imports)
 		if c.mod == ast_import.mod {
@@ -2275,10 +2294,7 @@ fn (mut c Checker) stmt(mut node ast.Stmt) {
 			c.interface_decl(mut node)
 		}
 		ast.Module {
-			c.mod = node.name
-			c.is_just_builtin_mod = node.name == 'builtin'
-			c.is_builtin_mod = c.is_just_builtin_mod || node.name in ['os', 'strconv']
-			c.check_valid_snake_case(node.name, 'module name', node.pos)
+			c.module_decl(mut node)
 		}
 		ast.Return {
 			// c.returns = true
@@ -5433,4 +5449,15 @@ fn (c &Checker) check_import_sym_conflict(ident string) bool {
 		}
 	}
 	return false
+}
+
+fn breakpoint() {
+	eprintln('>>> breakpoint')
+}
+
+fn (mut c Checker) module_decl(mut node ast.Module) {
+	c.mod = node.name
+	c.is_just_builtin_mod = node.name == 'builtin'
+	c.is_builtin_mod = c.is_just_builtin_mod || node.name in ['os', 'strconv']
+	c.check_valid_snake_case(node.name, 'module name', node.pos)
 }

@@ -130,6 +130,12 @@ pub fn (mut b Builder) middle_stages() ! {
 
 	b.checker.check_files(b.parsed_files)
 	util.timing_measure('CHECK')
+	dump(b.parsed_files.len)
+	for ignored in b.parsed_files.filter(it.ignore_file) {
+		dump(ignored.path)
+	}
+	b.parsed_files = b.parsed_files.filter(!it.ignore_file)
+	dump(b.parsed_files.len)
 	if b.pref.dump_defines != '' {
 		b.dump_defines()
 	}

@@ -3754,9 +3754,13 @@ fn (mut p Parser) module_decl() ast.Module {
 					}
 				}
 				else {
-					dump(ma.a)
-					p.error_with_pos('unknown module attribute `[${ma.name}]`', ma.pos)
-					return mod_node
+					// allow for build tags, i.e. `@[if abc? || def ?] module name`
+					if ma.kind == .comptime_define {
+						mod_node.ct_expr = ma.ct_expr
+					} else {
+						p.error_with_pos('unknown module attribute `[${ma.name}]`', ma.pos)
+						return mod_node
+					}
 				}
 			}
 		}
