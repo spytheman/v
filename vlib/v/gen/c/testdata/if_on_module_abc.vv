@@ -1,0 +1,8 @@
+// vtest vflags: -d abc
+import if_on_module
+
+fn main() {
+	a := if_on_module.f()
+	dump(a)
+	assert a == 'abc'
+}

@@ -3754,6 +3754,7 @@ fn (mut p Parser) module_decl() ast.Module {
 					}
 				}
 				else {
+					dump(ma.a)
 					p.error_with_pos('unknown module attribute `[${ma.name}]`', ma.pos)
 					return mod_node
 				}
