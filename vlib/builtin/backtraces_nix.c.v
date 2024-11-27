@@ -57,7 +57,7 @@ fn print_backtrace_skipping_top_frames_linux(skipframes int) bool {
 	} $else {
 		$if linux && !freestanding {
 			$if tinyc {
-				C.tcc_backtrace(c'Backtrace')
+				_ = C.tcc_backtrace(c'Backtrace')
 				return false
 			} $else {
 				buffer := [100]voidptr{}

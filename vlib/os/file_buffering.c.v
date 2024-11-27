@@ -32,11 +32,11 @@ pub fn (mut f File) set_buffer(mut buffer []u8, mode FileBufferMode) int {
 // set_line_buffered sets the file buffering mode to FileBufferMode.line_buffered.
 // Note: f.set_line_buffered() may be used only after opening a file stream, and before any other operations have been performed on it.
 pub fn (mut f File) set_line_buffered() {
-	unsafe { f.setvbuf(&char(nil), .line_buffered, usize(0)) }
+	_ = unsafe { f.setvbuf(&char(nil), .line_buffered, usize(0)) }
 }
 
 // set_unbuffered sets the file buffering mode to FileBufferMode.not_buffered.
 // Note: f.set_unbuffered() may be used only after opening a file stream, and before any other operations have been performed on it.
 pub fn (mut f File) set_unbuffered() {
-	unsafe { f.setvbuf(&char(nil), .not_buffered, usize(0)) }
+	_ = unsafe { f.setvbuf(&char(nil), .not_buffered, usize(0)) }
 }

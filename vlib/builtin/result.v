@@ -22,7 +22,7 @@ fn _result_ok(data voidptr, mut res _result, size int) {
 	unsafe {
 		*res = _result{}
 		// use err to get the end of ResultBase and then memcpy into it
-		vmemcpy(&u8(&res.err) + sizeof(IError), data, size)
+		_ = vmemcpy(&u8(&res.err) + sizeof(IError), data, size)
 	}
 }
 

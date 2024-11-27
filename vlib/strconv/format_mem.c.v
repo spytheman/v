@@ -359,7 +359,7 @@ pub fn format_fl(f f64, p BF_param) string {
 		}
 
 		// copy the float
-		vmemcpy(&buf[buf_i], fs.str, fs.len)
+		_ = vmemcpy(&buf[buf_i], fs.str, fs.len)
 		buf_i += fs.len
 
 		// make the padding if needed
@@ -370,7 +370,7 @@ pub fn format_fl(f f64, p BF_param) string {
 				out_i++
 			}
 		}
-		vmemcpy(&out[out_i], &buf[0], buf_i)
+		_ = vmemcpy(&out[out_i], &buf[0], buf_i)
 		out_i += buf_i
 		if p.align == .left {
 			for i1 := 0; i1 < dif; i1++ {
@@ -430,7 +430,7 @@ pub fn format_es(f f64, p BF_param) string {
 		}
 
 		// copy the float
-		vmemcpy(&buf[buf_i], fs.str, fs.len)
+		_ = vmemcpy(&buf[buf_i], fs.str, fs.len)
 		buf_i += fs.len
 
 		// make the padding if needed
@@ -441,7 +441,7 @@ pub fn format_es(f f64, p BF_param) string {
 				out_i++
 			}
 		}
-		vmemcpy(&out[out_i], &buf[0], buf_i)
+		_ = vmemcpy(&out[out_i], &buf[0], buf_i)
 		out_i += buf_i
 		if p.align == .left {
 			for i1 := 0; i1 < dif; i1++ {

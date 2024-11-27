@@ -172,7 +172,7 @@ pub fn (mut b Builder) go_back(n int) {
 pub fn (b &Builder) spart(start_pos int, n int) string {
 	unsafe {
 		mut x := malloc_noscan(n + 1)
-		vmemcpy(x, &u8(b.data) + start_pos, n)
+		_ = vmemcpy(x, &u8(b.data) + start_pos, n)
 		x[n] = 0
 		return tos(x, n)
 	}
@@ -267,7 +267,9 @@ pub fn (mut b Builder) ensure_cap(n int) {
 
 	new_data := vcalloc(n * b.element_size)
 	if b.data != unsafe { nil } {
-		unsafe { vmemcpy(new_data, b.data, b.len * b.element_size) }
+		unsafe {
+			_ = vmemcpy(new_data, b.data, b.len * b.element_size)
+		}
 		// TODO: the old data may be leaked when no GC is used (ref-counting?)
 		if b.flags.has(.noslices) {
 			unsafe { free(b.data) }

@@ -30,7 +30,7 @@ pub fn signal_ignore(args ...Signal) {
 		// for main thread.
 		$if !windows {
 			for arg in args {
-				signal_opt(arg, ignore_signal_handler) or {}
+				_ = signal_opt(arg, ignore_signal_handler) or { ignore_signal_handler }
 			}
 		}
 	} else {

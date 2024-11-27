@@ -241,7 +241,7 @@ fn create_image(file string) Image {
 		ext:         stb_img.ext
 		path:        file
 	}
-	img.init_sokol_image()
+	_ = img.init_sokol_image()
 	return img
 }
 

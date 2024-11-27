@@ -19,9 +19,9 @@ fn (mut p Process) unix_spawn_process() int {
 			p.stdio_fd[1] = pipeset[2] // store the read end of child's out
 			p.stdio_fd[2] = pipeset[4] // store the read end of child's err
 			// close the rest of the pipe fds, the parent does not need them
-			fd_close(pipeset[0])
-			fd_close(pipeset[3])
-			fd_close(pipeset[5])
+			_ = fd_close(pipeset[0])
+			_ = fd_close(pipeset[3])
+			_ = fd_close(pipeset[5])
 		}
 		return pid
 	}
@@ -32,23 +32,23 @@ fn (mut p Process) unix_spawn_process() int {
 	// affecting the parent process.
 	//
 	if p.use_pgroup {
-		C.setpgid(0, 0)
+		_ = C.setpgid(0, 0)
 	}
 	if p.use_stdio_ctl {
 		// Redirect the child standard in/out/err to the pipes that
 		// were created in the parent.
 		// Close the parent's pipe fds, the child do not need them:
-		fd_close(pipeset[1])
-		fd_close(pipeset[2])
-		fd_close(pipeset[4])
+		_ = fd_close(pipeset[1])
+		_ = fd_close(pipeset[2])
+		_ = fd_close(pipeset[4])
 		// redirect the pipe fds to the child's in/out/err fds:
-		C.dup2(pipeset[0], 0)
-		C.dup2(pipeset[3], 1)
-		C.dup2(pipeset[5], 2)
+		_ = C.dup2(pipeset[0], 0)
+		_ = C.dup2(pipeset[3], 1)
+		_ = C.dup2(pipeset[5], 2)
 		// close the pipe fdsx after the redirection
-		fd_close(pipeset[0])
-		fd_close(pipeset[3])
-		fd_close(pipeset[5])
+		_ = fd_close(pipeset[0])
+		_ = fd_close(pipeset[3])
+		_ = fd_close(pipeset[5])
 	}
 	if p.work_folder != '' {
 		if !is_abs_path(p.filename) {
@@ -67,27 +67,27 @@ fn (mut p Process) unix_spawn_process() int {
 }
 
 fn (mut p Process) unix_stop_process() {
-	C.kill(p.pid, C.SIGSTOP)
+	_ = C.kill(p.pid, C.SIGSTOP)
 }
 
 fn (mut p Process) unix_resume_process() {
-	C.kill(p.pid, C.SIGCONT)
+	_ = C.kill(p.pid, C.SIGCONT)
 }
 
 fn (mut p Process) unix_term_process() {
-	C.kill(p.pid, C.SIGTERM)
+	_ = C.kill(p.pid, C.SIGTERM)
 }
 
 fn (mut p Process) unix_kill_process() {
-	C.kill(p.pid, C.SIGKILL)
+	_ = C.kill(p.pid, C.SIGKILL)
 }
 
 fn (mut p Process) unix_kill_pgroup() {
-	C.kill(-p.pid, C.SIGKILL)
+	_ = C.kill(-p.pid, C.SIGKILL)
 }
 
 fn (mut p Process) unix_wait() {
-	p.impl_check_pid_status(false, 0)
+	_ = p.impl_check_pid_status(false, 0)
 }
 
 fn (mut p Process) unix_is_alive() bool {

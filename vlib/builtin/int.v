@@ -117,7 +117,7 @@ fn (nn int) str_l(max int) string {
 			buf[index] = `-`
 		}
 		diff := max - index
-		vmemmove(buf, voidptr(buf + index), diff + 1)
+		_ = vmemmove(buf, voidptr(buf + index), diff + 1)
 		/*
 		// === manual memory move for bare metal ===
 		mut c:= 0
@@ -200,7 +200,7 @@ pub fn (nn u32) str() string {
 			index++
 		}
 		diff := max - index
-		vmemmove(buf, voidptr(buf + index), diff + 1)
+		_ = vmemmove(buf, voidptr(buf + index), diff + 1)
 		return tos(buf, diff)
 
 		// return tos(memdup(&buf[0] + index, (max - index)), (max - index))
@@ -256,7 +256,7 @@ pub fn (nn i64) str() string {
 			buf[index] = `-`
 		}
 		diff := max - index
-		vmemmove(buf, voidptr(buf + index), diff + 1)
+		_ = vmemmove(buf, voidptr(buf + index), diff + 1)
 		return tos(buf, diff)
 		// return tos(memdup(&buf[0] + index, (max - index)), (max - index))
 	}
@@ -293,7 +293,7 @@ pub fn (nn u64) str() string {
 			index++
 		}
 		diff := max - index
-		vmemmove(buf, voidptr(buf + index), diff + 1)
+		_ = vmemmove(buf, voidptr(buf + index), diff + 1)
 		return tos(buf, diff)
 		// return tos(memdup(&buf[0] + index, (max - index)), (max - index))
 	}
@@ -582,7 +582,7 @@ pub fn (c u8) is_capital() bool {
 pub fn (b []u8) bytestr() string {
 	unsafe {
 		buf := malloc_noscan(b.len + 1)
-		vmemcpy(buf, b.data, b.len)
+		_ = vmemcpy(buf, b.data, b.len)
 		buf[b.len] = 0
 		return tos(buf, b.len)
 	}
@@ -606,7 +606,7 @@ pub fn (b u8) repeat(count int) string {
 	}
 	mut bytes := unsafe { malloc_noscan(count + 1) }
 	unsafe {
-		vmemset(bytes, b, count)
+		_ = vmemset(bytes, b, count)
 		bytes[count] = `0`
 	}
 	return unsafe { bytes.vstring_with_len(count) }

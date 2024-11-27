@@ -120,7 +120,9 @@ fn (mut container PipelineContainer) init_pipeline() {
 
 	// Alpha
 	mut alpha_pipdesc := gfx.PipelineDesc{}
-	unsafe { vmemset(&alpha_pipdesc, 0, int(sizeof(alpha_pipdesc))) }
+	unsafe {
+		_ = vmemset(&alpha_pipdesc, 0, int(sizeof(alpha_pipdesc)))
+	}
 	alpha_pipdesc.label = c'alpha-pipeline'
 	alpha_pipdesc.colors[0] = gfx.ColorTargetState{
 		blend: gfx.BlendState{
@@ -133,7 +135,9 @@ fn (mut container PipelineContainer) init_pipeline() {
 
 	// Add
 	mut add_pipdesc := gfx.PipelineDesc{}
-	unsafe { vmemset(&add_pipdesc, 0, int(sizeof(add_pipdesc))) }
+	unsafe {
+		_ = vmemset(&add_pipdesc, 0, int(sizeof(add_pipdesc)))
+	}
 	add_pipdesc.label = c'additive-pipeline'
 	add_pipdesc.colors[0] = gfx.ColorTargetState{
 		blend: gfx.BlendState{
@@ -282,7 +286,7 @@ fn gg_init_sokol_window(user_data voidptr) {
 
 	for i in 0 .. ctx.image_cache.len {
 		if ctx.image_cache[i].simg.id == 0 {
-			ctx.image_cache[i].init_sokol_image()
+			_ = ctx.image_cache[i].init_sokol_image()
 		}
 	}
 }

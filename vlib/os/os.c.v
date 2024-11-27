@@ -46,7 +46,7 @@ fn C._chsize_s(voidptr, u64) int
 pub fn read_bytes(path string) ![]u8 {
 	mut fp := vfopen(path, 'rb')!
 	defer {
-		C.fclose(fp)
+		_ = C.fclose(fp)
 	}
 	fsize := find_cfile_size(fp)!
 	if fsize == 0 {
@@ -77,7 +77,7 @@ fn find_cfile_size(fp &C.FILE) !int {
 	if i64(len) < raw_fsize {
 		return error('int(${raw_fsize}) cast results in ${len}')
 	}
-	C.rewind(fp)
+	_ = C.rewind(fp)
 	return len
 }
 
@@ -110,7 +110,7 @@ pub fn read_file(path string) !string {
 	mode := 'rb'
 	mut fp := vfopen(path, mode)!
 	defer {
-		C.fclose(fp)
+		_ = C.fclose(fp)
 	}
 	allocate := find_cfile_size(fp)!
 	if allocate == 0 {
@@ -156,7 +156,7 @@ pub fn truncate(path string, len u64) ! {
 		return error_posix()
 	}
 	defer {
-		C.close(fp)
+		_ = C.close(fp)
 	}
 	$if windows {
 		if C._chsize_s(fp, len) != 0 {
@@ -235,7 +235,7 @@ pub fn cp(src string, dst string) ! {
 		}
 		fp_to := C.open(&char(dst.str), C.O_WRONLY | C.O_CREAT | C.O_TRUNC, C.S_IWUSR | C.S_IRUSR)
 		if fp_to < 0 { // Check if file opened (permissions problems ...)
-			C.close(fp_from)
+			_ = C.close(fp_from)
 			return error_with_code('cp (permission): failed to write to ${dst} (fp_to: ${fp_to})',
 				int(fp_to))
 		}
@@ -249,19 +249,19 @@ pub fn cp(src string, dst string) ! {
 				break
 			}
 			if C.write(fp_to, &buf[0], count) < 0 {
-				C.close(fp_to)
-				C.close(fp_from)
+				_ = C.close(fp_to)
+				_ = C.close(fp_from)
 				return error_with_code('cp: failed to write to ${dst}', int(-1))
 			}
 		}
 		from_attr := stat(src)!
 		if C.chmod(&char(dst.str), from_attr.mode) < 0 {
-			C.close(fp_to)
-			C.close(fp_from)
+			_ = C.close(fp_to)
+			_ = C.close(fp_from)
 			return error_with_code('failed to set permissions for ${dst}', int(-1))
 		}
-		C.close(fp_to)
-		C.close(fp_from)
+		_ = C.close(fp_to)
+		_ = C.close(fp_from)
 	}
 }
 
@@ -895,7 +895,7 @@ pub fn file_last_mod_unix(path string) i64 {
 
 // flush will flush the stdout buffer.
 pub fn flush() {
-	C.fflush(C.stdout)
+	_ = C.fflush(C.stdout)
 }
 
 // chmod change file access attributes of `path` to `mode`.

@@ -27,7 +27,9 @@ pub fn create_default_pass(action gfx.PassAction) gfx.Pass {
 // See also: documentation at the top of thirdparty/sokol/sokol_gfx.h
 pub fn glue_environment() gfx.Environment {
 	mut env := gfx.Environment{}
-	unsafe { vmemset(&env, 0, int(sizeof(env))) }
+	unsafe {
+		_ = vmemset(&env, 0, int(sizeof(env)))
+	}
 	env.defaults.color_format = gfx.PixelFormat.from(color_format()) or { gfx.PixelFormat.none }
 	env.defaults.depth_format = gfx.PixelFormat.from(depth_format()) or { gfx.PixelFormat.none }
 	env.defaults.sample_count = sample_count()
@@ -47,7 +49,9 @@ pub fn glue_environment() gfx.Environment {
 // See also: documentation at the top of thirdparty/sokol/sokol_gfx.h
 pub fn glue_swapchain() gfx.Swapchain {
 	mut swapchain := gfx.Swapchain{}
-	unsafe { vmemset(&swapchain, 0, int(sizeof(swapchain))) }
+	unsafe {
+		_ = vmemset(&swapchain, 0, int(sizeof(swapchain)))
+	}
 	swapchain.width = width()
 	swapchain.height = height()
 	swapchain.sample_count = sample_count()
@@ -235,7 +239,7 @@ pub fn run(desc &Desc) {
 		}
 	}
 	g_desc = *desc
-	C.sapp_run(desc)
+	_ = C.sapp_run(desc)
 }
 
 // HTML5: enable or disable the hardwired "Leave Site?" dialog box

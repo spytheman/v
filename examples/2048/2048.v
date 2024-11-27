@@ -461,7 +461,7 @@ fn (mut app App) ai_move() {
 				if !is_valid {
 					continue
 				}
-				cboard.place_random_tile()
+				_, _ = cboard.place_random_tile()
 				cmoves++
 				if cmoves > prediction_depth {
 					break

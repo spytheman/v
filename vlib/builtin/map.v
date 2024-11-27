@@ -133,7 +133,7 @@ fn (mut d DenseArray) expand() int {
 			d.values = realloc_data(d.values, old_value_size, d.value_bytes * d.cap)
 			if d.deletes != 0 {
 				d.all_deleted = realloc_data(d.all_deleted, old_cap, d.cap)
-				vmemset(voidptr(d.all_deleted + d.len), 0, d.cap - d.len)
+				_ = vmemset(voidptr(d.all_deleted + d.len), 0, d.cap - d.len)
 			}
 		}
 	}
@@ -318,7 +318,7 @@ fn new_map_update_init(update &map, n int, key_bytes int, value_bytes int, keys 
 pub fn (mut m map) move() map {
 	r := *m
 	unsafe {
-		vmemset(m, 0, int(sizeof(map)))
+		_ = vmemset(m, 0, int(sizeof(map)))
 	}
 	return r
 }
@@ -332,8 +332,8 @@ pub fn (mut m map) clear() {
 			free(m.key_values.all_deleted)
 			m.key_values.all_deleted = nil
 		}
-		vmemset(m.key_values.keys, 0, m.key_values.key_bytes * m.key_values.cap)
-		vmemset(m.metas, 0, sizeof(u32) * (m.even_index + 2 + m.extra_metas))
+		_ = vmemset(m.key_values.keys, 0, m.key_values.key_bytes * m.key_values.cap)
+		_ = vmemset(m.metas, 0, sizeof(u32) * (m.even_index + 2 + m.extra_metas))
 	}
 	m.key_values.len = 0
 	m.key_values.deletes = 0
@@ -399,7 +399,7 @@ fn (mut m map) ensure_extra_metas(probe_count u32) {
 		unsafe {
 			x := realloc_data(&u8(m.metas), int(size_of_u32 * old_mem_size), int(size_of_u32 * mem_size))
 			m.metas = &u32(x)
-			vmemset(m.metas + mem_size - extra_metas_inc, 0, int(sizeof(u32) * extra_metas_inc))
+			_ = vmemset(m.metas + mem_size - extra_metas_inc, 0, int(sizeof(u32) * extra_metas_inc))
 		}
 		// Should almost never happen
 		if probe_count == 252 {
@@ -425,7 +425,7 @@ fn (mut m map) set(key voidptr, value voidptr) {
 		if m.key_eq_fn(key, pkey) {
 			unsafe {
 				pval := m.key_values.value(kv_index)
-				vmemcpy(pval, value, m.value_bytes)
+				_ = vmemcpy(pval, value, m.value_bytes)
 			}
 			return
 		}
@@ -437,7 +437,7 @@ fn (mut m map) set(key voidptr, value voidptr) {
 		pkey := m.key_values.key(kv_index)
 		pvalue := m.key_values.value(kv_index)
 		m.clone_fn(pkey, key)
-		vmemcpy(&u8(pvalue), value, m.value_bytes)
+		_ = vmemcpy(&u8(pvalue), value, m.value_bytes)
 	}
 	m.meta_greater(index, meta, u32(kv_index))
 	m.len++
@@ -474,7 +474,7 @@ pub fn (mut m map) reserve(meta_bytes u32) {
 		// TODO: use realloc_data here too
 		x := v_realloc(&u8(m.metas), int(meta_bytes))
 		m.metas = &u32(x)
-		vmemset(m.metas, 0, int(meta_bytes))
+		_ = vmemset(m.metas, 0, int(meta_bytes))
 	}
 	for i := 0; i < m.key_values.len; i++ {
 		if !m.key_values.has_index(i) {
@@ -638,7 +638,7 @@ pub fn (mut m map) delete(key voidptr) {
 				m.metas[index] = 0
 				m.free_fn(pkey)
 				// Mark key as deleted
-				vmemset(pkey, 0, m.key_bytes)
+				_ = vmemset(pkey, 0, m.key_bytes)
 			}
 			if m.key_values.len <= 32 {
 				return
@@ -689,7 +689,7 @@ pub fn (m &map) values() array {
 
 	if m.key_values.deletes == 0 {
 		unsafe {
-			vmemcpy(item, m.key_values.values, m.value_bytes * m.key_values.len)
+			_ = vmemcpy(item, m.key_values.values, m.value_bytes * m.key_values.len)
 		}
 		return values
 	}
@@ -700,7 +700,7 @@ pub fn (m &map) values() array {
 		}
 		unsafe {
 			pvalue := m.key_values.value(i)
-			vmemcpy(item, pvalue, m.value_bytes)
+			_ = vmemcpy(item, pvalue, m.value_bytes)
 			item = item + m.value_bytes
 		}
 	}
@@ -750,7 +750,9 @@ pub fn (m &map) clone() map {
 		clone_fn:        m.clone_fn
 		free_fn:         m.free_fn
 	}
-	unsafe { vmemcpy(res.metas, m.metas, metasize) }
+	unsafe {
+		_ = vmemcpy(res.metas, m.metas, metasize)
+	}
 	if !m.has_string_keys {
 		return res
 	}
@@ -776,7 +778,7 @@ pub fn (m &map) free() {
 			unsafe {
 				pkey := m.key_values.key(i)
 				m.free_fn(pkey)
-				vmemset(pkey, 0, m.key_bytes)
+				_ = vmemset(pkey, 0, m.key_bytes)
 			}
 		}
 	} else {
@@ -787,7 +789,7 @@ pub fn (m &map) free() {
 			unsafe {
 				pkey := m.key_values.key(i)
 				m.free_fn(pkey)
-				vmemset(pkey, 0, m.key_bytes)
+				_ = vmemset(pkey, 0, m.key_bytes)
 			}
 		}
 	}

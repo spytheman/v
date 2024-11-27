@@ -46,7 +46,7 @@ fn (mut p DateTimeParser) must_be_int_with_minimum_length(min int, max int, allo
 		if !tok.contains_only('0123456789') {
 			break
 		}
-		p.next(1)!
+		_ = p.next(1)!
 		val += tok
 	}
 	if val.len < min {
@@ -242,19 +242,19 @@ fn (mut p DateTimeParser) parse() !Time {
 				}
 			}
 			'd' {
-				p.must_be_int(1) or { return err }
+				_ = p.must_be_int(1) or { return err }
 			}
 			'c' {
-				p.must_be_int(1) or { return err }
+				_ = p.must_be_int(1) or { return err }
 			}
 			'dd' {
-				p.must_be_valid_two_letter_week_day() or { return err }
+				_ = p.must_be_valid_two_letter_week_day() or { return err }
 			}
 			'ddd' {
-				p.must_be_valid_three_letter_week_day() or { return err }
+				_ = p.must_be_valid_three_letter_week_day() or { return err }
 			}
 			'dddd' {
-				p.must_be_valid_week_day() or { return err }
+				_ = p.must_be_valid_week_day() or { return err }
 			}
 			'H' {
 				hour_ = p.must_be_int_with_minimum_length(1, 2, true) or {

@@ -28,8 +28,8 @@ fn signal_ignore_internal(args ...Signal) {
 		mask1 := C.sigset_t{}
 		C.sigemptyset(&mask1)
 		for arg in args {
-			C.sigaddset(&mask1, int(arg))
+			_ = C.sigaddset(&mask1, int(arg))
 		}
-		C.sigprocmask(C.SIG_BLOCK, &mask1, unsafe { nil })
+		_ = C.sigprocmask(C.SIG_BLOCK, &mask1, unsafe { nil })
 	}
 }

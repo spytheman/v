@@ -17,10 +17,10 @@ pub fn debugger_present() bool {
 			if pid == 0 {
 				ppid := getppid()
 				if C.ptrace(C.PTRACE_ATTACH, ppid, 0, 0) == 0 {
-					C.waitpid(ppid, 0, 0)
+					_ = C.waitpid(ppid, 0, 0)
 
 					// detach ptrace, otherwise further checks would indicate a debugger is present (ptrace is the Debugger then)
-					C.ptrace(C.PTRACE_DETACH, ppid, 0, 0)
+					_ = C.ptrace(C.PTRACE_DETACH, ppid, 0, 0)
 
 					// no external debugger
 					exit(0)
@@ -31,7 +31,7 @@ pub fn debugger_present() bool {
 			} else {
 				mut status := 0
 				// wait until the child process dies
-				C.waitpid(pid, &status, 0)
+				_ = C.waitpid(pid, &status, 0)
 				// check the exit code of the child process check
 				if C.WEXITSTATUS(status) == 0 {
 					return false

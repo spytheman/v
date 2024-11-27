@@ -26,7 +26,7 @@ const buff_size = int($d('gg_text_buff_size', 2048))
 fn clear_atlas_callback(uptr voidptr, error int, val int) {
 	if error == 1 { // atlas overflow error code
 		fons := unsafe { &fontstash.Context(uptr) }
-		fons.reset_atlas(buff_size, buff_size)
+		_ = fons.reset_atlas(buff_size, buff_size)
 	}
 }
 
@@ -232,7 +232,7 @@ pub fn (ctx &Context) draw_text(x int, y int, text_ string, cfg gx.TextCfg) {
 	// }
 	ctx.set_text_cfg(cfg)
 	scale := if ctx.ft.scale == 0 { f32(1) } else { ctx.ft.scale }
-	ctx.ft.fons.draw_text(x * scale, y * scale, text_) // TODO: check offsets/alignment
+	_ = ctx.ft.fons.draw_text(x * scale, y * scale, text_) // TODO: check offsets/alignment
 }
 
 // draw_text draws the string in `text_` starting at top-left position `x`,`y` using
@@ -258,7 +258,7 @@ pub fn (ctx &Context) text_width(s string) int {
 		return 0
 	}
 	mut buf := [4]f32{}
-	ctx.ft.fons.text_bounds(0, 0, s, &buf[0])
+	_ = ctx.ft.fons.text_bounds(0, 0, s, &buf[0])
 	if s.ends_with(' ') {
 		return int((buf[2] - buf[0]) / ctx.scale) +
 			ctx.text_width('i') // TODO: fix this in fontstash?
@@ -280,7 +280,7 @@ pub fn (ctx &Context) text_height(s string) int {
 		return 0
 	}
 	mut buf := [4]f32{}
-	ctx.ft.fons.text_bounds(0, 0, s, &buf[0])
+	_ = ctx.ft.fons.text_bounds(0, 0, s, &buf[0])
 	return int((buf[3] - buf[1]) / ctx.scale)
 }
 
@@ -291,6 +291,6 @@ pub fn (ctx &Context) text_size(s string) (int, int) {
 		return 0, 0
 	}
 	mut buf := [4]f32{}
-	ctx.ft.fons.text_bounds(0, 0, s, &buf[0])
+	_ = ctx.ft.fons.text_bounds(0, 0, s, &buf[0])
 	return int((buf[2] - buf[0]) / ctx.scale), int((buf[3] - buf[1]) / ctx.scale)
 }

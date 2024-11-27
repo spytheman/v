@@ -94,8 +94,7 @@ pub fn cp_all(src string, dst string, overwrite bool) ! {
 				return error('Destination file path already exist')
 			}
 		}
-		cp(source_path, adjusted_path)!
-		return
+		return cp(source_path, adjusted_path)
 	}
 	if !exists(dest_path) {
 		mkdir(dest_path)!
@@ -162,7 +161,7 @@ pub fn write_lines(path string, lines []string) ! {
 		f.close()
 	}
 	for line in lines {
-		f.writeln(line)!
+		_ = f.writeln(line)!
 	}
 }
 
@@ -557,7 +556,7 @@ pub fn find_abs_path_of_executable(exe_name string) !string {
 
 // exists_in_system_path returns `true` if `prog` exists in the system's PATH
 pub fn exists_in_system_path(prog string) bool {
-	find_abs_path_of_executable(prog) or { return false }
+	_ = find_abs_path_of_executable(prog) or { return false }
 	return true
 }
 
@@ -924,7 +923,7 @@ pub fn vtmp_dir() string {
 	uid := getuid()
 	vtmp = join_path_single(temp_dir(), 'v_${uid}')
 	create_folder_when_it_does_not_exist(vtmp)
-	setenv('VTMP', vtmp, true)
+	_ = setenv('VTMP', vtmp, true)
 	return vtmp
 }
 

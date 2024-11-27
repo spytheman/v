@@ -52,9 +52,9 @@ fn write_rgba_to_ppm(path string, w int, h int, components int, pixels &u8) ! {
 	defer {
 		f_out.close()
 	}
-	f_out.writeln('P3')!
-	f_out.writeln('${w} ${h}')!
-	f_out.writeln('255')!
+	_ = f_out.writeln('P3')!
+	_ = f_out.writeln('${w} ${h}')!
+	_ = f_out.writeln('255')!
 	for i := h - 1; i >= 0; i-- {
 		for j := 0; j < w; j++ {
 			idx := i * w * components + j * components
@@ -62,7 +62,7 @@ fn write_rgba_to_ppm(path string, w int, h int, components int, pixels &u8) ! {
 				r := int(pixels[idx])
 				g := int(pixels[idx + 1])
 				b := int(pixels[idx + 2])
-				f_out.write_string('${r} ${g} ${b} ')!
+				_ = f_out.write_string('${r} ${g} ${b} ')!
 			}
 		}
 	}

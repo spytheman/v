@@ -112,9 +112,9 @@ pub fn open_file(path string, mode string, options ...int) !File {
 	if seek_to_end {
 		// ensure appending will work, even on bsd/macos systems:
 		$if windows {
-			C._fseeki64(cfile, 0, C.SEEK_END)
+			_ = C._fseeki64(cfile, 0, C.SEEK_END)
 		} $else {
-			C.fseeko(cfile, 0, C.SEEK_END)
+			_ = C.fseeko(cfile, 0, C.SEEK_END)
 		}
 	}
 	return File{
@@ -306,30 +306,30 @@ pub fn (mut f File) write_to(pos u64, buf []u8) !int {
 	}
 	$if x64 {
 		$if windows {
-			C._fseeki64(f.cfile, pos, C.SEEK_SET)
+			_ = C._fseeki64(f.cfile, pos, C.SEEK_SET)
 			res := int(C.fwrite(buf.data, 1, buf.len, f.cfile))
 			if res == 0 && buf.len != 0 {
 				return error('0 bytes written')
 			}
-			C._fseeki64(f.cfile, 0, C.SEEK_END)
+			_ = C._fseeki64(f.cfile, 0, C.SEEK_END)
 			return res
 		} $else {
-			C.fseeko(f.cfile, pos, C.SEEK_SET)
+			_ = C.fseeko(f.cfile, pos, C.SEEK_SET)
 			res := int(C.fwrite(buf.data, 1, buf.len, f.cfile))
 			if res == 0 && buf.len != 0 {
 				return error('0 bytes written')
 			}
-			C.fseeko(f.cfile, 0, C.SEEK_END)
+			_ = C.fseeko(f.cfile, 0, C.SEEK_END)
 			return res
 		}
 	}
 	$if x32 {
-		C.fseek(f.cfile, pos, C.SEEK_SET)
+		_ = C.fseek(f.cfile, pos, C.SEEK_SET)
 		res := int(C.fwrite(buf.data, 1, buf.len, f.cfile))
 		if res == 0 && buf.len != 0 {
 			return error('0 bytes written')
 		}
-		C.fseek(f.cfile, 0, C.SEEK_END)
+		_ = C.fseek(f.cfile, 0, C.SEEK_END)
 		return res
 	}
 	return error('Could not write to file')
@@ -376,21 +376,21 @@ pub fn (mut f File) write_full_buffer(buffer voidptr, buffer_len usize) ! {
 pub fn (mut f File) write_ptr_at(data voidptr, size int, pos u64) int {
 	$if x64 {
 		$if windows {
-			C._fseeki64(f.cfile, pos, C.SEEK_SET)
+			_ = C._fseeki64(f.cfile, pos, C.SEEK_SET)
 			res := int(C.fwrite(data, 1, size, f.cfile))
-			C._fseeki64(f.cfile, 0, C.SEEK_END)
+			_ = C._fseeki64(f.cfile, 0, C.SEEK_END)
 			return res
 		} $else {
-			C.fseeko(f.cfile, pos, C.SEEK_SET)
+			_ = C.fseeko(f.cfile, pos, C.SEEK_SET)
 			res := int(C.fwrite(data, 1, size, f.cfile))
-			C.fseeko(f.cfile, 0, C.SEEK_END)
+			_ = C.fseeko(f.cfile, 0, C.SEEK_END)
 			return res
 		}
 	}
 	$if x32 {
-		C.fseek(f.cfile, pos, C.SEEK_SET)
+		_ = C.fseek(f.cfile, pos, C.SEEK_SET)
 		res := int(C.fwrite(data, 1, size, f.cfile))
-		C.fseek(f.cfile, 0, C.SEEK_END)
+		_ = C.fseek(f.cfile, 0, C.SEEK_END)
 		return res
 	}
 	return 0
@@ -495,26 +495,26 @@ pub fn (f &File) read_bytes_into(pos u64, mut buf []u8) !int {
 	$if x64 {
 		$if windows {
 			// Note: fseek errors if pos == os.file_size, which we accept
-			C._fseeki64(f.cfile, pos, C.SEEK_SET)
+			_ = C._fseeki64(f.cfile, pos, C.SEEK_SET)
 			nbytes := fread(buf.data, 1, buf.len, f.cfile)!
 			$if debug {
-				C._fseeki64(f.cfile, 0, C.SEEK_SET)
+				_ = C._fseeki64(f.cfile, 0, C.SEEK_SET)
 			}
 			return nbytes
 		} $else {
-			C.fseeko(f.cfile, pos, C.SEEK_SET)
+			_ = C.fseeko(f.cfile, pos, C.SEEK_SET)
 			nbytes := fread(buf.data, 1, buf.len, f.cfile)!
 			$if debug {
-				C.fseeko(f.cfile, 0, C.SEEK_SET)
+				_ = C.fseeko(f.cfile, 0, C.SEEK_SET)
 			}
 			return nbytes
 		}
 	}
 	$if x32 {
-		C.fseek(f.cfile, pos, C.SEEK_SET)
+		_ = C.fseek(f.cfile, pos, C.SEEK_SET)
 		nbytes := fread(buf.data, 1, buf.len, f.cfile)!
 		$if debug {
-			C.fseek(f.cfile, 0, C.SEEK_SET)
+			_ = C.fseek(f.cfile, 0, C.SEEK_SET)
 		}
 		return nbytes
 	}
@@ -528,16 +528,16 @@ pub fn (f &File) read_from(pos u64, mut buf []u8) !int {
 	}
 	$if x64 {
 		$if windows {
-			C._fseeki64(f.cfile, pos, C.SEEK_SET)
+			_ = C._fseeki64(f.cfile, pos, C.SEEK_SET)
 		} $else {
-			C.fseeko(f.cfile, pos, C.SEEK_SET)
+			_ = C.fseeko(f.cfile, pos, C.SEEK_SET)
 		}
 
 		nbytes := fread(buf.data, 1, buf.len, f.cfile)!
 		return nbytes
 	}
 	$if x32 {
-		C.fseek(f.cfile, pos, C.SEEK_SET)
+		_ = C.fseek(f.cfile, pos, C.SEEK_SET)
 		nbytes := fread(buf.data, 1, buf.len, f.cfile)!
 		return nbytes
 	}
@@ -557,7 +557,7 @@ pub fn (mut f File) flush() {
 	if !f.is_opened {
 		return
 	}
-	C.fflush(f.cfile)
+	_ = C.fflush(f.cfile)
 }
 
 pub struct FileNotOpenedError {

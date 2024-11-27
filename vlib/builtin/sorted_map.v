@@ -78,7 +78,7 @@ fn (mut m SortedMap) set(key string, value voidptr) {
 			parent.split_child(child_index, mut node)
 			if key == parent.keys[child_index] {
 				unsafe {
-					vmemcpy(parent.values[child_index], value, m.value_bytes)
+					_ = vmemcpy(parent.values[child_index], value, m.value_bytes)
 				}
 				return
 			}
@@ -94,7 +94,7 @@ fn (mut m SortedMap) set(key string, value voidptr) {
 		}
 		if i != node.len && key == node.keys[i] {
 			unsafe {
-				vmemcpy(node.values[i], value, m.value_bytes)
+				_ = vmemcpy(node.values[i], value, m.value_bytes)
 			}
 			return
 		}
@@ -108,7 +108,7 @@ fn (mut m SortedMap) set(key string, value voidptr) {
 			node.keys[j + 1] = key
 			unsafe {
 				node.values[j + 1] = malloc(m.value_bytes)
-				vmemcpy(node.values[j + 1], value, m.value_bytes)
+				_ = vmemcpy(node.values[j + 1], value, m.value_bytes)
 			}
 			node.len++
 			m.len++
@@ -167,7 +167,7 @@ fn (m SortedMap) get(key string, out voidptr) bool {
 		}
 		if i != -1 && key == node.keys[i] {
 			unsafe {
-				vmemcpy(out, node.values[i], m.value_bytes)
+				_ = vmemcpy(out, node.values[i], m.value_bytes)
 			}
 			return true
 		}
@@ -255,7 +255,7 @@ fn (mut n mapnode) remove_from_non_leaf(idx int) {
 		n.keys[idx] = predecessor
 		n.values[idx] = current.values[current.len - 1]
 		mut node := unsafe { &mapnode(n.children[idx]) }
-		node.remove_key(predecessor)
+		_ = node.remove_key(predecessor)
 	} else if unsafe { &mapnode(n.children[idx + 1]) }.len >= degree {
 		mut current := unsafe { &mapnode(n.children[idx + 1]) }
 		for current.children != unsafe { nil } {
@@ -265,11 +265,11 @@ fn (mut n mapnode) remove_from_non_leaf(idx int) {
 		n.keys[idx] = successor
 		n.values[idx] = current.values[0]
 		mut node := unsafe { &mapnode(n.children[idx + 1]) }
-		node.remove_key(successor)
+		_ = node.remove_key(successor)
 	} else {
 		n.merge(idx)
 		mut node := unsafe { &mapnode(n.children[idx]) }
-		node.remove_key(k)
+		_ = node.remove_key(k)
 	}
 }
 
@@ -422,7 +422,7 @@ pub fn (m &SortedMap) keys() []string {
 	if m.root == unsafe { nil } || m.root.len == 0 {
 		return keys
 	}
-	m.root.subkeys(mut keys, 0)
+	_ = m.root.subkeys(mut keys, 0)
 	return keys
 }
 

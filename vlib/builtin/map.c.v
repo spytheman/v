@@ -50,13 +50,13 @@ fn (mut d DenseArray) zeros_to_end() {
 			unsafe {
 				if count != i {
 					// Swap keys
-					C.memcpy(tmp_key, d.key(count), d.key_bytes)
-					C.memcpy(d.key(count), d.key(i), d.key_bytes)
-					C.memcpy(d.key(i), tmp_key, d.key_bytes)
+					_ = C.memcpy(tmp_key, d.key(count), d.key_bytes)
+					_ = C.memcpy(d.key(count), d.key(i), d.key_bytes)
+					_ = C.memcpy(d.key(i), tmp_key, d.key_bytes)
 					// Swap values
-					C.memcpy(tmp_value, d.value(count), d.value_bytes)
-					C.memcpy(d.value(count), d.value(i), d.value_bytes)
-					C.memcpy(d.value(i), tmp_value, d.value_bytes)
+					_ = C.memcpy(tmp_value, d.value(count), d.value_bytes)
+					_ = C.memcpy(d.value(count), d.value(i), d.value_bytes)
+					_ = C.memcpy(d.value(i), tmp_value, d.value_bytes)
 				}
 			}
 			count++

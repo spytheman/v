@@ -150,7 +150,8 @@ fn glob_match(dir string, pattern string, next_pattern string, mut matches []str
 			}
 			.start_and_ends_with {
 				p := pat.split('*')
-				f.starts_with(p[0]) && f.ends_with(p[1])
+				x := f.starts_with(p[0]) && f.ends_with(p[1])
+				x
 			}
 			.contains {
 				f.contains(pat)
@@ -321,7 +322,7 @@ pub fn ls(path string) ![]string {
 			res << tos_clone(bptr)
 		}
 	}
-	C.closedir(dir)
+	_ = C.closedir(dir)
 	return res
 }
 
@@ -455,8 +456,8 @@ pub fn (mut f File) close() {
 		return
 	}
 	f.is_opened = false
-	C.fflush(f.cfile)
-	C.fclose(f.cfile)
+	_ = C.fflush(f.cfile)
+	_ = C.fclose(f.cfile)
 }
 
 fn C.mkstemp(stemplate &u8) int
@@ -480,7 +481,7 @@ pub fn ensure_folder_is_writable(folder string) ! {
 		if -1 == x {
 			return error_with_code('folder `${folder}` is not writable', 3)
 		}
-		C.close(x)
+		_ = C.close(x)
 	}
 	rm(tmp_perm_check)!
 }
@@ -525,7 +526,7 @@ pub fn posix_set_permission_bit(path_s string, mode u32, enable bool) {
 		true { new_mode |= mode }
 		false { new_mode &= (0o7777 - mode) }
 	}
-	C.chmod(&char(path_s.str), int(new_mode))
+	_ = C.chmod(&char(path_s.str), int(new_mode))
 }
 
 // get_long_path has no meaning for *nix, but has for windows, where `c:\folder\some~1` for example

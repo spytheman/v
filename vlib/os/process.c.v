@@ -58,7 +58,7 @@ pub fn (mut p Process) signal_continue() {
 // process is finished.
 pub fn (mut p Process) wait() {
 	if p.status == .not_started {
-		p._spawn()
+		_ = p._spawn()
 	}
 	if p.status !in [.running, .stopped] {
 		return
@@ -77,7 +77,7 @@ pub fn (mut p Process) close() {
 	$if !windows {
 		for i in 0 .. 3 {
 			if p.stdio_fd[i] != 0 {
-				fd_close(p.stdio_fd[i])
+				_ = fd_close(p.stdio_fd[i])
 			}
 		}
 	}
@@ -114,7 +114,7 @@ fn (mut p Process) _spawn() int {
 	}
 	p.pid = pid
 	p.status = .running
-	return 0
+	return pid
 }
 
 // is_alive - query whether the process p.pid is still alive
@@ -333,5 +333,5 @@ pub fn (mut p Process) run() {
 	if p.status != .not_started {
 		return
 	}
-	p._spawn()
+	_ = p._spawn()
 }

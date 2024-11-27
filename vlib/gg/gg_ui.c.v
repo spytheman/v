@@ -22,5 +22,5 @@ pub fn (ctx &Context) set_text_style(font_name string, font_path string, size in
 // default draw_text (draw_text_def but without set_text_cfg)
 pub fn (ctx &Context) draw_text_default(x int, y int, text string) {
 	scale := if ctx.ft.scale == 0 { f32(1) } else { ctx.ft.scale }
-	ctx.ft.fons.draw_text(x * scale, y * scale, text) // TODO: check offsets/alignment
+	_ = ctx.ft.fons.draw_text(x * scale, y * scale, text) // TODO: check offsets/alignment
 }

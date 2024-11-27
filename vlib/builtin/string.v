@@ -347,7 +347,7 @@ pub fn (a string) clone() string {
 		len: a.len
 	}
 	unsafe {
-		vmemcpy(b.str, a.str, a.len)
+		_ = vmemcpy(b.str, a.str, a.len)
 		b.str[a.len] = 0
 	}
 	return b
@@ -416,16 +416,22 @@ pub fn (s string) replace(rep string, with string) string {
 		rep_pos := unsafe { pidxs[j] }
 		// copy everything up to piece being replaced
 		before_len := rep_pos - s_idx
-		unsafe { vmemcpy(&b[b_i], &s[s_idx], before_len) }
+		unsafe {
+			_ = vmemcpy(&b[b_i], &s[s_idx], before_len)
+		}
 		b_i += before_len
 		s_idx = rep_pos + rep.len // move string index past replacement
 		// copy replacement piece
-		unsafe { vmemcpy(&b[b_i], &with[0], with.len) }
+		unsafe {
+			_ = vmemcpy(&b[b_i], &with[0], with.len)
+		}
 		b_i += with.len
 	}
 	if s_idx < s.len {
 		// if any original after last replacement, copy it
-		unsafe { vmemcpy(&b[b_i], &s[s_idx], s.len - s_idx) }
+		unsafe {
+			_ = vmemcpy(&b[b_i], &s[s_idx], s.len - s_idx)
+		}
 	}
 	unsafe {
 		b[new_len] = 0
@@ -811,8 +817,8 @@ fn (s string) + (a string) string {
 		len: new_len
 	}
 	unsafe {
-		vmemcpy(res.str, s.str, s.len)
-		vmemcpy(res.str + s.len, a.str, a.len)
+		_ = vmemcpy(res.str, s.str, s.len)
+		_ = vmemcpy(res.str + s.len, a.str, a.len)
 	}
 	unsafe {
 		res.str[new_len] = 0 // V strings are not null terminated, but just in case
@@ -829,9 +835,9 @@ fn (s string) plus_two(a string, b string) string {
 		len: new_len
 	}
 	unsafe {
-		vmemcpy(res.str, s.str, s.len)
-		vmemcpy(res.str + s.len, a.str, a.len)
-		vmemcpy(res.str + s.len + a.len, b.str, b.len)
+		_ = vmemcpy(res.str, s.str, s.len)
+		_ = vmemcpy(res.str + s.len, a.str, a.len)
+		_ = vmemcpy(res.str + s.len + a.len, b.str, b.len)
 	}
 	unsafe {
 		res.str[new_len] = 0 // V strings are not null terminated, but just in case
@@ -1127,7 +1133,7 @@ pub fn (s string) substr(start int, _end int) string {
 		len: len
 	}
 	unsafe {
-		vmemcpy(res.str, s.str + start, len)
+		_ = vmemcpy(res.str, s.str + start, len)
 		res.str[len] = 0
 	}
 	return res
@@ -1164,7 +1170,7 @@ pub fn (s string) substr_with_check(start int, _end int) !string {
 		len: len
 	}
 	unsafe {
-		vmemcpy(res.str, s.str + start, len)
+		_ = vmemcpy(res.str, s.str + start, len)
 		res.str[len] = 0
 	}
 	return res
@@ -1207,7 +1213,7 @@ pub fn (s string) substr_ni(_start int, _end int) string {
 		len: len
 	}
 	unsafe {
-		vmemcpy(res.str, s.str + start, len)
+		_ = vmemcpy(res.str, s.str + start, len)
 		res.str[len] = 0
 	}
 	return res
@@ -2338,13 +2344,13 @@ pub fn (a []string) join(sep string) string {
 	mut idx := 0
 	for i, val in a {
 		unsafe {
-			vmemcpy(voidptr(res.str + idx), val.str, val.len)
+			_ = vmemcpy(voidptr(res.str + idx), val.str, val.len)
 			idx += val.len
 		}
 		// Add sep if it's not last
 		if i != a.len - 1 {
 			unsafe {
-				vmemcpy(voidptr(res.str + idx), sep.str, sep.len)
+				_ = vmemcpy(voidptr(res.str + idx), sep.str, sep.len)
 				idx += sep.len
 			}
 		}
@@ -2411,7 +2417,9 @@ pub fn (s string) bytes() []u8 {
 		return []
 	}
 	mut buf := []u8{len: s.len}
-	unsafe { vmemcpy(buf.data, s.str, s.len) }
+	unsafe {
+		_ = vmemcpy(buf.data, s.str, s.len)
+	}
 	return buf
 }
 
@@ -2426,7 +2434,7 @@ pub fn (s string) repeat(count int) string {
 	mut ret := unsafe { malloc_noscan(s.len * count + 1) }
 	for i in 0 .. count {
 		unsafe {
-			vmemcpy(ret + i * s.len, s.str, s.len)
+			_ = vmemcpy(ret + i * s.len, s.str, s.len)
 		}
 	}
 	new_len := s.len * count

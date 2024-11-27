@@ -68,7 +68,7 @@ fn __new_array_with_default(mylen int, cap int, elm_size int, val voidptr) array
 					}
 				} else {
 					for _ in 0 .. arr.len {
-						vmemcpy(eptr, val, arr.element_size)
+						_ = vmemcpy(eptr, val, arr.element_size)
 						eptr += arr.element_size
 					}
 				}
@@ -96,7 +96,7 @@ fn __new_array_with_multi_default(mylen int, cap int, elm_size int, val voidptr)
 		unsafe {
 			if eptr != nil {
 				for i in 0 .. arr.len {
-					vmemcpy(eptr, charptr(val) + i * arr.element_size, arr.element_size)
+					_ = vmemcpy(eptr, charptr(val) + i * arr.element_size, arr.element_size)
 					eptr += arr.element_size
 				}
 			}
@@ -118,7 +118,7 @@ fn __new_array_with_array_default(mylen int, cap int, elm_size int, val array, d
 		if eptr != nil {
 			for _ in 0 .. arr.len {
 				val_clone := val.clone_to_depth(depth)
-				vmemcpy(eptr, &val_clone, arr.element_size)
+				_ = vmemcpy(eptr, &val_clone, arr.element_size)
 				eptr += arr.element_size
 			}
 		}
@@ -139,7 +139,7 @@ fn __new_array_with_map_default(mylen int, cap int, elm_size int, val map) array
 		if eptr != nil {
 			for _ in 0 .. arr.len {
 				val_clone := val.clone()
-				vmemcpy(eptr, &val_clone, arr.element_size)
+				_ = vmemcpy(eptr, &val_clone, arr.element_size)
 				eptr += arr.element_size
 			}
 		}
@@ -157,7 +157,9 @@ fn new_array_from_c_array(len int, cap int, elm_size int, c_array voidptr) array
 		cap:          cap_
 	}
 	// TODO: Write all memory functions (like memcpy) in V
-	unsafe { vmemcpy(arr.data, c_array, u64(len) * u64(elm_size)) }
+	unsafe {
+		_ = vmemcpy(arr.data, c_array, u64(len) * u64(elm_size))
+	}
 	return arr
 }
 
@@ -197,7 +199,9 @@ fn (mut a array) ensure_cap(required int) {
 	new_size := u64(cap) * u64(a.element_size)
 	new_data := unsafe { malloc(__at_least_one(new_size)) }
 	if a.data != unsafe { nil } {
-		unsafe { vmemcpy(new_data, a.data, u64(a.len) * u64(a.element_size)) }
+		unsafe {
+			_ = vmemcpy(new_data, a.data, u64(a.len) * u64(a.element_size))
+		}
 		// TODO: the old data may be leaked when no GC is used (ref-counting?)
 		if a.flags.has(.noslices) {
 			unsafe {
@@ -247,9 +251,9 @@ pub fn (a array) repeat_to_depth(count int, depth int) array {
 				for _ in 0 .. count {
 					if depth > 0 {
 						ary_clone := a.clone_to_depth(depth)
-						vmemcpy(eptr, &u8(ary_clone.data), a_total_size)
+						_ = vmemcpy(eptr, &u8(ary_clone.data), a_total_size)
 					} else {
-						vmemcpy(eptr, &u8(a.data), a_total_size)
+						_ = vmemcpy(eptr, &u8(a.data), a_total_size)
 					}
 					eptr += arr_step_size
 				}
@@ -288,7 +292,7 @@ pub fn (mut a array) insert(i int, val voidptr) {
 		a.ensure_cap(a.len + 1)
 	}
 	unsafe {
-		vmemmove(a.get_unsafe(i + 1), a.get_unsafe(i), u64((a.len - i)) * u64(a.element_size))
+		_ = vmemmove(a.get_unsafe(i + 1), a.get_unsafe(i), u64((a.len - i)) * u64(a.element_size))
 		a.set_unsafe(i, val)
 	}
 	a.len++
@@ -309,8 +313,8 @@ fn (mut a array) insert_many(i int, val voidptr, size int) {
 	elem_size := a.element_size
 	unsafe {
 		iptr := a.get_unsafe(i)
-		vmemmove(a.get_unsafe(i + size), iptr, u64(a.len - i) * u64(elem_size))
-		vmemcpy(iptr, val, u64(size) * u64(elem_size))
+		_ = vmemmove(a.get_unsafe(i + size), iptr, u64(a.len - i) * u64(elem_size))
+		_ = vmemcpy(iptr, val, u64(size) * u64(elem_size))
 	}
 	a.len = int(new_len)
 }
@@ -365,7 +369,7 @@ pub fn (mut a array) delete_many(i int, size int) {
 	}
 	if a.flags.all(.noshrink | .noslices) {
 		unsafe {
-			vmemmove(&u8(a.data) + u64(i) * u64(a.element_size), &u8(a.data) + u64(i +
+			_ = vmemmove(&u8(a.data) + u64(i) * u64(a.element_size), &u8(a.data) + u64(i +
 				size) * u64(a.element_size), u64(a.len - i - size) * u64(a.element_size))
 		}
 		a.len -= size
@@ -377,9 +381,11 @@ pub fn (mut a array) delete_many(i int, size int) {
 	new_size := a.len - size
 	new_cap := if new_size == 0 { 1 } else { new_size }
 	a.data = vcalloc(u64(new_cap) * u64(a.element_size))
-	unsafe { vmemcpy(a.data, old_data, u64(i) * u64(a.element_size)) }
 	unsafe {
-		vmemcpy(&u8(a.data) + u64(i) * u64(a.element_size), &u8(old_data) + u64(i +
+		_ = vmemcpy(a.data, old_data, u64(i) * u64(a.element_size))
+	}
+	unsafe {
+		_ = vmemcpy(&u8(a.data) + u64(i) * u64(a.element_size), &u8(old_data) + u64(i +
 			size) * u64(a.element_size), u64(a.len - i - size) * u64(a.element_size))
 	}
 	if a.flags.has(.noslices) {
@@ -405,7 +411,9 @@ pub fn (mut a array) clear() {
 // can later lead to hard to find bugs.
 @[unsafe]
 pub fn (mut a array) reset() {
-	unsafe { vmemset(a.data, 0, a.len * a.element_size) }
+	unsafe {
+		_ = vmemset(a.data, 0, a.len * a.element_size)
+	}
 }
 
 // trim trims the array length to `index` without modifying the allocated data.
@@ -646,14 +654,18 @@ pub fn (a &array) clone_to_depth(depth int) array {
 	if depth > 0 && a.element_size == sizeof(array) && a.len >= 0 && a.cap >= a.len {
 		for i in 0 .. a.len {
 			ar := array{}
-			unsafe { vmemcpy(&ar, a.get_unsafe(i), int(sizeof(array))) }
+			unsafe {
+				_ = vmemcpy(&ar, a.get_unsafe(i), int(sizeof(array)))
+			}
 			ar_clone := unsafe { ar.clone_to_depth(depth - 1) }
 			unsafe { arr.set_unsafe(i, &ar_clone) }
 		}
 		return arr
 	} else {
 		if a.data != 0 {
-			unsafe { vmemcpy(&u8(arr.data), a.data, u64(a.cap) * u64(a.element_size)) }
+			unsafe {
+				_ = vmemcpy(&u8(arr.data), a.data, u64(a.cap) * u64(a.element_size))
+			}
 		}
 		return arr
 	}
@@ -662,7 +674,9 @@ pub fn (a &array) clone_to_depth(depth int) array {
 // we manually inline this for single operations for performance without -prod
 @[inline; unsafe]
 fn (mut a array) set_unsafe(i int, val voidptr) {
-	unsafe { vmemcpy(&u8(a.data) + u64(a.element_size) * u64(i), val, a.element_size) }
+	unsafe {
+		_ = vmemcpy(&u8(a.data) + u64(a.element_size) * u64(i), val, a.element_size)
+	}
 }
 
 // Private function. Used to implement assignment to the array element.
@@ -672,7 +686,9 @@ fn (mut a array) set(i int, val voidptr) {
 			panic('array.set: index out of range (i == ${i}, a.len == ${a.len})')
 		}
 	}
-	unsafe { vmemcpy(&u8(a.data) + u64(a.element_size) * u64(i), val, a.element_size) }
+	unsafe {
+		_ = vmemcpy(&u8(a.data) + u64(a.element_size) * u64(i), val, a.element_size)
+	}
 }
 
 fn (mut a array) push(val voidptr) {
@@ -685,7 +701,9 @@ fn (mut a array) push(val voidptr) {
 	if a.len >= a.cap {
 		a.ensure_cap(a.len + 1)
 	}
-	unsafe { vmemcpy(&u8(a.data) + u64(a.element_size) * u64(a.len), val, a.element_size) }
+	unsafe {
+		_ = vmemcpy(&u8(a.data) + u64(a.element_size) * u64(a.len), val, a.element_size)
+	}
 	a.len++
 }
 
@@ -708,11 +726,13 @@ pub fn (mut a array) push_many(val voidptr, size int) {
 		// handle `arr << arr`
 		copy := a.clone()
 		unsafe {
-			vmemcpy(&u8(a.data) + u64(a.element_size) * u64(a.len), copy.data, u64(a.element_size) * u64(size))
+			_ = vmemcpy(&u8(a.data) + u64(a.element_size) * u64(a.len), copy.data, u64(a.element_size) * u64(size))
 		}
 	} else {
 		if a.data != 0 && val != 0 {
-			unsafe { vmemcpy(&u8(a.data) + u64(a.element_size) * u64(a.len), val, u64(a.element_size) * u64(size)) }
+			unsafe {
+				_ = vmemcpy(&u8(a.data) + u64(a.element_size) * u64(a.len), val, u64(a.element_size) * u64(size))
+			}
 		}
 	}
 	a.len = int(new_len)
@@ -726,10 +746,10 @@ pub fn (mut a array) reverse_in_place() {
 	unsafe {
 		mut tmp_value := malloc(a.element_size)
 		for i in 0 .. a.len / 2 {
-			vmemcpy(tmp_value, &u8(a.data) + u64(i) * u64(a.element_size), a.element_size)
-			vmemcpy(&u8(a.data) + u64(i) * u64(a.element_size), &u8(a.data) +
+			_ = vmemcpy(tmp_value, &u8(a.data) + u64(i) * u64(a.element_size), a.element_size)
+			_ = vmemcpy(&u8(a.data) + u64(i) * u64(a.element_size), &u8(a.data) +
 				u64(a.len - 1 - i) * u64(a.element_size), a.element_size)
-			vmemcpy(&u8(a.data) + u64(a.len - 1 - i) * u64(a.element_size), tmp_value,
+			_ = vmemcpy(&u8(a.data) + u64(a.len - 1 - i) * u64(a.element_size), tmp_value,
 				a.element_size)
 		}
 		free(tmp_value)
@@ -968,7 +988,9 @@ pub fn (b []u8) hex() string {
 pub fn copy(mut dst []u8, src []u8) int {
 	min := if dst.len < src.len { dst.len } else { src.len }
 	if min > 0 {
-		unsafe { vmemmove(&u8(dst.data), src.data, min) }
+		unsafe {
+			_ = vmemmove(&u8(dst.data), src.data, min)
+		}
 	}
 	return min
 }

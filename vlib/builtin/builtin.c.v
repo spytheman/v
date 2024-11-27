@@ -16,7 +16,7 @@ fn v_segmentation_fault_handler(signal_number i32) {
 	$if freestanding {
 		eprintln('signal 11: segmentation fault')
 	} $else {
-		C.fprintf(C.stderr, c'signal %d: segmentation fault\n', signal_number)
+		_ = C.fprintf(C.stderr, c'signal %d: segmentation fault\n', signal_number)
 	}
 	$if use_libbacktrace ? {
 		eprint_libbacktrace(1)
@@ -69,7 +69,7 @@ fn panic_debug(line_no int, file string, mod string, fn_name string, s string) {
 		eprint(' function: '); eprint(fn_name); eprintln('()')
 		eprint('  message: '); eprintln(s)
 		eprint('     file: '); eprint(file); eprint(':');
-		C.fprintf(C.stderr, c'%d\n', line_no)		
+		_ = C.fprintf(C.stderr, c'%d\n', line_no)		
 		eprint('   v hash: '); eprintln(@VCURRENTHASH)
 		eprintln('=========================================')
 		// vfmt on
@@ -84,14 +84,14 @@ fn panic_debug(line_no int, file string, mod string, fn_name string, s string) {
 				$if panics_break_into_debugger ? {
 					break_if_debugger_attached()
 				} $else {
-					C.tcc_backtrace(c'Backtrace')
+					_ = C.tcc_backtrace(c'Backtrace')
 				}
 				C.exit(1)
 			}
 			$if use_libbacktrace ? {
 				eprint_libbacktrace(1)
 			} $else {
-				print_backtrace_skipping_top_frames(1)
+				_ = print_backtrace_skipping_top_frames(1)
 			}
 			$if panics_break_into_debugger ? {
 				break_if_debugger_attached()
@@ -139,14 +139,14 @@ pub fn panic(s string) {
 				$if panics_break_into_debugger ? {
 					break_if_debugger_attached()
 				} $else {
-					C.tcc_backtrace(c'Backtrace')
+					_ = C.tcc_backtrace(c'Backtrace')
 				}
 				C.exit(1)
 			}
 			$if use_libbacktrace ? {
 				eprint_libbacktrace(1)
 			} $else {
-				print_backtrace_skipping_top_frames(1)
+				_ = print_backtrace_skipping_top_frames(1)
 			}
 			$if panics_break_into_debugger ? {
 				break_if_debugger_attached()
@@ -241,7 +241,7 @@ pub fn flush_stdout() {
 		not_implemented := 'flush_stdout is not implemented\n'
 		bare_eprint(not_implemented.str, u64(not_implemented.len))
 	} $else {
-		C.fflush(C.stdout)
+		_ = C.fflush(C.stdout)
 	}
 }
 
@@ -250,7 +250,7 @@ pub fn flush_stderr() {
 		not_implemented := 'flush_stderr is not implemented\n'
 		bare_eprint(not_implemented.str, u64(not_implemented.len))
 	} $else {
-		C.fflush(C.stderr)
+		_ = C.fflush(C.stderr)
 	}
 }
 
@@ -340,7 +340,7 @@ fn _writeln_to_fd(fd int, s string) {
 		defer {
 			free(buf)
 		}
-		C.memcpy(buf, s.str, s.len)
+		_ = C.memcpy(buf, s.str, s.len)
 		buf[s.len] = `\n`
 		_write_buf_to_fd(fd, buf, buf_len)
 	}
@@ -394,7 +394,7 @@ fn _memory_panic(fname string, size isize) {
 	$if freestanding || vinix {
 		eprint('size') // TODO: use something more informative here
 	} $else {
-		C.fprintf(C.stderr, c'%ld', size)
+		_ = C.fprintf(C.stderr, c'%ld', size)
 	}
 	if size < 0 {
 		eprint(' < 0')

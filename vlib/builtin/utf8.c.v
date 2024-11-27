@@ -112,7 +112,9 @@ pub fn wide_to_ansi(_wstr &u16) []u8 {
 	} $else {
 		s := unsafe { string_from_wide(_wstr) }
 		mut str_to := []u8{len: s.len + 1}
-		unsafe { vmemcpy(str_to.data, s.str, s.len) }
+		unsafe {
+			_ = vmemcpy(str_to.data, s.str, s.len)
+		}
 		return str_to
 	}
 	return []u8{} // TODO: remove this, bug?

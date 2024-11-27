@@ -89,7 +89,7 @@ pub fn ticks() i64 {
 		return C.GetTickCount()
 	} $else {
 		ts := C.timeval{}
-		C.gettimeofday(&ts, 0)
+		_ = C.gettimeofday(&ts, 0)
 		return i64(ts.tv_sec * u64(1000) + (ts.tv_usec / u64(1_000)))
 	}
 	// t := i64(C.mach_absolute_time())
@@ -128,11 +128,11 @@ pub fn (t Time) strftime(fmt string) string {
 	$if windows {
 		tm = C.gmtime(voidptr(&t.unix))
 	} $else {
-		C.gmtime_r(voidptr(&t.unix), tm)
+		_ = C.gmtime_r(voidptr(&t.unix), tm)
 	}
 	mut buf := [1024]char{}
 	fmt_c := unsafe { &char(fmt.str) }
-	C.strftime(&buf[0], usize(sizeof(buf)), fmt_c, tm)
+	_ = C.strftime(&buf[0], usize(sizeof(buf)), fmt_c, tm)
 	return unsafe { cstring_to_vstring(&char(&buf[0])) }
 }
 

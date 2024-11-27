@@ -3971,6 +3971,10 @@ fn (mut c Checker) check_must_use_call_result(node &ast.CallExpr, f &ast.Fn, lab
 	if f.return_type == ast.void_type {
 		return
 	}
+	if f.return_type == ast.rvoid_type {
+		// allow for `f()!` calls of `fn f() ! {}`
+		return
+	}
 	if f.is_must_use {
 		c.warn('return value must be used, ${label} `${f.name}` was tagged with `@[must_use]`',
 			node.pos)
