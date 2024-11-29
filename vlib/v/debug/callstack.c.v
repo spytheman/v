@@ -11,7 +11,6 @@ pub:
 	line i64
 }
 
-@[markused]
 __global g_callstack = []FnTrace{}
 
 // dump_callstack dumps callstack to the user

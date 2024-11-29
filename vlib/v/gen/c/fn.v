@@ -287,9 +287,11 @@ fn (mut g Gen) gen_fn_decl(node &ast.FnDecl, skip bool) {
 				continue
 			}
 			trace_fn_ret_type := g.styp(call_fn.return_type)
-
-			g.write('VV_LOCAL_SYMBOL ${trace_fn_ret_type} ${c_name(trace_fn)}(')
-			g.definitions.write_string('VV_LOCAL_SYMBOL ${trace_fn_ret_type} ${c_name(trace_fn)}(')
+			cname := c_name(trace_fn)
+			g.tuse(trace_fn_ret_type)
+			g.fuse(cname)
+			g.write('VV_LOCAL_SYMBOL ${trace_fn_ret_type} ${cname}(')
+			g.definitions.write_string('VV_LOCAL_SYMBOL ${trace_fn_ret_type} ${cname}(')
 
 			if call_fn.is_fn_var {
 				sig := g.fn_var_signature(call_fn.func.return_type, call_fn.func.params.map(it.typ),
@@ -309,6 +311,8 @@ fn (mut g Gen) gen_fn_decl(node &ast.FnDecl, skip bool) {
 				&& call_fn.name !in ['v.debug.add_after_call', 'v.debug.add_before_call', 'v.debug.remove_after_call', 'v.debug.remove_before_call']
 			if g.pref.is_callstack {
 				if g.cur_fn.is_method || g.cur_fn.is_static_type_method {
+					g.fuse('array_push')
+					g.guse('g_callstack')
 					g.writeln('\tarray_push((array*)&g_callstack, _MOV((v__debug__FnTrace[]){ ((v__debug__FnTrace){.name = _SLIT("${g.table.type_to_str(g.cur_fn.receiver.typ)}.${g.cur_fn.name.all_after_last('__static__')}"),.file = _SLIT("${call_fn.file}"),.line = ${call_fn.line},}) }));')
 				} else {
 					g.writeln('\tarray_push((array*)&g_callstack, _MOV((v__debug__FnTrace[]){ ((v__debug__FnTrace){.name = _SLIT("${g.cur_fn.name}"),.file = _SLIT("${call_fn.file}"),.line = ${call_fn.line},}) }));')

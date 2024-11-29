@@ -8,7 +8,6 @@ import readline
 import strings
 import term
 
-@[markused]
 __global g_debugger = Debugger{}
 
 // Debugger holds the V debug information for REPL

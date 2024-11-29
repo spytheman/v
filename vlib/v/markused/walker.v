@@ -118,8 +118,8 @@ pub fn (mut w Walker) mark_exported_fns() {
 }
 
 pub fn (mut w Walker) mark_markused_fn_decls() {
-	for _, mut func in w.all_fns {
-		if func.is_markused {
+	for fkey, mut func in w.all_fns {
+		if func.is_markused || fkey in w.table.backend_used.fns {
 			$if trace_skip_unused_markused_fns ? {
 				println('>>>> walking markused func: ${func.name} ...')
 			}
@@ -130,7 +130,7 @@ pub fn (mut w Walker) mark_markused_fn_decls() {
 
 pub fn (mut w Walker) mark_markused_consts() {
 	for ckey, mut constfield in w.all_consts {
-		if constfield.is_markused {
+		if constfield.is_markused || ckey in w.table.backend_used.consts {
 			$if trace_skip_unused_markused_consts ? {
 				println('>>>> walking markused const: ${ckey}')
 			}
@@ -141,7 +141,8 @@ pub fn (mut w Walker) mark_markused_consts() {
 
 pub fn (mut w Walker) mark_markused_globals() {
 	for gkey, mut globalfield in w.all_globals {
-		if globalfield.is_markused || globalfield.is_exported {
+		if globalfield.is_markused || globalfield.is_exported
+			|| gkey in w.table.backend_used.globals {
 			$if trace_skip_unused_markused_globals ? {
 				println('>>>> walking markused global: ${gkey}')
 			}

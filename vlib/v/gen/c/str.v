@@ -125,6 +125,7 @@ fn (mut g Gen) gen_expr_to_string(expr ast.Expr, etype ast.Type) {
 			ret_typ := g.styp(exp_typ)
 			line := g.go_before_last_stmt().trim_space()
 			g.empty_line = true
+			g.tuse(ret_typ)
 			g.write('${ret_typ} ${tmp_var} = ')
 			g.expr(expr)
 			g.writeln(';')
@@ -132,9 +133,14 @@ fn (mut g Gen) gen_expr_to_string(expr ast.Expr, etype ast.Type) {
 		}
 		if is_ptr && !is_var_mut {
 			ref_str := '&'.repeat(typ.nr_muls())
+			g.tuse('StrIntpData')
+			g.fuse('str_intp')
+			g.fuse('isnil')
 			g.write('str_intp(1, _MOV((StrIntpData[]){{_SLIT("${ref_str}"), ${si_s_code} ,{.d_s = isnil(')
 			if typ.has_flag(.option) {
-				g.write('*(${g.base_type(exp_typ)}*)&')
+				cname := g.base_type(exp_typ)
+				g.tuse(cname)
+				g.write('*(${cname}*)&')
 				if temp_var_needed {
 					g.write(tmp_var)
 				} else {
@@ -158,7 +164,10 @@ fn (mut g Gen) gen_expr_to_string(expr ast.Expr, etype ast.Type) {
 		g.write2(str_fn_name, '(')
 		if str_method_expects_ptr && !is_ptr {
 			if is_dump_expr || (g.pref.ccompiler_type != .tinyc && expr is ast.CallExpr) {
-				g.write('ADDR(${g.styp(typ)}, ')
+				g.fuse('ADDR')
+				cname := g.styp(typ)
+				g.tuse(cname)
+				g.write('ADDR(${cname}, ')
 				defer {
 					g.write(')')
 				}
@@ -166,7 +175,9 @@ fn (mut g Gen) gen_expr_to_string(expr ast.Expr, etype ast.Type) {
 				g.write('&')
 			}
 		} else if is_ptr && typ.has_flag(.option) {
-			g.write('*(${g.styp(typ)}*)&')
+			cname := g.styp(typ)
+			g.tuse(cname)
+			g.write('*(${cname}*)&')
 		} else if !str_method_expects_ptr && !is_shared && (is_ptr || is_var_mut) {
 			if sym.is_c_struct() {
 				g.write(c_struct_ptr(sym, typ, str_method_expects_ptr))
@@ -180,6 +191,7 @@ fn (mut g Gen) gen_expr_to_string(expr ast.Expr, etype ast.Type) {
 			if expr.is_fixed {
 				s := g.styp(expr.typ)
 				if !expr.has_index {
+					g.tuse(s)
 					g.write('(${s})')
 				}
 			}
@@ -204,6 +216,7 @@ fn (mut g Gen) gen_expr_to_string(expr ast.Expr, etype ast.Type) {
 	} else {
 		is_var_mut := expr.is_auto_deref_var()
 		str_fn_name := g.get_str_fn(typ)
+		g.fuse(str_fn_name)
 		g.write('${str_fn_name}(')
 		if sym.kind != .function {
 			if str_method_expects_ptr && !is_ptr && !typ.has_flag(.option) {

@@ -7,14 +7,15 @@ import v.util
 import v.pref
 
 // mark_used walks the AST, starting at main() and marks all used fns transitively
-pub fn mark_used(mut table ast.Table, mut pref_ pref.Preferences, ast_files []&ast.File) {
+pub fn mark_used(mut table ast.Table, mut pref_ pref.Preferences, ast_files []&ast.File, stage_label string) {
 	mut all_fns, all_consts, all_globals := all_fn_const_and_global(ast_files)
-	util.timing_start(@METHOD)
+	util.timing_start(stage_label)
 	defer {
-		util.timing_measure(@METHOD)
+		util.timing_measure(stage_label)
 	}
 	mut all_fn_root_names := []string{}
 	all_fn_root_names << 'main.main'
+	all_fn_root_names << table.backend_used.fns.keys()
 	//	all_fn_root_names << 'init_global_allocator'
 	//	all_fn_root_names << 'builtin_init'
 	for k, mut mfn in all_fns {

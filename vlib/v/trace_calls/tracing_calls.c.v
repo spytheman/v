@@ -1,10 +1,8 @@
 @[has_globals]
 module trace_calls
 
-@[markused]
 __global g_stack_base = &u8(0)
 
-@[markused]
 __global g_start_time = u64(0)
 
 pub fn on_call(fname string) {

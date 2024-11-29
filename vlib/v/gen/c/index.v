@@ -24,6 +24,8 @@ fn (mut g Gen) index_expr(node ast.IndexExpr) {
 				cur_line := g.go_before_last_stmt()
 				g.out.write_string(util.tabs(g.indent))
 				opt_elem_type := g.styp(ast.u8_type.set_flag(.option))
+				g.tuse(opt_elem_type)
+				g.fuse('string_at_with_check')
 				g.write('${opt_elem_type} ${tmp_opt} = string_at_with_check(')
 				g.expr(node.left)
 				g.write(', ')
@@ -42,6 +44,7 @@ fn (mut g Gen) index_expr(node ast.IndexExpr) {
 					g.write(']')
 				} else {
 					g.write('string_at(')
+					g.fuse('string_at')
 					g.expr(node.left)
 					g.write(', ')
 					g.expr(node.index)
@@ -88,8 +91,10 @@ fn (mut g Gen) index_range_expr(node ast.IndexExpr, range ast.RangeExpr) {
 	} else if sym.kind == .array {
 		if node.is_gated {
 			g.write('array_slice_ni(')
+			g.fuse('array_slice_ni')
 		} else {
 			g.write('array_slice(')
+			g.fuse('array_slice')
 		}
 		if node.left_type.is_ptr() {
 			g.write('*')
@@ -100,10 +105,13 @@ fn (mut g Gen) index_range_expr(node ast.IndexExpr, range ast.RangeExpr) {
 		noscan := g.check_noscan(sym.info.elem_type)
 		if node.is_gated {
 			g.write('array_slice_ni(')
+			g.fuse('array_slice_ni')
 		} else {
 			g.write('array_slice(')
+			g.fuse('array_slice')
 		}
 		g.write('new_array_from_c_array${noscan}(')
+		g.fuse('new_array_from_c_array${noscan}')
 		ctype := g.styp(sym.info.elem_type)
 		g.write('${sym.info.size}, ${sym.info.size}, sizeof(${ctype}), ')
 		if node.left_type.is_ptr() {

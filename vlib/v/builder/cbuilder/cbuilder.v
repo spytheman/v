@@ -4,6 +4,7 @@ import os
 import v.pref
 import v.util
 import v.builder
+import v.markused
 import v.gen.c
 
 pub fn start() {
@@ -75,15 +76,22 @@ pub fn gen_c(mut b builder.Builder, v_files []string) string {
 		builder.verror(err.msg())
 	}
 
-	util.timing_start('C GEN')
-	header, res, out_str, out_fn_start_pos := c.gen(b.parsed_files, mut b.table, b.pref)
-	util.timing_measure('C GEN')
+	util.timing_start('C GEN 1')
+	mut cgen_res := c.gen(b.parsed_files, mut b.table, b.pref, 1)
+	util.timing_measure('C GEN 1')
+
+	if b.pref.skip_unused {
+		markused.mark_used(mut b.table, mut b.pref, b.parsed_files, 'mark_used stage 2')
+		util.timing_start('C GEN 2')
+		cgen_res = c.gen(b.parsed_files, mut b.table, b.pref, 2)
+		util.timing_measure('C GEN 2')
+	}
 
 	if b.pref.parallel_cc {
 		util.timing_start('Parallel C compilation')
-		parallel_cc(mut b, header, res, out_str, out_fn_start_pos)
+		parallel_cc(mut b, cgen_res.header, cgen_res.res, cgen_res.out_str, cgen_res.out_fn_start_pos)
 		util.timing_measure('Parallel C compilation')
 	}
 
-	return res
+	return cgen_res.res
 }

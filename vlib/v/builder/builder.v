@@ -146,7 +146,7 @@ pub fn (mut b Builder) middle_stages() ! {
 
 	b.table.complete_interface_check()
 	if b.pref.skip_unused {
-		markused.mark_used(mut b.table, mut b.pref, b.parsed_files)
+		markused.mark_used(mut b.table, mut b.pref, b.parsed_files, 'markused stage 1')
 	}
 	if b.pref.show_callgraph {
 		callgraph.show(mut b.table, b.pref, b.parsed_files)

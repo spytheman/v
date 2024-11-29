@@ -1,7 +1,6 @@
 @[has_globals]
 module debug
 
-@[markused]
 __global g_trace = TraceHook{}
 
 type HookFnCall = fn (string)
@@ -48,7 +47,7 @@ pub fn add_before_call(func HookFnCall) HookFnCall {
 }
 
 // remove_after_call removes a fn hook from after hook list by its idx
-@[inline; markused]
+@[inline]
 pub fn remove_after_call(func HookFnCall) {
 	idx := g_trace.trace_after_call.index(func)
 	if idx != -1 {
@@ -57,7 +56,7 @@ pub fn remove_after_call(func HookFnCall) {
 }
 
 // remove_before_call removes a fn hook from before hook list by its idx
-@[inline; markused]
+@[inline]
 pub fn remove_before_call(func HookFnCall) {
 	idx := g_trace.trace_before_call.index(func)
 	if idx != -1 {

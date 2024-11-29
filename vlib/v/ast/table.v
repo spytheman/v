@@ -95,6 +95,7 @@ pub mut:
 	anon_struct_names  map[string]int // anon struct name -> struct sym idx
 	// counter for anon struct, avoid name conflicts.
 	anon_struct_counter int
+	backend_used        &BackendUsedEntities = &BackendUsedEntities{} // filed in cgen stage 1, to be used in markused stage 2
 }
 
 // used by vls to avoid leaks

@@ -859,13 +859,19 @@ fn (mut g Gen) comptime_for(node ast.ComptimeFor) {
 				g.writeln(
 					'\t${node.val_var}.attrs = new_array_from_c_array(${attrs.len}, ${attrs.len}, sizeof(string), _MOV((string[${attrs.len}]){' +
 					attrs.join(', ') + '}));\n')
+				g.fuse('new_array_from_c_array')
+				g.tuse('string')
 			}
 			if method.params.len < 2 {
 				// 0 or 1 (the receiver) args
 				g.writeln('\t${node.val_var}.args = __new_array_with_default(0, 0, sizeof(MethodParam), 0);')
+				g.fuse('__new_array_with_default')
+				g.tuse('MethodParam')
 			} else {
 				len := method.params.len - 1
 				g.write('\t${node.val_var}.args = new_array_from_c_array(${len}, ${len}, sizeof(MethodParam), _MOV((MethodParam[${len}]){')
+				g.fuse('new_array_from_c_array')
+				g.tuse('MethodParam')
 				// Skip receiver arg
 				for j, arg in method.params[1..] {
 					typ := arg.typ.idx()
@@ -939,6 +945,8 @@ fn (mut g Gen) comptime_for(node ast.ComptimeFor) {
 					g.writeln(
 						'\t${node.val_var}.attrs = new_array_from_c_array(${attrs.len}, ${attrs.len}, sizeof(string), _MOV((string[${attrs.len}]){' +
 						attrs.join(', ') + '}));\n')
+					g.fuse('new_array_from_c_array')
+					g.tuse('string')
 				}
 				field_sym := g.table.sym(field.typ)
 				styp := field.typ
@@ -975,6 +983,7 @@ fn (mut g Gen) comptime_for(node ast.ComptimeFor) {
 			if sym.info is ast.Enum {
 				if sym.info.vals.len > 0 {
 					g.writeln('\tEnumData ${node.val_var} = {0};')
+					g.tuse('EnumData')
 				}
 				g.push_new_comptime_info()
 				for val in sym.info.vals {
@@ -992,11 +1001,15 @@ fn (mut g Gen) comptime_for(node ast.ComptimeFor) {
 					enum_attrs := sym.info.attrs[val]
 					if enum_attrs.len == 0 {
 						g.writeln('\t${node.val_var}.attrs = __new_array_with_default(0, 0, sizeof(string), 0);')
+						g.fuse('__new_array_with_default')
+						g.tuse('string')
 					} else {
 						attrs := cgen_attrs(enum_attrs)
 						g.writeln(
 							'\t${node.val_var}.attrs = new_array_from_c_array(${attrs.len}, ${attrs.len}, sizeof(string), _MOV((string[${attrs.len}]){' +
 							attrs.join(', ') + '}));\n')
+						g.fuse('new_array_from_c_array')
+						g.tuse('string')
 					}
 					g.stmts(node.stmts)
 					g.writeln('}')

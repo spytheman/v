@@ -28,6 +28,7 @@ pub fn (mut g Gen) gen_c_main() {
 		g.gen_c_android_sokol_main()
 	} else {
 		g.gen_c_main_header()
+		g.fuse('main__main')
 		g.writeln('\tmain__main();')
 		g.gen_c_main_footer()
 		if g.pref.printfn_list.len > 0 && 'main' in g.pref.printfn_list {
@@ -135,9 +136,12 @@ fn (mut g Gen) gen_c_main_function_header() {
 	g.gen_c_main_function_only_header()
 	g.gen_c_main_trace_calls_hook()
 	if !g.pref.no_builtin {
+		g.guse('g_main_argc')
+		g.guse('g_main_argv')
 		g.writeln2('\tg_main_argc = ___argc;', '\tg_main_argv = ___argv;')
 	}
 	if g.nr_closures > 0 {
+		g.fuse('__closure_init')
 		g.writeln('\t__closure_init(); // main()')
 	}
 }
@@ -161,6 +165,7 @@ fn (mut g Gen) gen_c_main_header() {
 		g.writeln('#endif')
 	}
 	if !g.pref.no_builtin {
+		g.fuse('_vinit')
 		g.writeln('\t_vinit(___argc, (voidptr)___argv);')
 	}
 	g.gen_c_main_profile_hook()
@@ -171,6 +176,7 @@ fn (mut g Gen) gen_c_main_header() {
 
 pub fn (mut g Gen) gen_c_main_footer() {
 	if !g.pref.no_builtin {
+		g.fuse('_vcleanup')
 		g.writeln('\t_vcleanup();')
 	}
 	g.writeln2('\treturn 0;', '}')
@@ -179,6 +185,7 @@ pub fn (mut g Gen) gen_c_main_footer() {
 pub fn (mut g Gen) gen_c_android_sokol_main() {
 	// Weave autofree into sokol lifecycle callback(s)
 	if g.is_autofree {
+		g.fuse('_vcleanup')
 		g.writeln('// Wrapping cleanup/free callbacks for sokol to include _vcleanup()
 void (*_vsokol_user_cleanup_ptr)(void);
 void (*_vsokol_user_cleanup_cb_ptr)(void *);
@@ -215,9 +222,11 @@ sapp_desc sokol_main(int argc, char* argv[]) {
 		g.writeln('#endif')
 	}
 	if !g.pref.no_builtin {
+		g.fuse('_vinit')
 		g.writeln('\t_vinit(argc, (voidptr)argv);')
 	}
 	g.gen_c_main_profile_hook()
+	g.fuse('main__main')
 	g.writeln('\tmain__main();')
 	if g.is_autofree {
 		g.writeln('	// Wrap user provided cleanup/free functions for sokol to be able to call _vcleanup()
@@ -231,11 +240,14 @@ sapp_desc sokol_main(int argc, char* argv[]) {
 	}
 ')
 	}
+	g.guse('g_desc')
 	g.writeln2('	return g_desc;', '}')
 }
 
 pub fn (mut g Gen) write_tests_definitions() {
 	g.includes.writeln('#include <setjmp.h> // write_tests_main')
+	g.tuse('jmp_buf')
+	g.guse('g_jump_buffer')
 	g.definitions.writeln('jmp_buf g_jump_buffer;')
 }
 
@@ -243,6 +255,10 @@ pub fn (mut g Gen) gen_failing_error_propagation_for_test_fn(or_block ast.OrExpr
 	// in test_() functions, an `opt()?` call is sugar for
 	// `or { cb_propagate_test_error(@LINE, @FILE, @MOD, @FN, err.msg() ) }`
 	// and the test is considered failed
+	g.fuse('longjmp')
+	g.guse('g_jump_buffer')
+	g.guse('IError_name_table')
+	g.guse('main__TestRunner_name_table')
 	paline, pafile, pamod, pafn := g.panic_debug_info(or_block.pos)
 	err_msg := 'IError_name_table[${cvar_name}.err._typ]._method_msg(${cvar_name}.err._object)'
 	g.writeln('\tmain__TestRunner_name_table[test_runner._typ]._method_fn_error(test_runner._object, ${paline}, tos3("${pafile}"), tos3("${pamod}"), tos3("${pafn}"), ${err_msg} );')
@@ -253,6 +269,10 @@ pub fn (mut g Gen) gen_failing_return_error_for_test_fn(return_stmt ast.Return, 
 	// in test_() functions, a `return error('something')` is sugar for
 	// `or { err := error('something') cb_propagate_test_error(@LINE, @FILE, @MOD, @FN, err.msg() ) return err }`
 	// and the test is considered failed
+	g.fuse('longjmp')
+	g.guse('g_jump_buffer')
+	g.guse('IError_name_table')
+	g.guse('main__TestRunner_name_table')
 	paline, pafile, pamod, pafn := g.panic_debug_info(return_stmt.pos)
 	err_msg := 'IError_name_table[${cvar_name}.err._typ]._method_msg(${cvar_name}.err._object)'
 	g.writeln('\tmain__TestRunner_name_table[test_runner._typ]._method_fn_error(test_runner._object, ${paline}, tos3("${pafile}"), tos3("${pamod}"), tos3("${pafn}"), ${err_msg} );')
@@ -261,15 +281,22 @@ pub fn (mut g Gen) gen_failing_return_error_for_test_fn(return_stmt ast.Return, 
 
 pub fn (mut g Gen) gen_c_main_profile_hook() {
 	if g.pref.is_prof {
+		g.fuse('signal')
+		g.fuse('atexit')
+		g.fuse('vprint_profile_stats_on_signal')
+		g.fuse('vprint_profile_stats')
 		g.writeln2('', '\tsignal(SIGINT, vprint_profile_stats_on_signal);')
 		g.writeln('\tsignal(SIGTERM, vprint_profile_stats_on_signal);')
 		g.writeln2('\tatexit(vprint_profile_stats);', '')
 	}
 	if g.pref.profile_file != '' {
 		if 'no_profile_startup' in g.pref.compile_defines {
+			g.fuse('vreset_profile_stats')
 			g.writeln('vreset_profile_stats();')
 		}
 		if g.pref.profile_fns.len > 0 {
+			g.fuse('vreset_profile_stats')
+			g.guse('v__profile_enabled')
 			g.writeln('vreset_profile_stats();')
 			// v__profile_enabled will be set true *inside* the fns in g.pref.profile_fns:
 			g.writeln('v__profile_enabled = false;')
@@ -297,8 +324,10 @@ pub fn (mut g Gen) gen_c_main_for_tests() {
 		g.writeln('#endif')
 	}
 	if !g.pref.no_builtin {
+		g.fuse('_vinit')
 		g.writeln('\t_vinit(___argc, (voidptr)___argv);')
 	}
+	g.fuse('main__vtest_init')
 	g.writeln('\tmain__vtest_init();')
 	g.gen_c_main_profile_hook()
 
@@ -306,17 +335,26 @@ pub fn (mut g Gen) gen_c_main_for_tests() {
 	all_tfuncs = g.filter_only_matching_fn_names(all_tfuncs)
 	g.writeln('\tstring v_test_file = ${ctoslit(g.pref.path)};')
 	if g.pref.show_asserts {
+		g.tuse('main__BenchedTests')
+		g.fuse('main__start_testing')
 		g.writeln('\tmain__BenchedTests bt = main__start_testing(${all_tfuncs.len}, v_test_file);')
 	}
+	g.tuse('string')
+	g.tuse('_main__TestRunner_interface_methods')
+	g.guse('main__TestRunner_name_table')
+	g.guse('g_jump_buffer')
 	g.writeln2('', '\tstruct _main__TestRunner_interface_methods _vtrunner = main__TestRunner_name_table[test_runner._typ];')
 	g.writeln2('\tvoid * _vtobj = test_runner._object;', '')
+	g.fuse('main__VTestFileMetaInfo_free')
 	g.writeln('\tmain__VTestFileMetaInfo_free(test_runner.file_test_info);')
+	g.fuse('main__vtest_new_filemetainfo')
 	g.writeln('\t*(test_runner.file_test_info) = main__vtest_new_filemetainfo(v_test_file, ${all_tfuncs.len});')
 	g.writeln2('\t_vtrunner._method_start(_vtobj, ${all_tfuncs.len});', '')
 	for tnumber, tname in all_tfuncs {
 		tcname := util.no_dots(tname)
 		testfn := unsafe { g.table.fns[tname] }
 		lnum := testfn.pos.line_nr + 1
+		g.fuse('main__VTestFnMetaInfo_free')
 		g.writeln('\tmain__VTestFnMetaInfo_free(test_runner.fn_test_info);')
 		g.writeln('\tstring tcname_${tnumber} = _SLIT("${tcname}");')
 		g.writeln('\tstring tcmod_${tnumber}  = _SLIT("${testfn.mod}");')
@@ -326,6 +364,7 @@ pub fn (mut g Gen) gen_c_main_for_tests() {
 		g.writeln('\tif (!setjmp(g_jump_buffer)) {')
 		//
 		if g.pref.show_asserts {
+			g.fuse('main__BenchedTests_testing_step_start')
 			g.writeln('\t\tmain__BenchedTests_testing_step_start(&bt, tcname_${tnumber});')
 		}
 		g.writeln('\t\t${tcname}();')
@@ -337,18 +376,23 @@ pub fn (mut g Gen) gen_c_main_for_tests() {
 		//
 		g.writeln('\t}')
 		if g.pref.show_asserts {
+			g.fuse('main__BenchedTests_testing_step_end')
 			g.writeln('\tmain__BenchedTests_testing_step_end(&bt);')
 		}
 		g.writeln('')
 	}
 	if g.pref.show_asserts {
+		g.fuse('main__BenchedTests_end_testing')
 		g.writeln('\tmain__BenchedTests_end_testing(&bt);')
 	}
 	g.writeln2('', '\t_vtrunner._method_finish(_vtobj);')
 	g.writeln('\tint test_exit_code = _vtrunner._method_exit_code(_vtobj);')
 
 	g.writeln2('\t_vtrunner._method__v_free(_vtobj);', '')
-	g.writeln2('\t_vcleanup();', '')
+	if !g.pref.no_builtin {
+		g.fuse('_vcleanup')
+		g.writeln2('\t_vcleanup();', '')
+	}
 	g.writeln2('\treturn test_exit_code;', '}')
 	if g.pref.printfn_list.len > 0 && 'main' in g.pref.printfn_list {
 		println(g.out.after(main_fn_start_pos))
@@ -384,6 +428,8 @@ pub fn (mut g Gen) gen_c_main_trace_calls_hook() {
 	if !g.pref.trace_calls {
 		return
 	}
+	g.guse('g_stack_base')
+	g.fuse('v__trace_calls__on_c_main')
 	should_trace_c_main := g.pref.should_trace_fn_name('C.main')
 	g.writeln('\tu8 bottom_of_stack = 0; g_stack_base = &bottom_of_stack; v__trace_calls__on_c_main(${should_trace_c_main});')
 }
