@@ -4,7 +4,6 @@
 module debug
 
 // function call location trace
-@[markused]
 pub struct FnTrace {
 pub:
 	name string
@@ -16,7 +15,6 @@ pub:
 __global g_callstack = []FnTrace{}
 
 // dump_callstack dumps callstack to the user
-@[markused]
 pub fn dump_callstack() {
 	bar := '-'.repeat(50).str
 	C.printf(c'Backtrace:\n')
@@ -31,7 +29,6 @@ pub fn dump_callstack() {
 }
 
 // callstack retrieves the supplied stack frame based on supplied depth
-@[markused]
 pub fn callstack(depth int) ?FnTrace {
 	if depth >= g_callstack.len {
 		return none

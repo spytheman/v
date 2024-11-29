@@ -16,7 +16,6 @@ pub mut:
 }
 
 // after_call_hook calls the registered hook fns
-@[markused]
 fn after_call_hook(fn_name string) {
 	g_trace.in_hook = true
 	for func in g_trace.trace_after_call {
@@ -26,7 +25,6 @@ fn after_call_hook(fn_name string) {
 }
 
 // before_call_hook calls the registered hook fns
-@[markused]
 fn before_call_hook(fn_name string) {
 	g_trace.in_hook = true
 	for func in g_trace.trace_before_call {
@@ -36,14 +34,14 @@ fn before_call_hook(fn_name string) {
 }
 
 // add_after_call adds a fn hook to after hook list and returns its id
-@[inline; markused]
+@[inline]
 pub fn add_after_call(func HookFnCall) HookFnCall {
 	g_trace.trace_after_call << func
 	return func
 }
 
 // add_before_call adds a fn hook to before hook list and return its id
-@[inline; markused]
+@[inline]
 pub fn add_before_call(func HookFnCall) HookFnCall {
 	g_trace.trace_before_call << func
 	return func

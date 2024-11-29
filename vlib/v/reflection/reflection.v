@@ -321,17 +321,14 @@ pub fn get_type_symbol(idx int) ?TypeSymbol {
 
 // V reflection metainfo API (called from backend to fill metadata info)
 
-@[markused]
 fn add_module(mod_name string) {
 	g_reflection.modules << Module{mod_name}
 }
 
-@[markused]
 fn add_func(func Function) {
 	g_reflection.funcs << func
 }
 
-@[markused]
 fn add_type(type_ Type) {
 	g_reflection.types << Type{
 		...type_
@@ -339,12 +336,10 @@ fn add_type(type_ Type) {
 	}
 }
 
-@[markused]
 fn add_type_symbol(typesymbol TypeSymbol) {
 	g_reflection.type_symbols << typesymbol
 }
 
-@[markused]
 fn add_string(str string, idx int) {
 	g_reflection.strings[idx] = str
 }

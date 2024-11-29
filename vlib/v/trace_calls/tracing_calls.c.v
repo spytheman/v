@@ -3,9 +3,10 @@ module trace_calls
 
 @[markused]
 __global g_stack_base = &u8(0)
-__global g_start_time = u64(0)
 
 @[markused]
+__global g_start_time = u64(0)
+
 pub fn on_call(fname string) {
 	mut volatile pfbase := unsafe { &u8(0) }
 	volatile fbase := u8(0)
@@ -46,7 +47,6 @@ fn current_time() u64 {
 	}
 }
 
-@[markused]
 pub fn on_c_main(should_trace_c_main bool) {
 	g_start_time = current_time()
 	//                    > trace  2128896   714640    28148 fn

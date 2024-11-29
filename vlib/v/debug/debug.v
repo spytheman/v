@@ -194,7 +194,6 @@ fn (mut d Debugger) unwatch_var(var string) {
 }
 
 // interact displays the V debugger REPL for user interaction
-@[markused]
 pub fn (mut d Debugger) interact(info DebugContextInfo) ! {
 	if d.exited {
 		return
