@@ -81,7 +81,7 @@ jobs:
         run: v -skip-unused test vlib/builtin/ vlib/math vlib/flag/ vlib/os/ vlib/strconv/
 
   msvc:
-    runs-on: windows-2019
+    runs-on: windows-latest
     timeout-minutes: 271
     env:
       VFLAGS: -cc msvc
