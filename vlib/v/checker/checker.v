@@ -79,6 +79,7 @@ pub mut:
 	is_just_builtin_mod         bool        // true only inside 'builtin'
 	is_generated                bool        // true for `@[generated] module xyz` .v files
 	unresolved_fixed_sizes      []&ast.Stmt // funcs with unresolved array fixed size e.g. fn func() [const1]int
+	current_struct_name         string      // inside `struct Abc {`, will be 'Abc'
 	inside_recheck              bool        // true when rechecking rhs assign statement
 	inside_unsafe               bool        // true inside `unsafe {}` blocks
 	inside_const                bool        // true inside `const ( ... )` blocks
@@ -219,6 +220,7 @@ fn (mut c Checker) reset_checker_state_at_start_of_new_file() {
 	c.inside_decl_rhs = false
 	c.inside_if_guard = false
 	c.error_details.clear()
+	c.table.cur_fn = unsafe { nil }
 }
 
 pub fn (mut c Checker) check(mut ast_file ast.File) {
@@ -4265,6 +4267,8 @@ fn (mut c Checker) at_expr(mut node ast.AtExpr) ast.Type {
 				if c.table.cur_fn.is_static_type_method {
 					mname = mname.replace('__static__', '.') + ' (static)'
 				}
+			} else {
+				mname = c.current_struct_name
 			}
 			node.val = c.file.path + ':' + (node.pos.line_nr + 1).str() + ', ${mname}'
 		}
