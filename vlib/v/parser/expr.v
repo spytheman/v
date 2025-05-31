@@ -421,8 +421,9 @@ fn (mut p Parser) check_expr(precedence int) !ast.Expr {
 			mut pos := p.tok.pos()
 			pos.update_last_line(p.prev_tok.line_nr)
 			node = ast.DumpExpr{
-				expr: expr
-				pos:  spos.extend(pos)
+				expr:  expr
+				pos:   spos.extend(pos)
+				scope: p.scope
 			}
 		}
 		.key_offsetof {

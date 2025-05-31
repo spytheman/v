@@ -1988,9 +1988,11 @@ pub struct DumpExpr {
 pub:
 	pos token.Pos
 pub mut:
+	scope     &Scope = unsafe { nil }
 	expr      Expr
 	expr_type Type
 	cname     string // filled in the checker
+	impl_expr Expr
 }
 
 pub struct Comment {

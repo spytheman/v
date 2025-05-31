@@ -3108,6 +3108,49 @@ pub fn (mut c Checker) expr(mut node ast.Expr) ast.Type {
 			}
 			c.table.dumps[int(unwrapped_expr_type.clear_flags(.result, .atomic_f))] = type_cname
 			node.cname = type_cname
+
+			snexpr := node.expr.str()
+			dump(snexpr)
+			dump(node.expr_type)
+			dump(node.cname)
+
+			node.impl_expr = ast.CallExpr{
+				mod:                 'builtin'
+				pos:                 node.pos
+				scope:               node.scope
+				language:            .v
+				name:                'dump_implementation'
+				return_type:         node.expr_type
+				return_type_generic: node.expr_type
+				nr_ret_values:       1
+				args:                [
+					ast.CallArg{
+						expr: ast.Expr(ast.StringLiteral{
+							val: c.file.path
+						})
+						typ:  ast.string_type_idx
+					},
+					ast.CallArg{
+						expr: ast.Expr(ast.IntegerLiteral{
+							val: (node.pos.line_nr + 1).str()
+						})
+						typ:  ast.i32_type_idx
+					},
+					ast.CallArg{
+						expr: ast.Expr(ast.StringLiteral{
+							val: snexpr
+						})
+						typ:  ast.string_type_idx
+					},
+					ast.CallArg{
+						expr: node.expr
+						typ:  node.expr_type
+					},
+				]
+			}
+			c.expr(mut node.impl_expr)
+			dump(node.impl_expr)
+
 			return node.expr_type
 		}
 		ast.EnumVal {
