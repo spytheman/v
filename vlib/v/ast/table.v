@@ -37,6 +37,7 @@ pub mut:
 	used_fns         map[string]bool // filled in by markused
 	used_consts      map[string]bool // filled in by markused
 	used_globals     map[string]bool // filled in by markused
+	used_structs     map[string]bool // filled in by markused
 	used_veb_types   []Type          // veb context types, filled in by checker
 	used_maps        int             // how many times maps were used, filled in by markused
 	used_arrays      int             // how many times arrays were used, filled in by markused

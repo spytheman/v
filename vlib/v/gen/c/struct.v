@@ -546,6 +546,12 @@ fn (mut g Gen) struct_decl(s ast.Struct, name string, is_anon bool, is_option bo
 	if s.is_generic {
 		return
 	}
+	if g.pref.skip_unused && name !in g.table.used_features.used_structs {
+		$if trace_skip_unused_structs ? {
+			eprintln('>> skipping unused struct declaration for: ${name}')
+		}
+		return
+	}
 	if name.contains('_T_') {
 		if s.is_union {
 			g.typedefs.writeln('typedef union ${name} ${name};')

@@ -18,6 +18,7 @@ pub mut:
 	used_fields  map[string]bool
 	used_none    int
 	n_asserts    int
+	n_as_casts   int
 	pref         &pref.Preferences = unsafe { nil }
 mut:
 	files       []&ast.File
@@ -159,6 +160,37 @@ pub fn (mut w Walker) mark_markused_globals() {
 			}
 			w.mark_global_as_used(gkey)
 		}
+	}
+}
+
+pub fn (mut w Walker) mark_markused_structs() {
+	// TODO: improve cgen and track the used pseudogeneric types here more precisely, do not hardcode `array` and `map`:
+	if w.n_as_casts > 0 {
+		w.used_structs['VCastTypeIndexName'] = true
+		w.features.used_arrays++
+	}
+	if w.n_asserts > 0 {
+		w.used_structs['VAssertMetaInfo'] = true
+	}
+	if w.features.used_arrays > 0 {
+		w.used_structs['array'] = true
+	}
+	if w.features.used_maps > 0 {
+		w.used_structs['map'] = true
+		w.used_structs['DenseArray'] = true
+	}
+	if false {
+		w.used_structs['StrIntpMem'] = true
+		w.used_structs['StrIntpData'] = true
+		w.used_structs['strconv__PrepNumber'] = true
+		w.used_structs['strconv__Dec32'] = true
+		w.used_structs['strconv__Dec64'] = true
+		w.used_structs['strconv__BF_param'] = true
+		w.used_structs['strconv__Uint128'] = true
+		w.used_structs['strconv__Uf32'] = true
+		w.used_structs['strconv__Uf64'] = true
+		w.used_structs['strconv__Float64u'] = true
+		w.used_structs['strconv__Float32u'] = true
 	}
 }
 
@@ -549,6 +581,7 @@ fn (mut w Walker) expr(node_ ast.Expr) {
 		}
 		///
 		ast.AsCast {
+			w.n_as_casts++
 			w.expr(node.expr)
 		}
 		ast.AtExpr {}

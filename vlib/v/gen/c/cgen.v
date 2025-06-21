@@ -1685,6 +1685,9 @@ pub fn (mut g Gen) write_typedef_types() {
 				info := sym.info as ast.Array
 				elem_sym := g.table.sym(info.elem_type)
 				if elem_sym.kind != .placeholder && !info.elem_type.has_flag(.generic) {
+					if g.should_skip_struct_named('array') {
+						continue
+					}
 					g.type_definitions.writeln('typedef array ${sym.cname};')
 				}
 			}
@@ -1750,6 +1753,9 @@ static inline void __${sym.cname}_pushval(${sym.cname} ch, ${push_arg} val) {
 				}
 			}
 			.map {
+				if g.should_skip_struct_named('map') {
+					continue
+				}
 				g.type_definitions.writeln('typedef map ${sym.cname};')
 			}
 			else {
@@ -1831,6 +1837,21 @@ pub fn (mut g Gen) write_alias_typesymbol_declaration(sym ast.TypeSymbol) {
 		// The C type itself however already exists on the C side, so just treat C__HINSTANCE as a macro for it:
 		g.type_definitions.writeln('#define ${sym.cname} ${sym.cname#[3..]}')
 		return
+	}
+	if parent.kind == .map {
+		if g.should_skip_struct_named('map') {
+			return
+		}
+	}
+	if parent.kind == .array {
+		if g.should_skip_struct_named('array') {
+			return
+		}
+	}
+	if parent.kind == .string {
+		if g.should_skip_struct_named('string') {
+			return
+		}
 	}
 	if is_fixed_array_of_non_builtin && levels == 0 {
 		g.alias_definitions.writeln('typedef ${parent_styp} ${sym.cname};')
@@ -1947,6 +1968,19 @@ pub fn (mut g Gen) write_array_fixed_return_types() {
 	g.type_definitions.writeln('// END_array_fixed_return_structs\n')
 }
 
+pub fn (mut g Gen) should_skip_struct_named(cname string) bool {
+	if !g.pref.skip_unused {
+		return false
+	}
+	if cname in g.table.used_features.used_structs {
+		return false
+	}
+	$if trace_skip_unused_structs ? {
+		eprintln('>> skipping unused struct declaration for: ${cname}')
+	}
+	return true
+}
+
 pub fn (mut g Gen) write_multi_return_types() {
 	start_pos := g.type_definitions.len
 	g.typedefs.writeln('\n// BEGIN_multi_return_typedefs')
@@ -1957,6 +1991,11 @@ pub fn (mut g Gen) write_multi_return_types() {
 		if info.types.any(it.has_flag(.generic)) {
 			continue
 		}
+
+		if g.should_skip_struct_named(sym.cname) {
+			continue
+		}
+
 		g.typedefs.writeln('typedef struct ${sym.cname} ${sym.cname};')
 		g.type_definitions.writeln('struct ${sym.cname} {')
 		for i, mr_typ in info.types {
@@ -2602,6 +2641,10 @@ fn (mut g Gen) stmt(node ast.Stmt) {
 			if node.language == .c {
 				return
 			}
+			if g.should_skip_struct_named(name) {
+				return
+			}
+
 			if node.is_union {
 				g.typedefs.writeln('typedef union ${name} ${name};')
 			} else {

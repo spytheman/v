@@ -477,6 +477,7 @@ pub fn mark_used(mut table ast.Table, mut pref_ pref.Preferences, ast_files []&a
 	walker.mark_markused_consts() // tagged with `@[markused]`
 	walker.mark_markused_globals() // tagged with `@[markused]`
 	walker.mark_markused_fns() // tagged with `@[markused]`, `@[export]` and veb actions
+	walker.mark_markused_structs() // tagged with `@[markused]`, `@[export]` and veb actions
 	walker.mark_struct_field_default_expr()
 
 	for k, _ in table.used_features.comptime_calls {
@@ -543,11 +544,13 @@ pub fn mark_used(mut table ast.Table, mut pref_ pref.Preferences, ast_files []&a
 	table.used_features.used_fns = walker.used_fns.move()
 	table.used_features.used_consts = walker.used_consts.move()
 	table.used_features.used_globals = walker.used_globals.move()
+	table.used_features.used_structs = walker.used_structs.move()
 
 	if trace_skip_unused {
 		eprintln('>> t.used_fns: ${table.used_features.used_fns.keys()}')
 		eprintln('>> t.used_consts: ${table.used_features.used_consts.keys()}')
 		eprintln('>> t.used_globals: ${table.used_features.used_globals.keys()}')
+		eprintln('>> t.used_structs: ${table.used_features.used_structs.keys()}')
 		eprintln('>> walker.table.used_features.used_maps: ${walker.table.used_features.used_maps}')
 	}
 	if trace_skip_unused_just_unused_fns {
