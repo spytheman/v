@@ -1,5 +1,7 @@
 module lockfree
 
+import time
+
 // copy from vlib/sync/stdatomic/1.declarations.c.v, as we don't import `sync`
 fn C.atomic_load_u32(voidptr) u32
 fn C.atomic_store_u32(voidptr, u32)
@@ -198,6 +200,10 @@ pub fn (mut rb RingBuffer[T]) try_push_many(items []T) u32 {
 		for rb.prod_tail != old_head {
 			C.cpu_relax() // Low-latency pause instruction
 			attempts_wait++
+			if attempts_wait > 20_000 {
+				time.sleep(1 * time.millisecond)
+				attempts_wait = 0
+			}
 		}
 	}
 
@@ -298,6 +304,10 @@ pub fn (mut rb RingBuffer[T]) try_pop_many(mut items []T) u32 {
 		for rb.cons_tail != old_head {
 			C.cpu_relax() // Low-latency pause instruction
 			attempts_wait++
+			if attempts_wait > 20_000 {
+				time.sleep(1 * time.millisecond)
+				attempts_wait = 0
+			}
 		}
 	}
 
@@ -323,6 +333,10 @@ pub fn (mut rb RingBuffer[T]) push(item T) {
 		}
 		for _ in 0 .. backoff {
 			C.cpu_relax() // Pause before retry
+			if backoff > 1000 {
+				time.sleep(1 * time.millisecond)
+				backoff = 1
+			}
 		}
 		backoff = int_min(backoff * 2, 1024)
 	}
@@ -341,6 +355,10 @@ pub fn (mut rb RingBuffer[T]) pop() T {
 			C.cpu_relax() // Pause before retry
 		}
 		backoff = int_min(backoff * 2, 1024)
+		if backoff > 1000 {
+			time.sleep(10 * time.millisecond)
+			backoff = 1
+		}
 	}
 	return T(0) // Default value (should never be reached)
 }
@@ -358,6 +376,10 @@ pub fn (mut rb RingBuffer[T]) push_many(items []T) {
 				C.cpu_relax() // Pause when buffer is full
 			}
 			backoff = int_min(backoff * 2, 1024)
+			if backoff > 1000 {
+				time.sleep(1 * time.millisecond)
+				backoff = 1
+			}
 		}
 	}
 }
@@ -377,6 +399,10 @@ pub fn (mut rb RingBuffer[T]) pop_many(n u32) []T {
 				C.cpu_relax() // Pause when buffer is empty
 			}
 			backoff = int_min(backoff * 2, 1024)
+			if backoff > 1000 {
+				time.sleep(5 * time.millisecond)
+				backoff = 1
+			}
 		}
 	}
 	return result
