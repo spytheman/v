@@ -49,3 +49,13 @@ fn test_match_choice() {
 	assert peg.match(peg.choice('abcd', 'ab', 'd'), 'ab')? == 2
 	assert peg.match(peg.choice('abcd', 'ab', 'd'), 'dzzz')? == 1
 }
+
+fn test_match_date() {
+	digit := peg.range('09')
+	day := peg.seq(digit, digit)
+	month := day
+	year := peg.seq(digit, digit, digit, digit)
+	iso_date := peg.seq(year, '-', month, '-', day)
+	assert peg.match(iso_date, '2025-07-10')? == 10
+	assert peg.match(iso_date, '201-07-10') == none
+}
