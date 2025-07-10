@@ -4,12 +4,14 @@
 import peg
 
 fn test_match() {
-	assert peg.match('hello', 'hello')? == []
+	assert peg.match('hello', 'hello')? == 5
+	assert peg.match('he', 'hello')? == 2
 	assert peg.match('hello', 'hi') == none
-	assert peg.match(1, 'hi')? == []
+	assert peg.match(1, 'hi')? == 1
+	assert peg.match(2, 'hi')? == 2
 	assert peg.match(1, '') == none
-	assert peg.match(peg.range('AZ'), 'F')? == []
+	assert peg.match(peg.range('AZ'), 'F')? == 1
 	assert peg.match(peg.range('AZ'), '-') == none
 	assert peg.match(peg.set('AZ'), 'F') == none
-	assert peg.match(peg.set('ABCDEFGHIJKLMNOPQRSTUVWXYZ'), 'F')? == []
+	assert peg.match(peg.set('ABCDEFGHIJKLMNOPQRSTUVWXYZ'), 'F')? == 1
 }

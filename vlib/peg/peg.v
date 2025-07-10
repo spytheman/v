@@ -8,10 +8,6 @@ pub struct Set {
 	bytes []u8
 }
 
-pub struct Range {
-	bytes []u8
-}
-
 pub struct Choice {
 	exprs []PEG
 }
@@ -48,6 +44,8 @@ pub struct Repeat {
 	n    int
 	expr PEG
 }
+
+pub type FnCondition = fn (input string, start int) bool
 
 pub struct If {
 	cond FnCondition = always
@@ -95,7 +93,6 @@ pub type PEG = int
 	| rune
 	| string
 	| Set
-	| Range
 	| Choice
 	| Seq
 	| Between
@@ -131,8 +128,16 @@ pub fn set(s string) PEG {
 }
 
 pub fn range(ss ...string) PEG {
-	return Range{
-		bytes: ss.join('').bytes()
+	mut charset := []u8{}
+	for r in ss {
+		b1 := r[0]
+		b2 := r[1]
+		for b in b1 .. (b2 + 1) {
+			charset << b
+		}
+	}
+	return Set{
+		bytes: charset
 	}
 }
 
@@ -150,6 +155,15 @@ pub fn seq(exprs ...PEG) PEG {
 	}
 }
 
+// One big difference between PEGs, and more traditional parser generators, like
+// the ones used by YACC and Bison, is the ordered choice operator. Its ordered
+// property, means that all PEGs are *deterministic* - if they match a string,
+// they will match it in *one way* only.
+// This also means, that there is a direct correspondence between a PEG, and a
+// parser. This is very convenient, when writing PEGs, as the specification and
+// the parser can often be *one and the same* .
+// Traditional parser generators in contrast are non-deterministic, and thus you
+// need to specify additional rules to resolve ambiguities.
 pub fn choice(exprs ...PEG) PEG {
 	return Choice{
 		exprs: exprs
@@ -188,8 +202,6 @@ pub fn repeat(n int, expr PEG) PEG {
 		expr: expr
 	}
 }
-
-pub type FnCondition = fn (input string, start int) bool
 
 fn always(input string, start int) bool {
 	return true
@@ -273,7 +285,7 @@ pub struct ParseParams {
 	start int
 }
 
-pub fn (m PEG) parse(input string, params ParseParams) ?[]PEG {
+pub fn (m PEG) parse(input string, params ParseParams) ?int {
 	compiled := compile(m) or { return none }
 	return compiled.parse(input, params)
 }
@@ -291,23 +303,118 @@ pub fn compile(expr PEG) !CompiledPEG {
 	}
 }
 
-pub fn (m CompiledPEG) parse(input string, params ParseParams) ?[]PEG {
+pub fn (m CompiledPEG) parse(input string, params ParseParams) ?int {
 	return none
 }
 
-pub fn match(expr PEG, input string, params ParseParams) ?[]PEG {
-	if expr is string && expr == 'hello' && input == 'hello' && params.start == 0 {
-		return []
-	}
-	if expr is int && input == 'hi' && params.start == 0 {
-		return []
-	}
-	if expr is Range && expr.bytes == [u8(`A`), `Z`] && input == 'F' && params.start == 0 {
-		return []
-	}
-	if expr is Set && expr.bytes == 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.bytes() && input == 'F'
-		&& params.start == 0 {
-		return []
+pub fn match(expr PEG, input string, params ParseParams) ?int {
+	b := params.start
+	match expr {
+		int {
+			if b + expr <= input.len {
+				return expr
+			}
+		}
+		string {
+			if b < input.len && input[b..].starts_with(expr) {
+				return expr.len
+			}
+		}
+		Set {
+			if b < input.len && input[b] in expr.bytes {
+				return 1
+			}
+		}
+		bool {
+			// true always matches. Does not advance any characters. Epsilon in NFA.
+			// false never matches. Does not advance any characters. Equivalent to peg.not(peg.true()) .
+			return if expr { 0 } else { none }
+		}
+		rune {
+			if expr < 127 && b < input.len && input[b] == expr {
+				return 1
+			}
+			partial := expr.str()
+			if b + partial.len <= input.len && input[b..].starts_with(partial) {
+				return partial.len
+			}
+		}
+		Not {
+			match(expr.expr, input, params) or { return 0 }
+		}
+		Choice {
+			for e in expr.exprs {
+				r := match(e, input, params) or { continue }
+				return r
+			}
+		}
+		Seq {
+			mut total := 0
+			mut start := b
+			for e in expr.exprs {
+				total += match(e, input, start: start) or { return none }
+				start = b + total
+			}
+			return total
+		}
+		Between {
+			mut c := 0
+			mut total := 0
+			mut start := b
+			for c <= expr.max {
+				total += match(expr.expr, input, start: start) or {
+					return if c >= expr.min && c <= expr.max { total } else { none }
+				}
+				c++
+				start = b + total
+			}
+		}
+		AtLeast {
+			mut c := 0
+			mut total := 0
+			mut start := b
+			for {
+				total += match(expr.expr, input, start: start) or {
+					return if c >= expr.n { total } else { none }
+				}
+				c++
+				start = b + total
+			}
+		}
+		AtMost {
+			mut c := 0
+			mut total := 0
+			mut start := b
+			for {
+				total += match(expr.expr, input, start: start) or {
+					return if c <= expr.n { total } else { none }
+				}
+				c++
+				start = b + total
+			}
+		}
+		Repeat {
+			mut total := 0
+			mut start := b
+			for c := 0; true; c++ {
+				total += match(expr.expr, input, start: start) or {
+					return if c == expr.n { total } else { none }
+				}
+				start = b + total
+			}
+		}
+		If {
+			if expr.cond(input, b) {
+				return match(expr.expr, input, start: b)
+			}
+		}
+		IfNot {
+			if !expr.cond(input, b) {
+				return match(expr.expr, input, start: b)
+			}
+		}
+		Any, Some, Look, To, Thru, BackMatch, SubWindow, Split {}
+		// else {}
 	}
 	return none
 }
