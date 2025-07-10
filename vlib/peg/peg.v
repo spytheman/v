@@ -280,35 +280,16 @@ pub fn split(separator PEG, expr PEG) PEG {
 
 //
 
-@[params]
-pub struct ParseParams {
-	start int
+pub struct MatchContext {
 }
 
-pub fn (m PEG) parse(input string, params ParseParams) ?int {
-	compiled := compile(m) or { return none }
-	return compiled.parse(input, params)
-}
+pub fn (mut ctx MatchContext) reset() {}
 
-//
-
-pub struct CompiledPEG {
-	expr PEG
-}
-
-pub fn compile(expr PEG) !CompiledPEG {
-	eprintln('>>> compile expr: ${expr}')
-	return CompiledPEG{
-		expr: expr
+pub fn (mut ctx MatchContext) match(expr PEG, input string, spos int) ?int {
+	if spos < 0 {
+		return none
 	}
-}
-
-pub fn (m CompiledPEG) parse(input string, params ParseParams) ?int {
-	return none
-}
-
-pub fn match(expr PEG, input string, params ParseParams) ?int {
-	b := params.start
+	b := spos
 	match expr {
 		int {
 			if b + expr <= input.len {
@@ -340,11 +321,11 @@ pub fn match(expr PEG, input string, params ParseParams) ?int {
 			}
 		}
 		Not {
-			match(expr.expr, input, params) or { return 0 }
+			ctx.match(expr.expr, input, b) or { return 0 }
 		}
 		Choice {
 			for e in expr.exprs {
-				r := match(e, input, params) or { continue }
+				r := ctx.match(e, input, b) or { continue }
 				return r
 			}
 		}
@@ -352,7 +333,7 @@ pub fn match(expr PEG, input string, params ParseParams) ?int {
 			mut total := 0
 			mut start := b
 			for e in expr.exprs {
-				total += match(e, input, start: start) or { return none }
+				total += ctx.match(e, input, start) or { return none }
 				start = b + total
 			}
 			return total
@@ -362,7 +343,7 @@ pub fn match(expr PEG, input string, params ParseParams) ?int {
 			mut total := 0
 			mut start := b
 			for c <= expr.max {
-				total += match(expr.expr, input, start: start) or {
+				total += ctx.match(expr.expr, input, start) or {
 					return if c >= expr.min && c <= expr.max { total } else { none }
 				}
 				c++
@@ -374,7 +355,7 @@ pub fn match(expr PEG, input string, params ParseParams) ?int {
 			mut total := 0
 			mut start := b
 			for {
-				total += match(expr.expr, input, start: start) or {
+				total += ctx.match(expr.expr, input, start) or {
 					return if c >= expr.n { total } else { none }
 				}
 				c++
@@ -386,7 +367,7 @@ pub fn match(expr PEG, input string, params ParseParams) ?int {
 			mut total := 0
 			mut start := b
 			for {
-				total += match(expr.expr, input, start: start) or {
+				total += ctx.match(expr.expr, input, start) or {
 					return if c <= expr.n { total } else { none }
 				}
 				c++
@@ -397,7 +378,7 @@ pub fn match(expr PEG, input string, params ParseParams) ?int {
 			mut total := 0
 			mut start := b
 			for c := 0; true; c++ {
-				total += match(expr.expr, input, start: start) or {
+				total += ctx.match(expr.expr, input, start) or {
 					return if c == expr.n { total } else { none }
 				}
 				start = b + total
@@ -405,16 +386,27 @@ pub fn match(expr PEG, input string, params ParseParams) ?int {
 		}
 		If {
 			if expr.cond(input, b) {
-				return match(expr.expr, input, start: b)
+				return ctx.match(expr.expr, input, b)
 			}
 		}
 		IfNot {
 			if !expr.cond(input, b) {
-				return match(expr.expr, input, start: b)
+				return ctx.match(expr.expr, input, b)
 			}
 		}
 		Any, Some, Look, To, Thru, BackMatch, SubWindow, Split {}
 		// else {}
 	}
 	return none
+}
+
+@[params]
+pub struct MatchParams {
+pub:
+	start int
+}
+
+pub fn match(expr PEG, input string, params MatchParams) ?int {
+	mut ctx := MatchContext{}
+	return ctx.match(expr, input, params.start)
 }

@@ -7,6 +7,19 @@ fn test_match_prefix_string() {
 	assert peg.match('hello', 'hello')? == 5
 	assert peg.match('he', 'hello')? == 2
 	assert peg.match('hello', 'hi') == none
+	assert peg.match('e', 'hello') == none
+	assert peg.match('e', 'hello', start: -1) == none
+	assert peg.match('e', 'hello', start: 0) == none
+	assert peg.match('e', 'hello', start: 1)? == 1
+	assert peg.match('e', 'hello', start: 2) == none
+	assert peg.match('e', 'hello', start: 3) == none
+	assert peg.match('e', 'hello', start: 4) == none
+	assert peg.match('e', 'hello', start: 5) == none
+	assert peg.match('e', 'hello', start: 6) == none
+	assert peg.match('ll', 'hello', start: 0) == none
+	assert peg.match('ll', 'hello', start: 1) == none
+	assert peg.match('ll', 'hello', start: 2)? == 2
+	assert peg.match('ll', 'hello', start: 3) == none
 }
 
 fn test_match_len() {
