@@ -22,14 +22,6 @@ pub struct Between {
 	expr PEG
 }
 
-pub struct Any {
-	expr PEG
-}
-
-pub struct Some {
-	expr PEG
-}
-
 pub struct AtLeast {
 	n    int
 	expr PEG
@@ -96,8 +88,6 @@ pub type PEG = int
 	| Choice
 	| Seq
 	| Between
-	| Any
-	| Some
 	| AtLeast
 	| AtMost
 	| Repeat
@@ -171,15 +161,11 @@ pub fn choice(exprs ...PEG) PEG {
 }
 
 pub fn any(expr PEG) PEG {
-	return Any{
-		expr: expr
-	}
+	return at_least(0, expr)
 }
 
 pub fn some(expr PEG) PEG {
-	return Some{
-		expr: expr
-	}
+	return at_least(1, expr)
 }
 
 pub fn at_least(n int, expr PEG) PEG {
@@ -394,7 +380,7 @@ pub fn (mut ctx MatchContext) match(expr PEG, input string, spos int) ?int {
 				return ctx.match(expr.expr, input, b)
 			}
 		}
-		Any, Some, Look, To, Thru, BackMatch, SubWindow, Split {}
+		Look, To, Thru, BackMatch, SubWindow, Split {}
 		// else {}
 	}
 	return none

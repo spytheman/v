@@ -72,3 +72,13 @@ fn test_match_date() {
 	assert peg.match(iso_date, '2025-07-10')? == 10
 	assert peg.match(iso_date, '201-07-10') == none
 }
+
+fn test_match_date_with_digit_represented_with_a_charset() {
+	digit := peg.set('0123456789')
+	day := peg.seq(digit, digit)
+	month := day
+	year := peg.seq(digit, digit, digit, digit)
+	iso_date := peg.seq(year, '-', month, '-', day)
+	assert peg.match(iso_date, '2025-07-10')? == 10
+	assert peg.match(iso_date, '201-07-10') == none
+}
