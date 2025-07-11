@@ -160,7 +160,7 @@ pub fn choice(exprs ...PEG) PEG {
 	}
 }
 
-pub fn any(expr PEG) PEG {
+pub fn any_(expr PEG) PEG {
 	return at_least(0, expr)
 }
 
@@ -244,10 +244,6 @@ pub fn backmatch(tag ?string) PEG {
 
 pub fn opt(expr PEG) PEG {
 	return between(0, 1, expr)
-}
-
-pub fn n(count int, expr PEG) PEG {
-	return repeat(count, expr)
 }
 
 pub fn sub(window PEG, expr PEG) PEG {
@@ -380,7 +376,15 @@ pub fn (mut ctx MatchContext) match(expr PEG, input string, spos int) ?int {
 				return ctx.match(expr.expr, input, b)
 			}
 		}
-		Look, To, Thru, BackMatch, SubWindow, Split {}
+		Look {
+			beoffset := b + expr.offset
+			if beoffset < input.len {
+				_ := ctx.match(expr.expr, input, beoffset) or { return none }
+				return 0
+			}
+			return none
+		}
+		To, Thru, BackMatch, SubWindow, Split {}
 		// else {}
 	}
 	return none
