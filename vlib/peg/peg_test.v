@@ -27,12 +27,20 @@ fn test_match_len() {
 	assert peg.match(2, 'hi')? == 2
 	assert peg.match(1, '') == none
 	assert peg.match(0, '')? == 0
-	assert peg.match(0, 'abc')? == 0
 	//
-	assert peg.match(-1, '')? == 0
-	assert peg.match(-2, '')? == 0
-	assert peg.match(-1, 'cat') == none
-	assert peg.match(-2, 'o')? == 0
+	assert peg.match(0, '')? == 0
+	assert peg.match(1, '') == none
+	assert peg.match(1, 'a')? == 1
+	assert peg.match(0, 'abc')? == 0
+	assert peg.match(1, 'abc')? == 1
+	assert peg.match(2, 'abc')? == 2
+	assert peg.match(3, 'abc')? == 3
+	assert peg.match(4, 'abc') == none
+	//
+	assert peg.match(-1, '')? == 0 // 0 characters, we needed 1 -> inverted = 0
+	assert peg.match(-2, '')? == 0 // 0 characters, we needed 1 -> inverted = 0
+	assert peg.match(-1, 'cat') == none // there are 3 characters, which is > the 1 needed -> inverted = none
+	assert peg.match(-2, 'o')? == 0 // there is just 1 character, which is < the 2 needed -> inverted = 0
 }
 
 fn test_match_range() {
