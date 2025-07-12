@@ -28,6 +28,11 @@ fn test_match_len() {
 	assert peg.match(1, '') == none
 	assert peg.match(0, '')? == 0
 	assert peg.match(0, 'abc')? == 0
+	//
+	assert peg.match(-1, '')? == 0
+	assert peg.match(-2, '')? == 0
+	assert peg.match(-1, 'cat') == none
+	assert peg.match(-2, 'o')? == 0
 }
 
 fn test_match_range() {

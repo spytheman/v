@@ -274,8 +274,17 @@ pub fn (mut ctx MatchContext) match(expr PEG, input string, spos int) ?int {
 	b := spos
 	match expr {
 		int {
-			if b + expr <= input.len {
-				return expr
+			if expr >= 0 {
+				// check if there are at least `expr` characters left in the input:
+				if b + expr <= input.len {
+					return expr
+				}
+			} else {
+				// check if there are NOT |expr| characters left in the input, but do not advance:
+				plen := -expr
+				if b + plen > input.len {
+					return 0
+				}
 			}
 		}
 		string {
