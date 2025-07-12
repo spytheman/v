@@ -288,7 +288,7 @@ pub fn (mut ctx MatchContext) match(expr PEG, input string, spos int) ?int {
 			}
 		}
 		string {
-			if b < input.len && input[b..].starts_with(expr) {
+			if b <= input.len && input[b..].starts_with(expr) {
 				return expr.len
 			}
 		}

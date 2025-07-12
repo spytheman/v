@@ -4,6 +4,8 @@
 import peg
 
 fn test_match_prefix_string() {
+	assert peg.match('', '')? == 0
+	assert peg.match('', 'a')? == 0
 	assert peg.match('hello', 'hello')? == 5
 	assert peg.match('he', 'hello')? == 2
 	assert peg.match('hello', 'hi') == none
