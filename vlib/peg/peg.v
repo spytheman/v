@@ -4,6 +4,11 @@
 
 module peg
 
+// Rule is just a key in a grammar map
+pub struct Rule {
+	key string // the name of the rule; used as a key in a grammar map
+}
+
 pub struct Set {
 	bytes []u8
 }
@@ -100,6 +105,8 @@ pub type PEG = int
 	| BackMatch
 	| SubWindow
 	| Split
+	| Rule
+	| map[string]PEG
 
 // true always matches. Does not advance any characters. Epsilon in NFA.
 pub fn true() PEG {
@@ -117,7 +124,24 @@ pub fn set(s string) PEG {
 	}
 }
 
+pub fn rule(name string) PEG {
+	return Rule{
+		key: name
+	}
+}
+
+// e is a convenience identity function, that allows for more convenient construction of map[string]Peg literals
+pub fn e(expr PEG) PEG {
+	return expr
+}
+
+// grammar is a convenience function, to enforce stricter type checks, when creating reusable PEG grammars
+pub fn grammar(m map[string]PEG) PEG {
+	return m
+}
+
 pub fn range(ss ...string) PEG {
+	assert ss.len > 0
 	mut charset := []u8{}
 	for r in ss {
 		b1 := r[0]
@@ -140,6 +164,7 @@ pub fn between(min int, max int, expr PEG) PEG {
 }
 
 pub fn seq(exprs ...PEG) PEG {
+	assert exprs.len > 0
 	return Seq{
 		exprs: exprs
 	}
@@ -155,6 +180,7 @@ pub fn seq(exprs ...PEG) PEG {
 // Traditional parser generators in contrast are non-deterministic, and thus you
 // need to specify additional rules to resolve ambiguities.
 pub fn choice(exprs ...PEG) PEG {
+	assert exprs.len > 0
 	return Choice{
 		exprs: exprs
 	}
@@ -263,9 +289,14 @@ pub fn split(separator PEG, expr PEG) PEG {
 //
 
 pub struct MatchContext {
+pub mut:
+	grammar    map[string]PEG
+	rule_depth int
 }
 
-pub fn (mut ctx MatchContext) reset() {}
+pub fn (mut ctx MatchContext) reset() {
+	ctx.rule_depth = 0
+}
 
 pub fn (mut ctx MatchContext) match(expr PEG, input string, spos int) ?int {
 	if spos < 0 {
@@ -392,6 +423,20 @@ pub fn (mut ctx MatchContext) match(expr PEG, input string, spos int) ?int {
 				return 0
 			}
 			return none
+		}
+		Rule {
+			if rule_expr := ctx.grammar[expr.key] {
+				// eprintln('>> seeking rule: ${expr.key:-10} in keys: ${ctx.grammar.keys():-30} -> [${ctx.rule_depth}], `${rule_expr}`')
+				ctx.rule_depth++
+				res := ctx.match(rule_expr, input, b)
+				ctx.rule_depth--
+				return res
+			}
+			panic('peg: missing `${expr.key}` rule in grammar keys: ${ctx.grammar.keys()}')
+		}
+		map[string]PEG {
+			ctx.grammar = expr.clone()
+			return ctx.match(rule(':main'), input, b)
 		}
 		To, Thru, BackMatch, SubWindow, Split {}
 		// else {}

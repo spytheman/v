@@ -3,6 +3,17 @@
 // that can be found in the LICENSE file.
 import peg
 
+fn test_match_bools() {
+	assert peg.match(true, '')? == 0
+	assert peg.match(false, '') == none
+	assert peg.match(true, 'a')? == 0
+	assert peg.match(false, 'a') == none
+	assert peg.match(peg.choice('a', true), 'a')? == 1
+	assert peg.match(peg.choice('a', true), '')? == 0
+	assert peg.match(peg.choice('a', false), 'a')? == 1
+	assert peg.match(peg.choice('a', false), '') == none
+}
+
 fn test_match_prefix_string() {
 	assert peg.match('', '')? == 0
 	assert peg.match('', 'a')? == 0
