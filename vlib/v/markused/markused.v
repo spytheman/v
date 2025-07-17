@@ -184,7 +184,7 @@ pub fn mark_used(mut table ast.Table, mut pref_ pref.Preferences, ast_files []&a
 			core_fns << '__new_array_with_array_default'
 			core_fns << ref_array_idx_str + '.set'
 		}
-		if table.used_features.option_or_result {
+		if table.used_features.print_options {
 			include_panic_deps = true
 			core_fns << '_option_ok'
 			core_fns << '_result_ok'
@@ -218,6 +218,9 @@ pub fn mark_used(mut table ast.Table, mut pref_ pref.Preferences, ast_files []&a
 		}
 		if table.used_features.type_name {
 			core_fns << charptr_idx_str + '.vstring_literal'
+		}
+		if table.used_features.memory_align {
+			core_fns << 'memdup_align'
 		}
 		if pref_.trace_calls || pref_.trace_fns.len > 0 {
 			include_panic_deps = true
@@ -383,10 +386,6 @@ pub fn mark_used(mut table ast.Table, mut pref_ pref.Preferences, ast_files []&a
 		all_fn_root_names << 'panic_debug'
 		all_fn_root_names << 'tos3'
 	}
-	if table.used_features.option_or_result {
-		all_fn_root_names << 'panic_option_not_set'
-		all_fn_root_names << 'panic_result_not_set'
-	}
 	if pref_.is_test {
 		all_fn_root_names << 'main.cb_assertion_ok'
 		all_fn_root_names << 'main.cb_assertion_failed'
@@ -531,8 +530,22 @@ pub fn mark_used(mut table ast.Table, mut pref_ pref.Preferences, ast_files []&a
 		}
 	}
 
+	if walker.used_panic > 0 {
+		walker.mark_fn_as_used('panic_option_not_set')
+		walker.mark_fn_as_used('panic_result_not_set')
+	}
 	if walker.used_none > 0 || table.used_features.auto_str {
 		walker.mark_fn_as_used('_option_none')
+	}
+	if walker.used_option > 0 {
+		walker.mark_fn_as_used('_option_clone')
+		walker.mark_fn_as_used('_option_ok')
+	}
+	if walker.used_result > 0 {
+		walker.mark_fn_as_used('_result_ok')
+	}
+	if (walker.used_option + walker.used_result + walker.used_none) > 0 {
+		walker.mark_const_as_used('none__')
 	}
 
 	if trace_skip_unused_fn_names {
