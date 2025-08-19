@@ -13,6 +13,7 @@ import v.util.version
 import v.errors
 import v.pkgconfig
 import v.transformer
+import v.counters
 import v.type_resolver
 
 // prevent stack overflows by restricting too deep recursion:
@@ -153,6 +154,7 @@ mut:
 }
 
 pub fn new_checker(table &ast.Table, pref_ &pref.Preferences) &Checker {
+	counters.inc(@METHOD)
 	mut timers_should_print := false
 	$if time_checking ? {
 		timers_should_print = true
@@ -213,6 +215,7 @@ fn (mut c Checker) reset_checker_state_at_start_of_new_file() {
 }
 
 pub fn (mut c Checker) check(mut ast_file ast.File) {
+	counters.inc(@METHOD)
 	$if trace_checker ? {
 		eprintln('start checking file: ${ast_file.path}')
 	}
@@ -334,6 +337,7 @@ pub fn (mut c Checker) change_current_file(file &ast.File) {
 }
 
 pub fn (mut c Checker) check_files(ast_files []&ast.File) {
+	counters.inc(@METHOD)
 	// println('check_files')
 	// c.files = ast_files
 	mut has_main_mod_file := false
@@ -542,6 +546,7 @@ fn (mut c Checker) check_valid_pascal_case(name string, identifier string, pos t
 }
 
 fn (mut c Checker) type_decl(mut node ast.TypeDecl) {
+	counters.inc(@METHOD)
 	if node.typ == ast.invalid_type && (node is ast.AliasTypeDecl || node is ast.SumTypeDecl) {
 		typ_desc := if node is ast.AliasTypeDecl { 'alias' } else { 'sum type' }
 		c.error('cannot register ${typ_desc} `${node.name}`, another type with this name exists',

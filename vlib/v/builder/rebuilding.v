@@ -8,6 +8,7 @@ import strings
 import v.util
 import v.pref
 import v.vcache
+import v.counters
 import runtime
 
 pub fn (mut b Builder) rebuild_modules() {
@@ -333,6 +334,7 @@ pub fn (mut b Builder) rebuild(backend_cb FnBackend) {
 	}
 	mut timers := util.get_timers()
 	timers.show_remaining()
+	counters.show(b.pref.show_counters)
 	if b.pref.is_stats {
 		compilation_time_micros := 1 + sw.elapsed().microseconds()
 		scompilation_time_ms := util.bold('${f64(compilation_time_micros) / 1000.0:6.3f}')

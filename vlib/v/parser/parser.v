@@ -9,6 +9,7 @@ import v.token
 import v.pref
 import v.util
 import v.errors
+import v.counters
 import os
 import hash.fnv1a
 
@@ -413,6 +414,7 @@ fn (p &Parser) peek_token_after_var_list() token.Token {
 }
 
 fn (mut p Parser) open_scope() {
+	counters.inc(@METHOD)
 	if p.opened_scopes > p.max_opened_scopes {
 		p.should_abort = true
 		p.error('nested opened scopes limit reached: ${p.max_opened_scopes}')
@@ -426,6 +428,7 @@ fn (mut p Parser) open_scope() {
 }
 
 fn (mut p Parser) close_scope() {
+	counters.inc(@METHOD)
 	// p.scope.end_pos = p.tok.pos
 	// NOTE: since this is usually called after `p.parse_block()`
 	// ie. when `prev_tok` is rcbr `}` we most likely want `prev_tok`
@@ -1099,6 +1102,7 @@ fn (mut p Parser) semicolon_stmt() ast.SemicolonStmt {
 }
 
 fn (mut p Parser) expr_list(expect_value bool) []ast.Expr {
+	counters.inc(@METHOD)
 	mut exprs := []ast.Expr{}
 	for {
 		expr := if expect_value { p.expr(0) } else { p.expr_no_value(0) }

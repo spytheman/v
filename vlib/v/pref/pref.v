@@ -118,6 +118,7 @@ pub mut:
 	is_stats           bool // `v -stats file.v` will produce more detailed statistics for the file that is compiled
 	show_asserts       bool // `VTEST_SHOW_ASSERTS=1 v file_test.v` will show details about the asserts done by a test file. Also activated for `-stats` and `-show-asserts`.
 	show_timings       bool // show how much time each compiler stage took
+	show_counters      bool // show counter stats
 	is_fmt             bool
 	is_vet             bool
 	is_vweb            bool // skip _ var warning in templates
@@ -388,6 +389,9 @@ pub fn parse_args_and_show_errors(known_external_commands []string, args []strin
 			}
 			'-show-timings' {
 				res.show_timings = true
+			}
+			'-show-counters' {
+				res.show_counters = true
 			}
 			'-show-asserts' {
 				res.show_asserts = true
