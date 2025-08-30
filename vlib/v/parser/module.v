@@ -36,7 +36,7 @@ fn (mut p Parser) register_used_import(alias string) {
 fn (mut p Parser) register_used_import_for_symbol_name(sym_name string) {
 	short_import_name := sym_name.all_before_last('.').all_after_last('.')
 	short_symbol_name := sym_name.all_after_last('.')
-	if short_symbol_name in p.imported_symbols {
+	if p.imported_symbols_trie.matches(short_symbol_name) {
 		p.imported_symbols_used[short_symbol_name] = true
 	}
 	for alias, mod in p.imports {
@@ -322,12 +322,13 @@ fn (mut p Parser) import_syms(mut parent ast.Import) {
 	for p.tok.kind == .name {
 		pos := p.tok.pos()
 		alias := p.check_name()
-		if alias in p.imported_symbols {
+		if p.imported_symbols_trie.matches(alias) {
 			p.error_with_pos('cannot register symbol `${alias}`, it was already imported',
 				pos)
 			return
 		}
 		p.imported_symbols[alias] = parent.mod + '.' + alias
+		p.rebuild_imported_symbols_matcher(alias)
 		// so we can work with this in fmt+checker
 		parent.syms << ast.ImportSymbol{
 			pos:  pos
@@ -346,4 +347,10 @@ fn (mut p Parser) import_syms(mut parent ast.Import) {
 		return
 	}
 	p.next()
+}
+
+fn (mut p Parser) rebuild_imported_symbols_matcher(name string) {
+	println('>>>> rebuild_imported_symbols_matcher name: ${name}, p.imported_symbols.keys: ${p.imported_symbols.keys()}')
+	symbol_names := p.imported_symbols.keys()
+	p.imported_symbols_trie = token.new_keywords_matcher_from_array_trie(symbol_names)
 }
