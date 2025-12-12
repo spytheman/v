@@ -1,5 +1,6 @@
 import os
 import time
+import strings as _
 
 // tfolder will contain all the temporary files/subfolders made by
 // the different tests. It would be removed in testsuite_end(), so
