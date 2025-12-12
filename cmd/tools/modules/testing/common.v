@@ -11,7 +11,6 @@ import v.pref
 import v.util.vtest
 import runtime
 import rand
-import strings
 import v.build_constraint
 
 pub const max_header_len = get_max_header_len()
@@ -305,7 +304,7 @@ fn (mut ts TestSession) handle_test_runner_option() {
 			ts.reporter = TeamcityReporter{}
 		}
 		else {
-			dump('just set ts.reporter to an instance of your own struct here')
+			eprintln('just set ts.reporter to an instance of your own struct here')
 		}
 	}
 }
@@ -621,7 +620,7 @@ fn worker_trunner(mut p pool.PoolProcessor, idx int, thread_id int) voidptr {
 		}
 		//
 		mut retry := 1
-		mut failure_output := strings.new_builder(1024)
+		mut failure_output := new_string_builder(cap: 1024)
 		ts.append_message(.cmd_begin, run_cmd, mtc)
 		d_cmd := time.new_stopwatch()
 		mut r := ts.execute(run_cmd, mtc)

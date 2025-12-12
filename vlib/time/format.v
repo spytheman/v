@@ -3,8 +3,6 @@
 // that can be found in the LICENSE file.
 module time
 
-import strings
-
 fn iclamp(x int, a int, b int) int {
 	if x < a {
 		return a
@@ -397,7 +395,7 @@ pub fn (t Time) custom_format(s string) string {
 		}
 		i++
 	}
-	mut sb := strings.new_builder(128)
+    mut sb := new_string_builder(cap: 128)
 
 	for token in tokens {
 		match token {

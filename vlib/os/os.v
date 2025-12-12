@@ -3,8 +3,6 @@
 // that can be found in the LICENSE file.
 module os
 
-import strings
-
 pub const max_path_len = 4096
 
 pub const wd_at_startup = getwd()
@@ -633,7 +631,7 @@ pub fn is_file(path string) bool {
 pub fn join_path(base string, dirs ...string) string {
 	// TODO: fix freeing of `dirs` when the passed arguments are variadic,
 	// but do not free the arr, when `os.join_path(base, ...arr)` is called.
-	mut sb := strings.new_builder(base.len + dirs.len * 50)
+    mut sb := new_string_builder(cap: base.len + dirs.len * 50)
 	defer {
 		unsafe { sb.free() }
 	}
@@ -662,7 +660,7 @@ pub fn join_path(base string, dirs ...string) string {
 pub fn join_path_single(base string, elem string) string {
 	// TODO: deprecate this and make it `return os.join_path(base, elem)`,
 	// when freeing variadic args vs ...arr is solved in the compiler
-	mut sb := strings.new_builder(base.len + elem.len + 1)
+    mut sb := new_string_builder(cap: base.len + elem.len + 1)
 	defer {
 		unsafe { sb.free() }
 	}
@@ -684,7 +682,7 @@ pub fn join_path_single(base string, elem string) string {
 }
 
 @[direct_array_access]
-fn normalize_path_in_builder(mut sb strings.Builder) {
+fn normalize_path_in_builder(mut sb StringBuilder) {
 	mut fs := `\\`
 	mut rs := `/`
 	$if windows {

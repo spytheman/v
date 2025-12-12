@@ -1,7 +1,5 @@
 module os
 
-import strings
-
 // Command represents a running shell command, that the parent process
 // wishes to monitor for output on its stdout pipe.
 pub struct Command {
@@ -48,7 +46,7 @@ pub fn (mut c Command) start() ! {
 @[manualfree]
 pub fn (mut c Command) read_line() string {
 	buf := [4096]u8{}
-	mut res := strings.new_builder(1024)
+    mut res := new_string_builder(cap: 1024)
 	defer { unsafe { res.free() } }
 	unsafe {
 		bufbp := &buf[0]

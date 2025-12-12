@@ -1,7 +1,5 @@
 module os
 
-import strings
-
 #include <sys/stat.h> // #include <signal.h>
 #include <errno.h>
 
@@ -92,18 +90,16 @@ fn find_cfile_size(fp &C.FILE) !int {
 	return len
 }
 
-const buf_size = 4096
-
 // slurp_file_in_builder reads an entire file into a strings.Builder chunk by chunk, without relying on its file size.
 // It is intended for reading 0 sized files, or a dynamic files in a virtual filesystem like /proc/cpuinfo.
 // For these, we can not allocate all memory in advance (since we do not know the final size), and so we have no choice
-// but to read the file in `buf_size` chunks.
+// but to read the file in 4KB chunks.
 @[manualfree]
-fn slurp_file_in_builder(fp &C.FILE) !strings.Builder {
-	buf := [buf_size]u8{}
-	mut sb := strings.new_builder(buf_size)
+fn slurp_file_in_builder(fp &C.FILE) !StringBuilder {
+	buf := [4096]u8{}
+    mut sb := new_string_builder(cap: buf.len)
 	for {
-		mut read_bytes := fread(&buf[0], 1, buf_size, fp) or {
+		mut read_bytes := fread(&buf[0], 1, buf.len, fp) or {
 			if err is Eof {
 				break
 			}

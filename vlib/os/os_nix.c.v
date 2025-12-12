@@ -1,7 +1,5 @@
 module os
 
-import strings
-
 #include <dirent.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -330,7 +328,7 @@ pub fn execute(cmd string) Result {
 		}
 	}
 	fd := fileno(f)
-	mut res := strings.new_builder(1024)
+	mut res := new_string_builder(cap: 1024)
 	defer {
 		unsafe { res.free() }
 	}

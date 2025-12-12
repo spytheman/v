@@ -3,7 +3,6 @@ module testing
 import os
 import time
 import term
-import strings
 import runtime
 
 pub const empty = term.header(' ', ' ')
@@ -50,7 +49,7 @@ fn (r &NormalReporter) report_current_running_and_compiling_status_periodically(
 	mut pi := 0
 	mut ccompiling := map[string]LogMessage{}
 	mut crunning := map[string]LogMessage{}
-	mut sb := strings.new_builder(1024)
+    mut sb := new_string_builder(cap: 1024)
 	for {
 		pi++
 		time.sleep(report_running_period_ms)

@@ -3,8 +3,6 @@
 // that can be found in the LICENSE file.
 module term
 
-import strings
-
 // format_esc produces an ANSI escape code, for selecting the graphics rendition of the following text.
 // Each of the attributes that can be passed in `code`, separated by `;`, will be in effect,
 // until the terminal encounters another SGR ANSI escape code. For more details about the different
@@ -316,7 +314,7 @@ pub mut:
 }
 
 // write_color appends the ANSI colorful string `s` to the buffer.
-pub fn write_color(mut b strings.Builder, s string, config ColorConfig) {
+pub fn write_color(mut b StringBuilder, s string, config ColorConfig) {
 	mut codes := []string{cap: 3}
 
 	for style in config.styles {
@@ -337,14 +335,14 @@ pub fn write_color(mut b strings.Builder, s string, config ColorConfig) {
 
 	if codes.len > 0 {
 		code_str := codes.join(';')
-		b.write_string('\x1b[${code_str}m${s}\x1b[0m')
+	 	b.write_string('\x1b[${code_str}m${s}\x1b[0m')
 	} else {
 		b.write_string(s)
 	}
 }
 
 // writeln_color appends the ANSI colorful string `s`, and then a newline character.
-pub fn writeln_color(mut b strings.Builder, s string, color ColorConfig) {
+pub fn writeln_color(mut b StringBuilder, s string, color ColorConfig) {
 	write_color(mut b, s, color)
 	b.writeln('')
 }

@@ -1,6 +1,5 @@
 module os
 
-import strings
 import strings.textscanner
 
 // Collection of useful functions for manipulation, validation and analysis of system paths.
@@ -38,7 +37,7 @@ pub fn abs_path(path string) string {
 		return wd
 	}
 	if !is_abs_path(npath) {
-		mut sb := strings.new_builder(npath.len)
+	    mut sb := new_string_builder(cap: npath.len)
 		sb.write_string(wd)
 		sb.write_string(path_separator)
 		sb.write_string(npath)
@@ -76,7 +75,7 @@ pub fn norm_path(path string) string {
 	}
 	// resolve backlinks (..)
 	spath_len := spath.len
-	mut sb := strings.new_builder(cpath.len)
+	mut sb := new_string_builder(cap: cpath.len)
 	if rooted {
 		sb.write_string(path_separator)
 	}
@@ -181,7 +180,7 @@ fn clean_path(path string) string {
 	if path == '' {
 		return empty_str
 	}
-	mut sb := strings.new_builder(path.len)
+    mut sb := new_string_builder(cap: path.len)
 	mut sc := textscanner.new(path)
 	for sc.next() != -1 {
 		curr := u8(sc.current())
