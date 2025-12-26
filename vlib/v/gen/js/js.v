@@ -1,6 +1,5 @@
 module js
 
-import strings
 import v.ast
 import v.token
 import v.pref
@@ -44,7 +43,7 @@ struct JsGen {
 	pref &pref.Preferences
 mut:
 	table                  &ast.Table = unsafe { nil }
-	definitions            strings.Builder
+	definitions            StringBuilder
 	ns                     &Namespace = unsafe { nil }
 	namespaces             map[string]&Namespace
 	doc                    &JsDoc = unsafe { nil }
@@ -85,7 +84,7 @@ mut:
 	comptime_var_type_map  map[string]ast.Type
 	defer_ifdef            string
 	cur_concrete_types     []ast.Type
-	out                    strings.Builder = strings.new_builder(128)
+	out                    StringBuilder = new_string_builder(cap: 128)
 	array_sort_fn          map[string]bool
 	wasm_export            map[string][]string
 	wasm_import            map[string][]string
@@ -99,7 +98,7 @@ fn (mut g JsGen) write_tests_definitions() {
 
 pub fn gen(files []&ast.File, mut table ast.Table, pref_ &pref.Preferences) string {
 	mut g := &JsGen{
-		definitions: strings.new_builder(100)
+		definitions: new_string_builder(cap: 100)
 		table:       table
 		pref:        pref_
 		empty_line:  true

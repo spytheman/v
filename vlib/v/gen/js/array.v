@@ -1,7 +1,6 @@
 module js
 
 import v.ast
-import strings
 
 const special_array_methods = [
 	'sort',
@@ -24,7 +23,7 @@ fn (mut g JsGen) gen_array_index_method(left_type ast.Type) string {
 			left_type_str = 'Array_voidptr'
 		}
 
-		mut fn_builder := strings.new_builder(512)
+		mut fn_builder := new_string_builder(cap: 512)
 		fn_builder.writeln('function ${fn_name}(a, v) {')
 		fn_builder.writeln('\tlet pelem = a.arr;')
 		fn_builder.writeln('\tfor (let i = 0; i < pelem.arr.length; ++i) {')
@@ -174,7 +173,7 @@ fn (mut g JsGen) gen_array_contains_method(left_type ast.Type) string {
 			left_type_str = 'Array_voidptr'
 		}
 
-		mut fn_builder := strings.new_builder(512)
+		mut fn_builder := new_string_builder(cap: 512)
 		fn_builder.writeln('function ${fn_name}(a,v) {')
 		fn_builder.writeln('\tfor (let i = 0; i < a.len; ++i) {')
 		if elem_sym.kind == .string {

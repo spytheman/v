@@ -1,7 +1,6 @@
 module js
 
 import v.ast
-import strings
 import arrays
 
 fn (mut g JsGen) gen_sumtype_equality_fn(left_type ast.Type) string {
@@ -12,7 +11,7 @@ fn (mut g JsGen) gen_sumtype_equality_fn(left_type ast.Type) string {
 	}
 	g.sumtype_fn_definitions << ptr_styp
 	info := left.sym.sumtype_info()
-	mut fn_builder := strings.new_builder(512)
+	mut fn_builder := new_string_builder(cap: 512)
 	defer {
 		g.definitions.writeln(fn_builder.str())
 	}
@@ -75,7 +74,7 @@ fn (mut g JsGen) gen_struct_equality_fn(left_type ast.Type) string {
 	}
 	g.struct_fn_definitions << fn_name
 	info := left.sym.struct_info()
-	mut fn_builder := strings.new_builder(512)
+	mut fn_builder := new_string_builder(cap: 512)
 	defer {
 		g.definitions.writeln(fn_builder.str())
 	}
@@ -140,7 +139,7 @@ fn (mut g JsGen) gen_alias_equality_fn(left_type ast.Type) string {
 	g.alias_fn_definitions << ptr_styp
 	info := left.sym.info as ast.Alias
 
-	mut fn_builder := strings.new_builder(512)
+	mut fn_builder := new_string_builder(cap: 512)
 	defer {
 		g.definitions.writeln(fn_builder.str())
 	}
@@ -182,7 +181,7 @@ fn (mut g JsGen) gen_array_equality_fn(left_type ast.Type) string {
 	g.array_fn_definitions << ptr_styp
 	elem := g.unwrap(left.sym.array_info().elem_type)
 
-	mut fn_builder := strings.new_builder(512)
+	mut fn_builder := new_string_builder(cap: 512)
 	defer {
 		g.definitions.writeln(fn_builder.str())
 	}
@@ -237,7 +236,7 @@ fn (mut g JsGen) gen_fixed_array_equality_fn(left_type ast.Type) string {
 	elem := g.unwrap(elem_info.elem_type)
 	size := elem_info.size
 
-	mut fn_builder := strings.new_builder(512)
+	mut fn_builder := new_string_builder(cap: 512)
 	defer {
 		g.definitions.writeln(fn_builder.str())
 	}
@@ -287,7 +286,7 @@ fn (mut g JsGen) gen_map_equality_fn(left_type ast.Type) string {
 	g.map_fn_definitions << ptr_styp
 	value := g.unwrap(left.sym.map_info().value_type)
 
-	mut fn_builder := strings.new_builder(512)
+	mut fn_builder := new_string_builder(cap: 512)
 	defer {
 		g.definitions.writeln(fn_builder.str())
 	}

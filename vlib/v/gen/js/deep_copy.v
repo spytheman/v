@@ -1,7 +1,6 @@
 module js
 
 import v.ast
-import strings
 import v.util
 
 @[inline]
@@ -51,7 +50,7 @@ fn (mut g JsGen) gen_copy_for_alias(info ast.Alias, styp string, copy_fn_name st
 }
 
 fn (mut g JsGen) gen_copy_for_multi_return(info ast.MultiReturn, styp string, copy_fn_name string) {
-	mut fn_builder := strings.new_builder(512)
+	mut fn_builder := new_string_builder(cap: 512)
 	fn_builder.writeln('function ${copy_fn_name}(a) {')
 	fn_builder.writeln('\tlet arr = []')
 	for i, typ in info.types {
@@ -82,7 +81,7 @@ fn (mut g JsGen) gen_copy_for_enum(info ast.Enum, styp string, copy_fn_name stri
 }
 
 fn (mut g JsGen) gen_copy_for_union_sum_type(info ast.SumType, styp string, copy_fn_name string) {
-	mut fn_builder := strings.new_builder(512)
+	mut fn_builder := new_string_builder(cap: 512)
 	fn_builder.writeln('function ${copy_fn_name}(x) {')
 	for typ in info.variants {
 		typ_str := g.styp(typ)
@@ -94,7 +93,7 @@ fn (mut g JsGen) gen_copy_for_union_sum_type(info ast.SumType, styp string, copy
 }
 
 fn (mut g JsGen) gen_copy_for_interface(info ast.Interface, styp string, copy_fn_name string) {
-	mut fn_builder := strings.new_builder(512)
+	mut fn_builder := new_string_builder(cap: 512)
 	mut clean_interface_v_type_name := styp.replace('__', '.')
 	if styp.ends_with('*') {
 		clean_interface_v_type_name = '&' + clean_interface_v_type_name.replace('*', '')
@@ -150,7 +149,7 @@ fn (mut g JsGen) gen_copy_for_map(info ast.Map, styp string, copy_fn_name string
 }
 
 fn (mut g JsGen) gen_copy_for_struct(info ast.Struct, styp string, copy_fn_name string) {
-	mut fn_builder := strings.new_builder(512)
+	mut fn_builder := new_string_builder(cap: 512)
 	defer {
 		g.definitions.writeln(fn_builder.str())
 	}

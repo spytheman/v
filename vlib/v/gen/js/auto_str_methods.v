@@ -4,7 +4,6 @@ module js
 
 import v.ast
 import v.util
-import strings
 
 struct StrType {
 	styp string
@@ -258,10 +257,10 @@ fn (mut g JsGen) gen_str_for_alias(info ast.Alias, styp string, str_fn_name stri
 }
 
 fn (mut g JsGen) gen_str_for_multi_return(info ast.MultiReturn, styp string, str_fn_name string) {
-	mut fn_builder := strings.new_builder(512)
+	mut fn_builder := new_string_builder(cap: 512)
 	fn_builder.writeln('function ${str_fn_name}(a) {')
-	fn_builder.writeln('\tlet sb = strings__new_builder(${info.types.len} * 10);')
-	fn_builder.writeln('\tstrings__Builder_write_string(sb, new string("("));')
+	fn_builder.writeln('\tlet sb = new_string_builder(${info.types.len} * 10);')
+	fn_builder.writeln('\tStringBuilder_write_string(sb, new string("("));')
 	for i, typ in info.types {
 		sym := g.table.sym(typ)
 		is_arg_ptr := typ.is_ptr()
@@ -269,31 +268,31 @@ fn (mut g JsGen) gen_str_for_multi_return(info ast.MultiReturn, styp string, str
 		arg_str_fn_name := g.get_str_fn(typ)
 
 		if should_use_indent_func(sym.kind) && !sym_has_str_method {
-			fn_builder.writeln('\tstrings__Builder_write_string(sb, ${arg_str_fn_name}(a[${i}]));')
+			fn_builder.writeln('\tStringBuilder_write_string(sb, ${arg_str_fn_name}(a[${i}]));')
 		} else if sym.kind in [.f32, .f64] {
 			if sym.kind == .f32 {
 				tmp_val := str_intp_g32('a[${i}]')
-				fn_builder.writeln('\tstrings__Builder_write_string(sb, ${tmp_val});')
+				fn_builder.writeln('\tStringBuilder_write_string(sb, ${tmp_val});')
 			} else {
 				tmp_val := str_intp_g64('a[${i}]')
-				fn_builder.writeln('\tstrings__Builder_write_string(sb, ${tmp_val});')
+				fn_builder.writeln('\tStringBuilder_write_string(sb, ${tmp_val});')
 			}
 		} else if sym.kind == .string {
 			tmp_str := str_intp_sq('a[${i}]')
-			fn_builder.writeln('\tstrings__Builder_write_string(sb, ${tmp_str});')
+			fn_builder.writeln('\tStringBuilder_write_string(sb, ${tmp_str});')
 		} else if sym.kind == .function {
-			fn_builder.writeln('\tstrings__Builder_write_string(sb, ${arg_str_fn_name}());')
+			fn_builder.writeln('\tStringBuilder_write_string(sb, ${arg_str_fn_name}());')
 		} else {
 			deref, deref_label := deref_kind(str_method_expects_ptr, is_arg_ptr, typ)
-			fn_builder.writeln('\t\tstrings__Builder_write_string(sb, new string("${deref_label}"));')
-			fn_builder.writeln('\tstrings__Builder_write_string(sb, ${arg_str_fn_name}( a[${i}] ${deref} ));')
+			fn_builder.writeln('\t\tStringBuilder_write_string(sb, new string("${deref_label}"));')
+			fn_builder.writeln('\tStringBuilder_write_string(sb, ${arg_str_fn_name}( a[${i}] ${deref} ));')
 		}
 		if i != info.types.len - 1 {
-			fn_builder.writeln('\tstrings__Builder_write_string(sb, new string(", "));')
+			fn_builder.writeln('\tStringBuilder_write_string(sb, new string(", "));')
 		}
 	}
-	fn_builder.writeln('\tstrings__Builder_write_string(sb, new string(")"));')
-	fn_builder.writeln('\tlet res = strings__Builder_str(sb);')
+	fn_builder.writeln('\tStringBuilder_write_string(sb, new string(")"));')
+	fn_builder.writeln('\tlet res = StringBuilder_str(sb);')
 	fn_builder.writeln('\treturn res;')
 	fn_builder.writeln('}')
 	g.definitions.writeln(fn_builder.str())
@@ -336,7 +335,7 @@ fn (mut g JsGen) gen_str_for_interface(info ast.Interface, styp string, str_fn_n
 
 	g.definitions.writeln('function ${str_fn_name}(x) { return indent_${str_fn_name}(x, 0); }')
 
-	mut fn_builder := strings.new_builder(512)
+	mut fn_builder := new_string_builder(cap: 512)
 	mut clean_interface_v_type_name := styp.replace('__', '.')
 	if styp.ends_with('*') {
 		clean_interface_v_type_name = '&' + clean_interface_v_type_name.replace('*', '')
@@ -379,7 +378,7 @@ fn (mut g JsGen) gen_str_for_interface(info ast.Interface, styp string, str_fn_n
 
 fn (mut g JsGen) gen_str_for_union_sum_type(info ast.SumType, styp string, str_fn_name string) {
 	g.definitions.writeln('function ${str_fn_name}(x) { return indent_${str_fn_name}(x, 0); }')
-	mut fn_builder := strings.new_builder(512)
+	mut fn_builder := new_string_builder(cap: 512)
 	fn_builder.writeln('function indent_${str_fn_name}(x, indent_count) {')
 	for typ in info.variants {
 		typ_str := g.styp(typ)
@@ -478,8 +477,8 @@ fn (mut g JsGen) gen_str_for_array(info ast.Array, styp string, str_fn_name stri
 
 	g.definitions.writeln('function ${str_fn_name}(a) { return indent_${str_fn_name}(a, 0);}')
 	g.definitions.writeln('function indent_${str_fn_name}(a, indent_count) {')
-	g.definitions.writeln('\tlet sb = strings__new_builder(a.len * 10);')
-	g.definitions.writeln('\tstrings__Builder_write_string(sb, new string("["));')
+	g.definitions.writeln('\tlet sb = new_string_builder(a.len * 10);')
+	g.definitions.writeln('\tStringBuilder_write_string(sb, new string("["));')
 	g.definitions.writeln('\tfor (let i = 0; i < a.len; ++i) {')
 	if sym.kind == .function {
 		g.definitions.writeln('\t\tlet it = ${elem_str_fn_name}();')
@@ -506,18 +505,18 @@ fn (mut g JsGen) gen_str_for_array(info ast.Array, styp string, str_fn_name stri
 			// Note: we need to take account of whether the user has defined
 			// `fn (x T) str() {` or `fn (x &T) str() {`, and convert accordingly
 			deref, deref_label := deref_kind(str_method_expects_ptr, is_elem_ptr, typ)
-			g.definitions.writeln('\t\tstrings__Builder_write_string(sb, new string("${deref_label}"));')
+			g.definitions.writeln('\t\tStringBuilder_write_string(sb, new string("${deref_label}"));')
 			g.definitions.writeln('\t\tlet x = ${elem_str_fn_name}( ${deref} it);')
 		}
 	}
-	g.definitions.writeln('\t\tstrings__Builder_write_string(sb, x);')
+	g.definitions.writeln('\t\tStringBuilder_write_string(sb, x);')
 
 	g.definitions.writeln('\t\tif (i < a.len-1) {')
-	g.definitions.writeln('\t\t\tstrings__Builder_write_string(sb, new string(", "));')
+	g.definitions.writeln('\t\t\tStringBuilder_write_string(sb, new string(", "));')
 	g.definitions.writeln('\t\t}')
 	g.definitions.writeln('\t}')
-	g.definitions.writeln('\tstrings__Builder_write_string(sb, new string("]"));')
-	g.definitions.writeln('\tlet res = strings__Builder_str(sb);')
+	g.definitions.writeln('\tStringBuilder_write_string(sb, new string("]"));')
+	g.definitions.writeln('\tlet res = StringBuilder_str(sb);')
 	g.definitions.writeln('\treturn res;')
 	g.definitions.writeln('}')
 }
@@ -536,42 +535,42 @@ fn (mut g JsGen) gen_str_for_array_fixed(info ast.ArrayFixed, styp string, str_f
 	g.definitions.writeln('function ${str_fn_name}(a) { return indent_${str_fn_name}(a, 0);}')
 
 	g.definitions.writeln('function indent_${str_fn_name}(a, indent_count) {')
-	g.definitions.writeln('\tlet sb = strings__new_builder(${info.size} * 10);')
-	g.definitions.writeln('\tstrings__Builder_write_string(sb, new string("["));')
+	g.definitions.writeln('\tlet sb = new_string_builder(${info.size} * 10);')
+	g.definitions.writeln('\tStringBuilder_write_string(sb, new string("["));')
 	g.definitions.writeln('\tfor (let i = 0; i < ${info.size}; ++i) {')
 	if sym.kind == .function {
 		g.definitions.writeln('\t\tstring x = ${elem_str_fn_name}();')
-		g.definitions.writeln('\t\tstrings__Builder_write_string(sb, x);')
+		g.definitions.writeln('\t\tStringBuilder_write_string(sb, x);')
 	} else {
 		deref, deref_label := deref_kind(str_method_expects_ptr, is_elem_ptr, typ)
 		if should_use_indent_func(sym.kind) && !sym_has_str_method {
 			if is_elem_ptr {
-				g.definitions.writeln('\t\tstrings__Builder_write_string(sb, new string("${deref_label}"));')
+				g.definitions.writeln('\t\tStringBuilder_write_string(sb, new string("${deref_label}"));')
 				g.definitions.writeln('\t\tif ( 0 == a.arr.get(new int(i)) ) {')
-				g.definitions.writeln('\t\t\tstrings__Builder_write_string(sb, new string("0"));')
+				g.definitions.writeln('\t\t\tStringBuilder_write_string(sb, new string("0"));')
 				g.definitions.writeln('\t\t}else{')
-				g.definitions.writeln('\t\t\tstrings__Builder_write_string(sb, ${elem_str_fn_name}(a.arr.get(new int(i)) ${deref}) );')
+				g.definitions.writeln('\t\t\tStringBuilder_write_string(sb, ${elem_str_fn_name}(a.arr.get(new int(i)) ${deref}) );')
 				g.definitions.writeln('\t\t}')
 			} else {
-				g.definitions.writeln('\t\tstrings__Builder_write_string(sb, ${elem_str_fn_name}(a.arr.get(new int(i))) );')
+				g.definitions.writeln('\t\tStringBuilder_write_string(sb, ${elem_str_fn_name}(a.arr.get(new int(i))) );')
 			}
 		} else if sym.kind in [.f32, .f64] {
-			g.definitions.writeln('\t\tstrings__Builder_write_string(sb, new string(a.arr.get(new int(i)).val.toString()) );')
+			g.definitions.writeln('\t\tStringBuilder_write_string(sb, new string(a.arr.get(new int(i)).val.toString()) );')
 		} else if sym.kind == .string {
-			g.definitions.writeln('\t\tstrings__Builder_write_string(sb, a.arr.get(new int(i)));')
+			g.definitions.writeln('\t\tStringBuilder_write_string(sb, a.arr.get(new int(i)));')
 		} else if sym.kind == .rune {
 			g.definitions.writeln('\t\tlet x = new string("\`" + String.fromCharCode(a.arr.get(new int(i)).val) + "\`");')
-			g.definitions.writeln('\t\tstrings__Builder_write_string(sb,x);')
+			g.definitions.writeln('\t\tStringBuilder_write_string(sb,x);')
 		} else {
-			g.definitions.writeln('\t\tstrings__Builder_write_string(sb, ${elem_str_fn_name}(a.arr.get(new int(i)) ${deref}));')
+			g.definitions.writeln('\t\tStringBuilder_write_string(sb, ${elem_str_fn_name}(a.arr.get(new int(i)) ${deref}));')
 		}
 	}
 	g.definitions.writeln('\t\tif (i < ${info.size - 1}) {')
-	g.definitions.writeln('\t\t\tstrings__Builder_write_string(sb, new string(", "));')
+	g.definitions.writeln('\t\t\tStringBuilder_write_string(sb, new string(", "));')
 	g.definitions.writeln('\t\t}')
 	g.definitions.writeln('\t}')
-	g.definitions.writeln('\tstrings__Builder_write_string(sb, new string("]"));')
-	g.definitions.writeln('\tlet res = strings__Builder_str(sb);')
+	g.definitions.writeln('\tStringBuilder_write_string(sb, new string("]"));')
+	g.definitions.writeln('\tlet res = StringBuilder_str(sb);')
 	g.definitions.writeln('\treturn res;')
 	g.definitions.writeln('}')
 }
@@ -604,8 +603,8 @@ fn (mut g JsGen) gen_str_for_map(info ast.Map, styp string, str_fn_name string) 
 	g.definitions.writeln('function ${str_fn_name}(m) { return indent_${str_fn_name}(m, 0);}')
 
 	g.definitions.writeln('function indent_${str_fn_name}(m, indent_count) { /* gen_str_for_map */')
-	g.definitions.writeln('\tlet sb = strings__new_builder(m.map.length * 10);')
-	g.definitions.writeln('\tstrings__Builder_write_string(sb, new string("{"));')
+	g.definitions.writeln('\tlet sb = new_string_builder(m.map.length * 10);')
+	g.definitions.writeln('\tStringBuilder_write_string(sb, new string("{"));')
 	g.definitions.writeln('\tlet i = 0;')
 	g.definitions.writeln('\tlet keys = Object.keys(m.map);')
 	g.definitions.writeln('\tfor (let j = 0; j < keys.length;j++) {')
@@ -613,37 +612,37 @@ fn (mut g JsGen) gen_str_for_map(info ast.Map, styp string, str_fn_name string) 
 	g.definitions.writeln('\t\tlet value = m.map[key].val;')
 	g.definitions.writeln('\t\tkey = new ${key_styp}(key);')
 	if key_sym.kind == .string {
-		g.definitions.writeln('\t\tstrings__Builder_write_string(sb, new string("\'" + key.str + "\'"));')
+		g.definitions.writeln('\t\tStringBuilder_write_string(sb, new string("\'" + key.str + "\'"));')
 	} else if key_sym.kind == .rune {
 		g.definitions.writeln('\t\tlet x = new string("\`" + String.fromCharCode(key.val) + "\`");')
-		g.definitions.writeln('\t\tstrings__Builder_write_string(sb,x);')
-		// g.definitions.writeln('\t\tstrings__Builder_write_string(sb, $tmp_str);')
+		g.definitions.writeln('\t\tStringBuilder_write_string(sb,x);')
+		// g.definitions.writeln('\t\tStringBuilder_write_string(sb, $tmp_str);')
 	} else {
-		g.definitions.writeln('\t\tstrings__Builder_write_string(sb, ${key_str_fn_name}(key));')
+		g.definitions.writeln('\t\tStringBuilder_write_string(sb, ${key_str_fn_name}(key));')
 	}
-	g.definitions.writeln('\t\tstrings__Builder_write_string(sb, new string(": "));')
+	g.definitions.writeln('\t\tStringBuilder_write_string(sb, new string(": "));')
 	if val_sym.kind == .function {
-		g.definitions.writeln('\t\tstrings__Builder_write_string(sb, ${elem_str_fn_name}());')
+		g.definitions.writeln('\t\tStringBuilder_write_string(sb, ${elem_str_fn_name}());')
 	} else if val_sym.kind == .string {
 		// tmp_str := str_intp_sq('*($val_styp*)DenseArray_value(&m.key_values, i)')
-		g.definitions.writeln('\t\tstrings__Builder_write_string(sb,new string("\'" + value.str + "\'"));')
+		g.definitions.writeln('\t\tStringBuilder_write_string(sb,new string("\'" + value.str + "\'"));')
 	} else if should_use_indent_func(val_sym.kind) && !val_sym.has_method('str') {
-		g.definitions.writeln('\t\tstrings__Builder_write_string(sb, indent_${elem_str_fn_name}(value, indent_count));')
+		g.definitions.writeln('\t\tStringBuilder_write_string(sb, indent_${elem_str_fn_name}(value, indent_count));')
 	} else if val_sym.kind in [.f32, .f64] {
-		g.definitions.writeln('\t\tstrings__Builder_write_string(sb, value.val + "");')
+		g.definitions.writeln('\t\tStringBuilder_write_string(sb, value.val + "");')
 	} else if val_sym.kind == .rune {
 		g.definitions.writeln('\t\tlet x = new string("\`" + String.fromCharCode(value.val) + "\`");')
-		g.definitions.writeln('\t\tstrings__Builder_write_string(sb,x);')
+		g.definitions.writeln('\t\tStringBuilder_write_string(sb,x);')
 	} else {
-		g.definitions.writeln('\t\tstrings__Builder_write_string(sb, ${elem_str_fn_name}(value));')
+		g.definitions.writeln('\t\tStringBuilder_write_string(sb, ${elem_str_fn_name}(value));')
 	}
 	g.definitions.writeln('\t\tif (i != keys.length-1) {')
-	g.definitions.writeln('\t\t\tstrings__Builder_write_string(sb, new string(", "));')
+	g.definitions.writeln('\t\t\tStringBuilder_write_string(sb, new string(", "));')
 	g.definitions.writeln('\t\t}')
 	g.definitions.writeln('\t\ti++;')
 	g.definitions.writeln('\t}')
-	g.definitions.writeln('\tstrings__Builder_write_string(sb, new string("}"));')
-	g.definitions.writeln('\tlet res = strings__Builder_str(sb);')
+	g.definitions.writeln('\tStringBuilder_write_string(sb, new string("}"));')
+	g.definitions.writeln('\tlet res = StringBuilder_str(sb);')
 	g.definitions.writeln('\treturn res;')
 	g.definitions.writeln('}')
 }
@@ -697,7 +696,7 @@ fn (mut g JsGen) gen_str_for_struct(info ast.Struct, styp string, str_fn_name st
 
 	g.definitions.writeln('function ${str_fn_name}(it) { return indent_${str_fn_name}(it, 0);}')
 
-	mut fn_builder := strings.new_builder(512)
+	mut fn_builder := new_string_builder(cap: 512)
 	defer {
 		g.definitions.writeln(fn_builder.str())
 	}
