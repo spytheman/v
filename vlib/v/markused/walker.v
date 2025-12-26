@@ -1497,10 +1497,13 @@ fn (mut w Walker) mark_resource_dependencies() {
 			}
 			continue
 		}
-		if (w.pref.autofree || (w.uses_free.len > 0 && func.receiver.typ.idx() in w.used_syms))
+		frtidx := func.receiver.typ.idx()
+		if (w.pref.autofree || (w.uses_free.len > 0 && frtidx in w.used_syms))
 			&& k.ends_with('.free') {
-			w.fn_by_name(k)
-			continue
+			if !(w.features.used_maps == 0 && frtidx == ast.map_type_idx) {
+				w.fn_by_name(k)
+				continue
+			}
 		}
 		if w.uses_atomic && k.starts_with('_Atomic') {
 			w.fn_by_name(k)
