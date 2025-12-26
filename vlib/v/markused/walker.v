@@ -1377,12 +1377,12 @@ fn (mut w Walker) mark_resource_dependencies() {
 	if w.features.dump {
 		w.fn_by_name('eprint')
 		w.fn_by_name('eprintln')
-		builderptr_idx := int(w.table.find_type('strings.Builder').ref()).str()
+		builderptr_idx := int(w.table.find_type('StringBuilder').ref()).str()
 		w.fn_by_name(builderptr_idx + '.str')
 		w.fn_by_name(builderptr_idx + '.free')
 		w.fn_by_name(builderptr_idx + '.write_rune')
 		w.fn_by_name(builderptr_idx + '.write_string')
-		w.fn_by_name('strings.new_builder')
+		w.fn_by_name('new_string_builder')
 		w.uses_free[ast.string_type] = true
 
 		if w.table.dumps.keys().any(ast.Type(u32(it)).has_flag(.option)) {
@@ -1448,7 +1448,7 @@ fn (mut w Walker) mark_resource_dependencies() {
 	if w.features.auto_str || w.uses_dump {
 		w.fn_by_name(ast.string_type_idx.str() + '.repeat')
 		w.fn_by_name('tos3')
-		builderptr_idx := int(w.table.find_type('strings.Builder').ref()).str()
+		builderptr_idx := int(w.table.find_type('StringBuilder').ref()).str()
 		w.fn_by_name(builderptr_idx + '.write_string')
 		w.fn_by_name(builderptr_idx + '.writeln')
 		w.fn_by_name(builderptr_idx + '.indent')

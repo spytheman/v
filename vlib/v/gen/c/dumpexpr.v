@@ -2,7 +2,6 @@ module c
 
 import v.ast
 import v.util
-import strings
 
 fn (mut g Gen) dump_expr(node ast.DumpExpr) {
 	sexpr := ctoslit(node.expr.str())
@@ -131,8 +130,8 @@ fn (mut g Gen) dump_expr(node ast.DumpExpr) {
 fn (mut g Gen) dump_expr_definitions() {
 	mut dump_already_generated_fns := map[string]bool{}
 	mut dump_typedefs := map[string]bool{}
-	mut dump_fns := strings.new_builder(100)
-	mut dump_fn_defs := strings.new_builder(100)
+	mut dump_fns := new_string_builder(cap: 100)
+	mut dump_fn_defs := new_string_builder(cap: 100)
 	for dump_type, cname in g.table.dumps {
 		dump_sym := g.table.sym(ast.idx_to_type(dump_type))
 		// eprintln('>>> dump_type: $dump_type | cname: $cname | dump_sym: $dump_sym.name')
@@ -248,31 +247,32 @@ fn (mut g Gen) dump_expr_definitions() {
 				'\tbuiltin__string_free(&value);')
 		}
 		surrounder.add('
-	strings__Builder sb = strings__new_builder(64);
-', '
+	StringBuilder sb = builtin__new_string_builder(((StringBuilderParams){.cap = 64}));
+',
+			'
 	string res;
-	res = strings__Builder_str(&sb);
+	res = builtin__StringBuilder_str(&sb);
 	builtin__eprint(res);
 	builtin__string_free(&res);
-	strings__Builder_free(&sb);
+	builtin__StringBuilder_free(&sb);
 ')
 		surrounder.builder_write_befores(mut dump_fns)
-		dump_fns.writeln("\tstrings__Builder_write_rune(&sb, '[');")
-		dump_fns.writeln('\tstrings__Builder_write_string(&sb, fpath);')
-		dump_fns.writeln("\tstrings__Builder_write_rune(&sb, ':');")
-		dump_fns.writeln('\tstrings__Builder_write_string(&sb, sline);')
-		dump_fns.writeln("\tstrings__Builder_write_rune(&sb, ']');")
-		dump_fns.writeln("\tstrings__Builder_write_rune(&sb, ' ');")
-		dump_fns.writeln('\tstrings__Builder_write_string(&sb, sexpr);')
-		dump_fns.writeln("\tstrings__Builder_write_rune(&sb, ':');")
-		dump_fns.writeln("\tstrings__Builder_write_rune(&sb, ' ');")
+		dump_fns.writeln("\tbuiltin__StringBuilder_write_rune(&sb, '[');")
+		dump_fns.writeln('\tbuiltin__StringBuilder_write_string(&sb, fpath);')
+		dump_fns.writeln("\tbuiltin__StringBuilder_write_rune(&sb, ':');")
+		dump_fns.writeln('\tbuiltin__StringBuilder_write_string(&sb, sline);')
+		dump_fns.writeln("\tbuiltin__StringBuilder_write_rune(&sb, ']');")
+		dump_fns.writeln("\tbuiltin__StringBuilder_write_rune(&sb, ' ');")
+		dump_fns.writeln('\tbuiltin__StringBuilder_write_string(&sb, sexpr);')
+		dump_fns.writeln("\tbuiltin__StringBuilder_write_rune(&sb, ':');")
+		dump_fns.writeln("\tbuiltin__StringBuilder_write_rune(&sb, ' ');")
 		if is_ptr {
 			for i := 0; i < typ.nr_muls(); i++ {
-				dump_fns.writeln("\tstrings__Builder_write_rune(&sb, '&');")
+				dump_fns.writeln("\tbuiltin__StringBuilder_write_rune(&sb, '&');")
 			}
 		}
-		dump_fns.writeln('\tstrings__Builder_write_string(&sb, value);')
-		dump_fns.writeln("\tstrings__Builder_write_rune(&sb, '\\n');")
+		dump_fns.writeln('\tbuiltin__StringBuilder_write_string(&sb, value);')
+		dump_fns.writeln("\tbuiltin__StringBuilder_write_rune(&sb, '\\n');")
 		surrounder.builder_write_afters(mut dump_fns)
 		if is_fixed_arr_ret && !is_ptr {
 			tmp_var := g.new_tmp_var()
@@ -298,7 +298,7 @@ fn (mut g Gen) dump_expr_definitions() {
 	}
 }
 
-fn (mut g Gen) writeln_fn_header(s string, mut sb strings.Builder) bool {
+fn (mut g Gen) writeln_fn_header(s string, mut sb StringBuilder) bool {
 	if g.pref.build_mode == .build_module {
 		sb.writeln('${s};')
 		return true

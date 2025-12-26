@@ -5,8 +5,15 @@ module builtin
 
 pub type StringBuilder = []u8
 
-pub fn new_builder(initial_size int) StringBuilder {
-	return []u8{cap: initial_size}
+@[params]
+pub struct StringBuilderParams {
+pub mut:
+	cap int = 64
+}
+
+// new_string_builder returns a new string builder, with an initial capacity of `initial_size`.
+pub fn new_string_builder(params StringBuilderParams) StringBuilder {
+	return []u8{cap: params.cap}
 }
 
 pub fn (mut b StringBuilder) write_byte(data u8) {
