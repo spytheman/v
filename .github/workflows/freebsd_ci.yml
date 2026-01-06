@@ -43,7 +43,8 @@ jobs:
             echo "### OS infos"
             uname -a
             echo "########### run pkg update -f ##########"
-            sudo pkg update -f
+            sudo rm -f /var/db/pkg/repo-FreeBSD-ports.sqlite*
+            sudo pkg update -f -r FreeBSD-ports
             sudo pkg install -y git sqlite3 gmake boehm-gc-threaded libiconv
             git config --global --add safe.directory .
             gmake
@@ -74,7 +75,8 @@ jobs:
             echo "### OS infos"
             uname -a
             echo "########### run pkg update -f ##########"
-            sudo pkg update -f
+            sudo rm -f /var/db/pkg/repo-FreeBSD-ports.sqlite*
+            sudo pkg update -f -r FreeBSD-ports
             sudo pkg install -y git sqlite3 gmake boehm-gc-threaded libiconv
             git config --global --add safe.directory .
             gmake
@@ -105,7 +107,8 @@ jobs:
             echo "### OS infos"
             uname -a
             echo "########### run pkg update -f ##########"
-            sudo pkg update -f
+            sudo rm -f /var/db/pkg/repo-FreeBSD-ports.sqlite*
+            sudo pkg update -f -r FreeBSD-ports
             sudo pkg install -y git sqlite3 gmake boehm-gc-threaded libiconv gcc
             git config --global --add safe.directory .
             gmake
