@@ -42,7 +42,8 @@ jobs:
             sudo hostname -s freebsd-ci
             echo "### OS infos"
             uname -a
-            IGNORE_OSVERSION=yes sudo pkg update -f
+            echo "########### run pkg update -f ##########"
+            sudo pkg update -f
             sudo pkg install -y git sqlite3 gmake boehm-gc-threaded libiconv
             git config --global --add safe.directory .
             gmake
@@ -72,7 +73,8 @@ jobs:
             sudo hostname -s freebsd-ci
             echo "### OS infos"
             uname -a
-            IGNORE_OSVERSION=yes sudo pkg update -f
+            echo "########### run pkg update -f ##########"
+            sudo pkg update -f
             sudo pkg install -y git sqlite3 gmake boehm-gc-threaded libiconv
             git config --global --add safe.directory .
             gmake
@@ -102,7 +104,8 @@ jobs:
             sudo hostname -s freebsd-ci
             echo "### OS infos"
             uname -a
-            IGNORE_OSVERSION=yes sudo pkg update -f
+            echo "########### run pkg update -f ##########"
+            sudo pkg update -f
             sudo pkg install -y git sqlite3 gmake boehm-gc-threaded libiconv gcc
             git config --global --add safe.directory .
             gmake
