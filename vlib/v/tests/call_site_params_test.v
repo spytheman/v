@@ -21,7 +21,7 @@ fn f(params Params) (string, string, string) {
 	return params.file, params.line, params.lc
 }
 
-fn g(params CallSite) (string, string, string) {
+fn f_with_call_site(params CallSite) (string, string, string) {
 	// dump(@LINE) dump(@FILE) dump(@LOCATION) dump(params)
 	dump(@LOCATION)
 	dump(params.lc)
@@ -30,12 +30,11 @@ fn g(params CallSite) (string, string, string) {
 
 fn test_params() {
 	dump(@LOCATION)
-	eprintln('/////////////////////////////////////////////')
 	f()
 	f(x: 456)
 	f()
 	eprintln('/////////////////////////////////////////////')
-	g()
-	g(x: 456)
-	g()
+	f_with_call_site()
+	f_with_call_site(x: 456)
+	f_with_call_site()
 }
