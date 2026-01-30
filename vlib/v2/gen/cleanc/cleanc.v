@@ -41,6 +41,7 @@ mut:
 	seen_consts          map[string]bool              // Track generated constants for reference in other consts
 	const_types          map[string]string            // Track constant types for type inference
 	const_mangled        map[string]string            // Map unmangled const name -> mangled name for cross-module refs
+	const_exprs          map[string]string            // Map const name -> expanded C expression for const initializers
 	fn_mangled           map[string]string            // Map unmangled fn name -> mangled name for same-module calls
 	tuple_types          map[string][]string          // Tuple type name -> list of element types
 	cur_fn_ret_type      string                       // Current function's return type (for proper return statement generation)
@@ -51,6 +52,7 @@ mut:
 	next_type_id         int    // Counter for assigning unique type IDs
 	cur_iface_match_var  string // Interface variable being matched (e.g., "err" when matching IError)
 	cur_iface_match_type string // Concrete type in current match branch (e.g., "MessageError")
+	in_const_expr        bool   // Inline const expressions when generating const initializers
 }
 
 pub fn Gen.new(files []ast.File) &Gen {
@@ -80,6 +82,7 @@ pub fn Gen.new_with_env(files []ast.File, env &types.Environment) &Gen {
 		fn_params:       map[string][]string{}
 		fn_ptr_typedefs: map[string]ast.FnType{}
 		type_aliases:    map[string]string{}
+		const_exprs:     map[string]string{}
 		type_ids:        map[string]int{}
 		next_type_id:    1 // Start from 1, 0 means "no type" or error
 	}
@@ -723,15 +726,15 @@ pub fn (mut g Gen) gen() string {
 	g.sb.writeln('static inline bool ArrayFlags__has(ArrayFlags* f, ArrayFlags v) { return (((int)(*f)) & ((int)(v))) != 0; }')
 	// array__eq - compare two arrays for equality
 	g.sb.writeln('static inline bool array__eq(array a, array b) { if (a.len != b.len) return false; return memcmp(a.data, b.data, a.len * a.element_size) == 0; }')
-	// Map types and functions stub
+	// Map types and minimal linear-map helpers (int->int, string->int)
 	g.sb.writeln('typedef map Map_int_int;')
-	g.sb.writeln('static inline Map_int_int __new_Map_int_int() { return (Map_int_int){0}; }')
-	g.sb.writeln('static inline int __Map_int_int_get(Map_int_int* m, int key) { return 0; }')
-	g.sb.writeln('static inline void __Map_int_int_set(Map_int_int* m, int key, int val) { }')
+	g.sb.writeln('static inline Map_int_int __new_Map_int_int() { Map_int_int m; memset(&m, 0, sizeof(m)); m.key_bytes = sizeof(int); m.value_bytes = sizeof(int); return m; }')
+	g.sb.writeln('static inline int __Map_int_int_get(Map_int_int* m, int key) { DenseArray* da = &m->key_values; int* keys = (int*)da->keys; int* vals = (int*)da->values; for (int i = 0; i < da->len; i++) { if (keys[i] == key) return vals[i]; } return 0; }')
+	g.sb.writeln('static inline void __Map_int_int_set(Map_int_int* m, int key, int val) { DenseArray* da = &m->key_values; int* keys = (int*)da->keys; int* vals = (int*)da->values; for (int i = 0; i < da->len; i++) { if (keys[i] == key) { vals[i] = val; return; } } if (da->len == da->cap) { int new_cap = da->cap == 0 ? 8 : (da->cap * 2); da->keys = (u8*)realloc(da->keys, sizeof(int) * new_cap); da->values = (u8*)realloc(da->values, sizeof(int) * new_cap); da->cap = new_cap; } keys = (int*)da->keys; vals = (int*)da->values; keys[da->len] = key; vals[da->len] = val; da->len++; m->len = da->len; }')
 	g.sb.writeln('typedef map Map_string_int;')
-	g.sb.writeln('static inline Map_string_int __new_Map_string_int() { return (Map_string_int){0}; }')
-	g.sb.writeln('static inline int __Map_string_int_get(Map_string_int* m, string key) { return 0; }')
-	g.sb.writeln('static inline void __Map_string_int_set(Map_string_int* m, string key, int val) { }')
+	g.sb.writeln('static inline Map_string_int __new_Map_string_int() { Map_string_int m; memset(&m, 0, sizeof(m)); m.key_bytes = sizeof(string); m.value_bytes = sizeof(int); return m; }')
+	g.sb.writeln('static inline int __Map_string_int_get(Map_string_int* m, string key) { DenseArray* da = &m->key_values; string* keys = (string*)da->keys; int* vals = (int*)da->values; for (int i = 0; i < da->len; i++) { if ((keys[i].len == key.len) && memcmp(keys[i].str, key.str, key.len) == 0) return vals[i]; } return 0; }')
+	g.sb.writeln('static inline void __Map_string_int_set(Map_string_int* m, string key, int val) { DenseArray* da = &m->key_values; string* keys = (string*)da->keys; int* vals = (int*)da->values; for (int i = 0; i < da->len; i++) { if ((keys[i].len == key.len) && memcmp(keys[i].str, key.str, key.len) == 0) { vals[i] = val; return; } } if (da->len == da->cap) { int new_cap = da->cap == 0 ? 8 : (da->cap * 2); da->keys = (u8*)realloc(da->keys, sizeof(string) * new_cap); da->values = (u8*)realloc(da->values, sizeof(int) * new_cap); da->cap = new_cap; } keys = (string*)da->keys; vals = (int*)da->values; keys[da->len] = key; vals[da->len] = val; da->len++; m->len = da->len; }')
 	// bits module tables - as V array structs for .data access
 	g.sb.writeln('static u8 _bits__ntz_8_tab_data[] = {0,1,2,0,3,0,0,0,4,0,0,0,0,0,0,0,5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,8};')
 	g.sb.writeln('static array bits__ntz_8_tab = {.data = _bits__ntz_8_tab_data, .len = 129, .cap = 129, .element_size = sizeof(u8)};')
@@ -1072,11 +1075,17 @@ fn (mut g Gen) infer_type(node ast.Expr) string {
 			mut name := ''
 			if node.lhs is ast.Ident {
 				name = node.lhs.name
+				if name in ['string__plus', 'string__plus_two'] {
+					return 'string'
+				}
 			} else if node.lhs is ast.SelectorExpr {
 				// Check if this is a module-qualified function call (e.g., strings.new_builder)
 				if node.lhs.lhs is ast.Ident && node.lhs.lhs.name in g.module_names {
 					// Module-qualified function call
 					name = '${node.lhs.lhs.name}__${node.lhs.rhs.name}'
+					if name in ['string__plus', 'string__plus_two'] {
+						return 'string'
+					}
 				} else {
 					// Method call - look up method return type
 					name = node.lhs.rhs.name
@@ -1114,6 +1123,9 @@ fn (mut g Gen) infer_type(node ast.Expr) string {
 			mut name := ''
 			if node.lhs is ast.Ident {
 				name = node.lhs.name
+				if name in ['string__plus', 'string__plus_two'] {
+					return 'string'
+				}
 				// Check if this is interface boxing - return the interface type
 				if name in g.interface_names {
 					return name
@@ -1144,6 +1156,9 @@ fn (mut g Gen) infer_type(node ast.Expr) string {
 					} else if node.lhs.lhs.name in g.module_names {
 						// Module-qualified function call
 						name = '${node.lhs.lhs.name}__${node.lhs.rhs.name}'
+						if name in ['string__plus', 'string__plus_two'] {
+							return 'string'
+						}
 					}
 				}
 				// Handle method calls - look up method return type
@@ -1647,10 +1662,41 @@ fn (mut g Gen) gen_const_decl(node ast.ConstDecl, file_module string) {
 		if !g.is_simple_literal(field.value) {
 			continue
 		}
-		g.sb.write_string('const ${t} ${mangled_name} = ')
-		g.gen_expr(field.value)
-		g.sb.writeln(';')
+		expr_str := g.expr_to_string_with_const_inline(field.value)
+		g.const_exprs[mangled_name] = expr_str
+		g.const_exprs[field.name] = expr_str
+		if is_enum_const_type(t) {
+			g.sb.writeln('enum { ${mangled_name} = ${expr_str} };')
+		} else {
+			g.sb.writeln('const ${t} ${mangled_name} = ${expr_str};')
+		}
 	}
+}
+
+fn is_enum_const_type(t string) bool {
+	return t in [
+		'int',
+		'i8',
+		'i16',
+		'i32',
+		'byte',
+		'rune',
+		'bool',
+		'char',
+	]
+}
+
+fn (mut g Gen) expr_to_string_with_const_inline(e ast.Expr) string {
+	old_sb := g.sb
+	mut tmp := strings.new_builder(64)
+	g.sb = tmp
+	old_inline := g.in_const_expr
+	g.in_const_expr = true
+	g.gen_expr(e)
+	g.in_const_expr = old_inline
+	expr_str := g.sb.str()
+	g.sb = old_sb
+	return expr_str
 }
 
 // Check if expression is a simple compile-time literal
@@ -2653,6 +2699,18 @@ fn (mut g Gen) gen_expr(node ast.Expr) {
 				} else {
 					// Unknown comptime value - return placeholder
 					g.sb.write_string('0 /* unknown comptime: ${node.name} */')
+				}
+			} else if g.in_const_expr {
+				if expr := g.const_exprs[node.name] {
+					g.sb.write_string(expr)
+				} else if mangled := g.const_mangled[node.name] {
+					if expr := g.const_exprs[mangled] {
+						g.sb.write_string(expr)
+					} else {
+						g.sb.write_string(mangled)
+					}
+				} else {
+					g.sb.write_string(node.name)
 				}
 			} else if node.name in g.var_types {
 				// Local variable - use as-is
