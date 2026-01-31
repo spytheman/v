@@ -50,7 +50,7 @@ fn dprintln(txt string) {
 *
 ******************************************************************************/
 // format_texture transforms the bitmap from one layer to color layers
-fn (mut bmp BitMap) format_texture() {
+pub fn (mut bmp BitMap) format_texture() {
 	r := u8(bmp.color >> 24)
 	g := u8((bmp.color >> 16) & 0xFF)
 	b := u8((bmp.color >> 8) & 0xFF)

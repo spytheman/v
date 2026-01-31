@@ -30,7 +30,7 @@ At this point the font "arial" is loaded and parsed and if it is a valid TTF fon
 ready for the rendering.
 We can get some quick info on the font as string using the `get_info_string` function:
 
-```v oksyntax
+```v ignore
 println(ttf_font.get_info_string())
 ```
 
@@ -65,7 +65,7 @@ At the present time all the rendering are made on the CPU, sokol is used only to
 rendered text to the screen.
 Let's start with a simple snippet of code:
 
-```v oksyntax
+```v
 import os
 import x.ttf
 
@@ -85,7 +85,7 @@ This simple code load a TTF font and display its basic information.
 The draw text function draw simple strings without indentation or other imagination tasks.
 At this point we can render a simple text:
 
-```v oksyntax
+```v
 import os
 import x.ttf
 
@@ -155,7 +155,7 @@ Use this level only if you want achieve particular result on text rendering.
 
 Draw text block draw a justified and indented block of multiline text in the bitmap.
 
-```v oksyntax
+```v
 import os
 import x.ttf
 
@@ -244,6 +244,7 @@ import sokol.sapp
 import sokol.sgl
 import sokol.gfx
 import x.ttf
+import x.ttf.render_sokol
 import os
 
 const win_width = 600
@@ -261,7 +262,7 @@ pub mut:
 	frame_c   int
 
 	tf         []ttf.TTF_File
-	ttf_render []ttf.TTF_render_Sokol
+	ttf_render []render_sokol.TTF_render_Sokol
 }
 
 fn my_init(mut app App_data) {
@@ -315,7 +316,7 @@ fn main() {
 	}
 
 	// TTF render 0 Frame counter
-	app.ttf_render << &ttf.TTF_render_Sokol{
+	app.ttf_render << &render_sokol.TTF_render_Sokol{
 		bmp: &ttf.BitMap{
 			tf:       &app.tf[0]
 			buf:      unsafe { malloc(32000000) }

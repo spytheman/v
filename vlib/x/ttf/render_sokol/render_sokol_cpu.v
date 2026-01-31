@@ -1,4 +1,4 @@
-module ttf
+module render_sokol
 
 /**********************************************************************
 *
@@ -16,11 +16,20 @@ import math
 import gg
 import sokol.sgl
 import sokol.gfx
+import x.ttf
+
+const debug_flag = false
+
+fn dprintln(txt string) {
+	if debug_flag {
+		println(txt)
+	}
+}
 
 // TTF_render_Sokol is a structure containing data for rendering a TTF font as a sokol texture.
 pub struct TTF_render_Sokol {
 pub mut:
-	bmp &BitMap = unsafe { nil } // Base bitmap render
+	bmp &ttf.BitMap = unsafe { nil } // Base bitmap render
 	// rendering fields
 	sg_img       gfx.Image   // sokol image
 	sg_smp       gfx.Sampler // sokol sampler
