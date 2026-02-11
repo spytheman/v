@@ -65,8 +65,6 @@ $if emscripten ? {
 // for simplicity, all header includes are here because import order matters and we dont have any way
 // to ensure import order with V yet
 
-@[use_once]
-#define SOKOL_IMPL
 // TODO: should not be defined for android graphic (apk/aab using sokol) builds, but we have no ways to undefine
 //#define SOKOL_NO_ENTRY
 #flag linux   -DSOKOL_NO_ENTRY
@@ -80,18 +78,15 @@ $if emscripten ? {
 
 #flag linux -ldl
 
+#flag @VEXEROOT/thirdparty/sokol/sokol_app_v_impl.o
+#flag @VEXEROOT/thirdparty/sokol/sokol_gfx_v_impl.o
+#flag @VEXEROOT/thirdparty/sokol/sokol_gl_v_impl.o
+
 // To allow for thirdparty initializing window / acceleration contexts
 // but still be able to use sokol.gfx e.g. SDL+sokol_gfx
 $if !no_sokol_app ? {
 	#include "sokol_app.h"
 }
-
-@[use_once]
-#define SOKOL_IMPL
-#define SOKOL_NO_DEPRECATED
 #include "sokol_gfx.h"
-
-@[use_once]
-#define SOKOL_GL_IMPL
 #include "util/sokol_gl.h"
 #include "sokol_v.post.h"
