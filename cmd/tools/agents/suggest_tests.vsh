@@ -869,21 +869,11 @@ fn collect_changed_paths(options SuggestOptions) ![]string {
 		}
 		return paths
 	}
-	mut commands := []string{}
-	if options.changed_from != '' {
-		commands << changed_from_command(options.changed_from)
-	}
-	commands << 'git diff --name-only'
-	commands << 'git diff --cached --name-only'
-	commands << 'git ls-files --others --exclude-standard'
-	if commands.len == 3 {
+	if options.changed_from == '' {
 		return cmn.collect_changed_paths()
 	}
-	for command in commands {
-		result := os.execute(command)
-		if result.exit_code != 0 {
-			continue
-		}
+	result := os.execute(changed_from_command(options.changed_from))
+	if result.exit_code == 0 {
 		for line in result.output.split_into_lines() {
 			path := cmn.normalize_path(line)
 			if path != '' && path !in paths {
@@ -891,7 +881,20 @@ fn collect_changed_paths(options SuggestOptions) ![]string {
 			}
 		}
 	}
+	default_paths := cmn.collect_changed_paths() or { []string{} }
+	for path in default_paths {
+		if path !in paths {
+			paths << path
+		}
+	}
 	return paths
+}
+
+fn changed_from_command(rev string) string {
+	if rev.contains('..') {
+		return 'git diff --name-only ${rev}'
+	}
+	return 'git diff --name-only ${rev}...HEAD'
 }
 
 fn apply_path_guardrails(paths []string, options SuggestOptions) ([]string, []string) {
@@ -905,13 +908,6 @@ fn apply_path_guardrails(paths []string, options SuggestOptions) ([]string, []st
 		filtered = filtered[..options.max_paths_limit].clone()
 	}
 	return filtered, warnings
-}
-
-fn changed_from_command(rev string) string {
-	if rev.contains('..') {
-		return 'git diff --name-only ${rev}'
-	}
-	return 'git diff --name-only ${rev}...HEAD'
 }
 
 fn parse_rules(path string) ![]Rule {
