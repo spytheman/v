@@ -1,3 +1,8 @@
+<!-- generated: canonical source is AGENTS.md; run ./scripts/agent/sync_agent_docs.vsh -->
+- Canonical source: `AGENTS.md`
+- Drift policy: update `AGENTS.md` first, then run `./scripts/agent/sync_agent_docs.vsh`.
+If anything here differs from `AGENTS.md`, follow `AGENTS.md` and treat this file as stale.
+
 # LLMS.md
 Fast operating contract for AI agents in this V repo.
 This file is a compact execution index, not a second policy source.

@@ -1,0 +1,102 @@
+name: Agent Contract CI
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/agent_contract_ci.yml"
+      - "README.md"
+      - "CONTRIBUTING.md"
+      - "TESTS.md"
+      - "AGENTS.md"
+      - "LLMS.md"
+      - "doc/agent_workflow.md"
+      - "doc/agent_bugfix_playbook.md"
+      - "GNUmakefile"
+      - "agent_test_matrix.yaml"
+      - "scripts/agent/**"
+  push:
+    paths:
+      - ".github/workflows/agent_contract_ci.yml"
+      - "README.md"
+      - "CONTRIBUTING.md"
+      - "TESTS.md"
+      - "AGENTS.md"
+      - "LLMS.md"
+      - "doc/agent_workflow.md"
+      - "doc/agent_bugfix_playbook.md"
+      - "GNUmakefile"
+      - "agent_test_matrix.yaml"
+      - "scripts/agent/**"
+  workflow_dispatch:
+
+jobs:
+  agent-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build V bootstrap compiler
+        run: make
+
+      - name: Build vnew
+        run: ./v -g -keepc -o ./vnew cmd/v
+
+      - name: Validate agent contract
+        run: ./scripts/agent/validate_agent_contract.vsh
+
+      - name: Validate agent docs sync
+        run: ./scripts/agent/sync_agent_docs.vsh --check
+
+      - name: Run agent script tests
+        run: |
+          ./vnew scripts/agent/suggest_tests_test.v
+          ./vnew scripts/agent/validate_agent_contract_test.v
+          ./vnew scripts/agent/validate_agent_run_summary_test.v
+          ./vnew scripts/agent/print_agent_run_summary_test.v
+          ./vnew scripts/agent/doctor_test.v
+          ./vnew scripts/agent/sync_agent_docs_test.v
+
+      - name: Check agent runtime artifacts
+        run: make agent-artifact-clean-check
+
+      - name: Agent smoke parity target
+        run: make agent-smoke VEXE=./vnew local=1
+
+  agent-suggest-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build V bootstrap compiler
+        run: make
+
+      - name: Build vnew
+        run: ./v -g -keepc -o ./vnew cmd/v
+
+      - name: Agent suggest smoke (changed-from, all formats)
+        run: |
+          BASE_REF="$(git rev-parse --verify HEAD~1 || git rev-parse HEAD)"
+          ./scripts/agent/suggest_tests.vsh --changed-from "$BASE_REF" --tier targeted --strict-unmatched --require-non-fallback
+          ./scripts/agent/suggest_tests.vsh --changed-from "$BASE_REF" --tier targeted --json --require-non-fallback
+          ./scripts/agent/suggest_tests.vsh --changed-from "$BASE_REF" --tier targeted --format sh --require-non-fallback
+          AGENT_ARTIFACT="$(mktemp "/tmp/agent_ci_run_summary.${GITHUB_RUN_ID:-local}.${GITHUB_RUN_ATTEMPT:-0}.XXXXXX.json")"
+          ./scripts/agent/suggest_tests.vsh --tier targeted --json --require-non-fallback README.md > "$AGENT_ARTIFACT"
+          ./scripts/agent/validate_agent_run_summary.vsh "$AGENT_ARTIFACT"
+          rm -f "$AGENT_ARTIFACT"
+
+      - name: Agent suggest fallback sanity
+        run: |
+          if ! ./scripts/agent/suggest_tests.vsh --strict-unmatched definitely_unmatched.file | grep -q "owner=fallback"; then
+            echo "expected fallback owner to be selected"
+            exit 1
+          fi
+
+      - name: Check agent runtime artifacts
+        run: make agent-artifact-clean-check
+
+      - name: Agent smoke parity target
+        run: make agent-smoke VEXE=./vnew local=1

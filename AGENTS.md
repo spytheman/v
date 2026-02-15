@@ -12,6 +12,7 @@ Written for AI coding agents; useful for humans too.
 * Safety (Do Not Brick the Repo)
 * Divergences From Repo Docs
 * Quick Decisions
+* When to Escalate to Broad
 * Common Workflow
 * Reporting
 * Prerequisites
@@ -169,6 +170,19 @@ breaking the bootstrap compiler.
 * For rebuild and test choices, follow Build & Rebuild and Testing.
 * Follow Common Workflow for the default execution order.
 * For broader workflow guidance, see `CONTRIBUTING.md`.
+
+## When to Escalate to Broad
+Use broad validation when one or more of the following is true:
+
+| Trigger | Escalate? | Minimum action |
+| --- | --- | --- |
+| two or more high-risk owners matched by `suggest_tests` | Yes | Use `--tier broad` or accept auto-promotion |
+| diagnostics/output text changes | Yes | Run `./vnew -silent vlib/v/slow_tests/inout/compiler_test.v` |
+| repl behavior changes | Yes | Run `./vnew -silent vlib/v/slow_tests/repl/repl_test.v` |
+| fallback rule matched for any changed path | Yes | Fix coverage in `agent_test_matrix.yaml` before final run |
+| cross-subsystem compiler edits (`parser` + `checker` + `cgen`) | Yes | Run broad set plus `./vnew -silent test vlib/v/` |
+
+If broad is selected, report the reason explicitly in the final summary.
 
 ### Compact decision table (rebuild/tests)
 Use this table to pick the minimum rebuild/tests quickly. See Build &
@@ -607,6 +621,22 @@ vlib/v/checker, vlib/v/transformer, vlib/v/markused, vlib/v/gen/c .
 There are additional subsystems (supporting or optional compiler
 modules) like v.comptime, v.generics, v.pref, v.reflection,
 v.callgraph, etc.
+
+## Subsystem Ownership Map
+Quick routing map for common bugfix areas.
+Use `agent_test_matrix.yaml` as the source of truth for owner labels.
+
+| Area | Owner hint | First command |
+| --- | --- | --- |
+| `vlib/v/parser/**` | `parser` | `./vnew -silent test vlib/v/parser/` |
+| `vlib/v/checker/**` | `checker` | `./vnew -silent test vlib/v/checker/` |
+| `vlib/v/gen/c/**` | `cgen` | `./vnew -silent vlib/v/gen/c/coutput_test.v` |
+| `vlib/v/slow_tests/inout/**` | `diagnostics` | `./vnew -silent vlib/v/slow_tests/inout/compiler_test.v` |
+| `vlib/v/slow_tests/repl/**` | `repl` | `./vnew -silent vlib/v/slow_tests/repl/repl_test.v` |
+| `cmd/tools/**` | `tools` | `./vnew -silent test cmd/tools/` |
+
+If you touch multiple high-risk areas, prefer `--tier broad` in
+`./scripts/agent/suggest_tests.vsh` and widen test coverage.
 
 ### Key Directories
 * `vlib/`: Standard library (changes here can affect the compiler

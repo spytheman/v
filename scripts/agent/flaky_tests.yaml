@@ -1,0 +1,5 @@
+version: 1
+entries:
+  - match: "./vnew -silent vlib/x/templating/dtm/dynamic_template_manager_test.v"
+    reason: "The x.templating.dtm module has concurrency problems, which are hard to reproduce reliably."
+    issue: "https://github.com/vlang/v/issues/26612"

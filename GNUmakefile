@@ -91,7 +91,7 @@ endif
 endif
 endif
 
-.PHONY: all clean rebuild check fresh_vc fresh_tcc fresh_legacy check_for_working_tcc etags ctags
+.PHONY: all clean rebuild check fresh_vc fresh_tcc fresh_legacy check_for_working_tcc etags ctags agent-check agent-suggest agent-bootstrap-check agent-contract-check agent-summary-schema-check agent-doctor agent-preflight agent-smoke agent-run agent-bugfix-min agent-doc-sync-check agent-artifact-clean-check agent-clean-local
 
 ifdef prod
 VFLAGS+=-prod
@@ -223,6 +223,101 @@ install:
 
 check:
 	$(VEXE)$(EXE_EXT) test-all
+
+agent-check:
+	$(VEXE)$(EXE_EXT) -silent test vlib/v/compiler_errors_test.v
+	$(VEXE)$(EXE_EXT) -silent test vlib/v/
+	$(VEXE)$(EXE_EXT) check-md AGENTS.md
+	$(VEXE)$(EXE_EXT) check-md LLMS.md
+
+agent-suggest:
+	./scripts/agent/suggest_tests.vsh $(ARGS) $(FILES)
+
+agent-bootstrap-check:
+	./scripts/agent/bootstrap_check.vsh
+
+agent-contract-check:
+	./scripts/agent/validate_agent_contract.vsh
+	$(VEXE)$(EXE_EXT) scripts/agent/suggest_tests_test.v
+	$(VEXE)$(EXE_EXT) scripts/agent/validate_agent_contract_test.v
+	$(VEXE)$(EXE_EXT) scripts/agent/validate_agent_run_summary_test.v
+	$(VEXE)$(EXE_EXT) scripts/agent/print_agent_run_summary_test.v
+	$(VEXE)$(EXE_EXT) scripts/agent/doctor_test.v
+	$(VEXE)$(EXE_EXT) -nocache scripts/agent/sync_agent_docs_test.v
+	./scripts/agent/sync_agent_docs.vsh --check
+	$(MAKE) agent-artifact-clean-check
+
+agent-summary-schema-check:
+	./scripts/agent/validate_agent_run_summary.vsh $(AGENT_ARTIFACT)
+
+agent-doctor:
+	./scripts/agent/doctor.vsh
+
+AGENT_ARTIFACT ?= /tmp/agent_run_summary.json
+AGENT_RUN_SCRIPT ?= /tmp/agent_run_commands.sh
+AGENT_BUGFIX_ARTIFACT ?= /tmp/agent_bugfix_min_summary.json
+AGENT_BUGFIX_SCRIPT ?= /tmp/agent_bugfix_min_commands.sh
+DRY_RUN ?= 0
+AGENT_DRY_RUN ?= $(DRY_RUN)
+
+agent-preflight:
+	./scripts/agent/bootstrap_check.vsh
+	./scripts/agent/validate_agent_contract.vsh --matrix-only
+	./scripts/agent/sync_agent_docs.vsh --check
+	./scripts/agent/suggest_tests.vsh --tier fast --json --require-non-fallback README.md > /tmp/agent_preflight_smoke.json
+	@echo "Preflight OK"
+
+agent-smoke:
+	./scripts/agent/bootstrap_check.vsh
+	./scripts/agent/validate_agent_contract.vsh
+	./scripts/agent/sync_agent_docs.vsh --check
+	./scripts/agent/suggest_tests.vsh --tier fast --json --strict-unmatched --require-non-fallback README.md > /tmp/agent_smoke_summary.json
+	./scripts/agent/validate_agent_run_summary.vsh /tmp/agent_smoke_summary.json
+	./scripts/agent/suggest_tests.vsh --tier fast --format sh --strict-unmatched --require-non-fallback README.md > /tmp/agent_smoke_commands.sh
+	bash /tmp/agent_smoke_commands.sh
+	./scripts/agent/print_agent_run_summary.vsh /tmp/agent_smoke_summary.json
+	$(MAKE) agent-artifact-clean-check
+	@echo "Agent smoke passed."
+
+agent-run:
+	./scripts/agent/bootstrap_check.vsh
+	mkdir -p $(dir $(AGENT_ARTIFACT))
+	mkdir -p $(dir $(AGENT_RUN_SCRIPT))
+	./scripts/agent/suggest_tests.vsh --strict-unmatched --require-non-fallback --json $(ARGS) $(FILES) > $(AGENT_ARTIFACT)
+	./scripts/agent/validate_agent_run_summary.vsh $(AGENT_ARTIFACT)
+	./scripts/agent/suggest_tests.vsh --strict-unmatched --require-non-fallback --format sh $(ARGS) $(FILES) > $(AGENT_RUN_SCRIPT)
+ifeq ($(AGENT_DRY_RUN),1)
+	@echo "Dry run enabled: not executing $(AGENT_RUN_SCRIPT)"
+	@cat $(AGENT_RUN_SCRIPT)
+else
+	bash $(AGENT_RUN_SCRIPT)
+endif
+	./scripts/agent/print_agent_run_summary.vsh $(AGENT_ARTIFACT)
+	@echo "Wrote agent summary artifact to $(AGENT_ARTIFACT)"
+	@echo "Wrote agent command script to $(AGENT_RUN_SCRIPT)"
+
+agent-bugfix-min:
+	./scripts/agent/bootstrap_check.vsh
+	./scripts/agent/suggest_tests.vsh --tier targeted --strict-unmatched --require-non-fallback $(FILES)
+	$(MAKE) agent-run ARGS='--tier targeted' FILES='$(FILES)' AGENT_ARTIFACT='$(AGENT_BUGFIX_ARTIFACT)' AGENT_RUN_SCRIPT='$(AGENT_BUGFIX_SCRIPT)' AGENT_DRY_RUN='$(AGENT_DRY_RUN)'
+
+agent-doc-sync-check:
+	./scripts/agent/sync_agent_docs.vsh --check
+
+agent-artifact-clean-check:
+	@if ls scripts/agent/tmp.* >/dev/null 2>&1; then \
+		echo "runtime artifacts found under scripts/agent/: scripts/agent/tmp.*"; \
+		echo "clean with: rm -f scripts/agent/tmp.*"; \
+		exit 1; \
+	fi
+
+agent-clean-local:
+	rm -f scripts/agent/tmp.*
+	rm -f /tmp/agent_preflight_smoke.json
+	rm -f /tmp/agent_smoke_summary.json /tmp/agent_smoke_commands.sh
+	rm -f /tmp/agent_run_summary*.json /tmp/agent_run_summary*.sh
+	rm -f /tmp/agent_run_dry*.json /tmp/agent_run_dry*.sh
+	rm -f /tmp/agent_bugfix_min*.json /tmp/agent_bugfix_min*.sh
 
 etags:
 	./v$(EXE_EXT) -print-v-files cmd/v | grep -v :parse_text| etags -L -

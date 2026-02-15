@@ -64,8 +64,8 @@ fn main() {
 	println(add(1, 2))
 	println('ok') // comment println
 	arr := [1, 3, 5, 7]
-	for a in arr {
-		println(a)
+	for elem in arr {
+		println(elem)
 		add(1, 3)
 	}
 	color := Color.red

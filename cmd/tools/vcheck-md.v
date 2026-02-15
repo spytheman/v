@@ -20,7 +20,7 @@ const hide_warnings = '-hide-warnings' in os.args || '-w' in os.args
 const show_progress = os.getenv('GITHUB_JOB') == '' && '-silent' !in os.args
 const non_option_args = cmdline.only_non_options(os.args[2..])
 const is_verbose = os.getenv('VERBOSE') != ''
-const vcheckfolder = os.join_path(os.vtmp_dir(), 'vcheck_${os.getuid()}')
+const vcheckroot = os.join_path(os.vtmp_dir(), 'vcheck_${os.getuid()}')
 const should_autofix = os.getenv('VAUTOFIX') != '' || '-fix' in os.args
 const vexe = @VEXE
 
@@ -51,6 +51,7 @@ fn main() {
 		println('´-all´ flag is deprecated. Please use ´v check-md .´ instead.')
 		exit(1)
 	}
+	check_folder := os.join_path(vcheckroot, 'run_${os.getpid()}')
 	mut skip_line_length_check := '-skip-line-length-check' in os.args
 	if show_progress {
 		// this is intended to be replaced by the progress lines
@@ -61,9 +62,9 @@ fn main() {
 	if term_colors {
 		os.setenv('VCOLORS', 'always', true)
 	}
-	os.mkdir_all(vcheckfolder, mode: 0o700) or {} // keep directory private
+	os.mkdir_all(check_folder, mode: 0o700) or {} // keep directory private
 	defer {
-		os.rmdir_all(vcheckfolder) or {}
+		os.rmdir_all(check_folder) or {}
 	}
 	for i := 0; i < files_paths.len; i++ {
 		file_path := files_paths[i]
@@ -81,6 +82,7 @@ fn main() {
 			skip_line_length_check: skip_line_length_check
 			path:                   file_path
 			lines:                  lines
+			check_folder:           check_folder
 		}
 		res += mdfile.check()
 	}
@@ -165,6 +167,7 @@ enum MDFileParserState {
 struct MDFile {
 	path                   string
 	skip_line_length_check bool
+	check_folder           string
 mut:
 	lines    []string
 	examples []VCodeExample
@@ -462,9 +465,9 @@ fn (mut f MDFile) check_examples() {
 		}
 		fname := os.base(f.path).replace('.md', '_md')
 		uid := rand.ulid()
-		cfile := os.join_path(vcheckfolder, '${uid}.c')
-		vfile := os.join_path(vcheckfolder, 'check_${fname}_example_${e.sline}__${e.eline}__${uid}.v')
-		efile := os.join_path(vcheckfolder, 'check_${fname}_example_${e.sline}__${e.eline}__${uid}.exe')
+		cfile := os.join_path(f.check_folder, '${uid}.c')
+		vfile := os.join_path(f.check_folder, 'check_${fname}_example_${e.sline}__${e.eline}__${uid}.v')
+		efile := os.join_path(f.check_folder, 'check_${fname}_example_${e.sline}__${e.eline}__${uid}.exe')
 		mut should_cleanup_vfile := true
 		// eprintln('>>> checking example ${vfile} ...')
 		vcontent := e.text.join('\n') + '\n'

@@ -24,6 +24,51 @@
 
 </div>
 
+## AI Agent Entrypoint
+
+If you are an AI coding agent working in this repo, start with:
+
+- `AGENTS.md` (canonical workflow and policy contract)
+- `LLMS.md` (compact startup index)
+- `doc/agent_workflow.md` (operational flow and commands)
+- `doc/agent_bugfix_playbook.md` (subsystem bugfix quick paths)
+
+Run this first:
+
+```bash
+./scripts/agent/bootstrap_check.vsh
+```
+
+One-command full agent preflight:
+
+```bash
+make agent-preflight VEXE=./vnew local=1
+```
+
+Deterministic local/CI parity smoke:
+
+```bash
+make agent-smoke VEXE=./vnew local=1
+```
+
+One-command minimum bugfix recipe:
+
+```bash
+make agent-bugfix-min VEXE=./vnew local=1 FILES='path/to/changed_file.v'
+```
+
+Dry run (plan only, no execution):
+
+```bash
+make agent-bugfix-min VEXE=./vnew local=1 AGENT_DRY_RUN=1 FILES='path/to/changed_file.v'
+```
+
+Clean local agent artifacts:
+
+```bash
+make agent-clean-local
+```
+
 ## Key Features of V
 
 - Simplicity: the language can be learned over the course of a weekend
@@ -262,11 +307,46 @@ To bring IDE functions for the V programming languages to your editor, check out
 
 ## Testing and running the examples
 
+For AI agent workflows in this repository, read `AGENTS.md` and `LLMS.md`
+first, then use the `./vnew` bootstrap flow from those files.
+
+### Agent runbook
+
+Quick preflight (bootstrap + contract + smoke):
+
+```bash
+make agent-preflight VEXE=./vnew
+```
+
+Default end-to-end command:
+
+```bash
+make agent-run ARGS='--tier targeted'
+```
+
+`agent-run` writes a machine-readable summary artifact to:
+`/tmp/agent_run_summary.json` (override with `AGENT_ARTIFACT=...`).
+
+Equivalent explicit commands:
+
+```bash
+git status
+./scripts/agent/bootstrap_check.vsh
+./scripts/agent/suggest_tests.vsh --strict-unmatched --tier targeted
+make agent-contract-check VEXE=./vnew
+make agent-check VEXE=./vnew local=1
+```
+
+Detailed agent workflow reference:
+`doc/agent_workflow.md`.
+Common compiler bugfix playbook:
+`doc/agent_bugfix_playbook.md`.
+
 Make sure V can compile itself:
 
 ```bash
-$ v self
-$ v
+$ ./v -o ./vnew cmd/v
+$ ./vnew
 V 0.3.x
 Use Ctrl-C or `exit` to exit
 
@@ -275,7 +355,8 @@ hello world
 >>>
 ```
 
-`v self` defaults to `-gc none`. Pass `-gc <mode>` if you need a different GC mode.
+The `v self` command defaults to `-gc none`. Pass `-gc <mode>` if you need
+a different GC mode.
 
 ```bash
 cd examples

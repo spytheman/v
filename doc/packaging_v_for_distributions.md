@@ -19,6 +19,10 @@ Good luck.
 Details
 =============
 
+Note for contributors and AI agents: this page is about read-only packaged
+distributions. For source-repo development workflows, use the `./vnew`
+bootstrap flow described in `AGENTS.md` and `LLMS.md`.
+
 Preparing a package of the current version of V for distribution, has some peculiarities
 that must be understood, and taken into account, for the best experience of the users of
 your package, for your sanity, and for easier troubleshooting of problems when they happen.

@@ -50,8 +50,9 @@ The V compiler is modular, and can be used by other applications. It is located
 in `cmd/v/` and `vlib/v/`.
 
 The most important and useful command to remember when working on the V compiler
-is `v self`.
-It rebuilds the V compiler.
+is rebuilding it explicitly:
+`./v -o ./vnew cmd/v` (or `v -o vnew cmd/v`).
+This creates a fresh compiler binary without replacing your working one.
 
 Be careful, if you introduce a breaking change and rebuild V, you will no longer
 be able to use V to build itself. So it's a good idea to make a backup copy of a
@@ -305,8 +306,7 @@ at compile time (see the documentation about
 [compile-time if](https://github.com/vlang/v/blob/master/doc/docs.md#compile-time-if)).
 
 Since the compiler is *also* an ordinary V program, there are numerous flags that can be
-passed when building the compiler itself with `v self`, or when creating a copy of the
-compiler, that will help you when debugging the compiler.
+passed when building the compiler, that will help you when debugging the compiler.
 
 Note: beware that the flags below must be passed, when building the compiler, *not the program*,
 so do for example:
@@ -316,7 +316,7 @@ or
 ... then use `./w file.v`, instead of `./v file.v`, to compile your program.
 
 Note: some of the flags can make the compiler *very verbose*, so it is recommended to create
-a copy of the compiler rather than replacing it with `v self`.
+a copy of the compiler rather than replacing your default `v` binary.
 
 | Flag                              | Usage                                                                                                               |
 |-----------------------------------|---------------------------------------------------------------------------------------------------------------------|

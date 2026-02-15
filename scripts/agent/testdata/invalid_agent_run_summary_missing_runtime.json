@@ -1,0 +1,32 @@
+{
+  "tier": "targeted",
+  "effective_tier": "targeted",
+  "changed_paths": ["README.md"],
+  "matched_paths": ["README.md"],
+  "unmatched_paths": [],
+  "rebuild_vnew": false,
+  "rebuild_command": "./v -g -keepc -o ./vnew cmd/v",
+  "matched_rules": [],
+  "suggested": [
+    {
+      "command": "./vnew check-md README.md",
+      "confidence": 0.75,
+      "confidence_label": "medium",
+      "runtime_sec": 90,
+      "why_selected": "selected by matched rule",
+      "flaky": false,
+      "flaky_reason": "",
+      "flaky_issue": ""
+    }
+  ],
+  "dropped_by_budget": [],
+  "suggested_commands": ["./vnew check-md README.md"],
+  "warnings": [],
+  "budget_seconds": 0,
+  "runtime_total_sec": 90,
+  "timings_ms": {
+    "collect": 1,
+    "match": 2,
+    "total": 3
+  }
+}

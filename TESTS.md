@@ -1,5 +1,10 @@
 # Automated tests
 
+For AI-agent/local worktree workflows in this repo, use `./vnew` as the
+compiler executable and map `v ...` examples below to `./vnew ...`.
+You can run a deterministic minimal validation set with:
+`make agent-check VEXE=./vnew`.
+
 TLDR: do run `v test-all` locally, after making your changes,
 and before submitting PRs.
 

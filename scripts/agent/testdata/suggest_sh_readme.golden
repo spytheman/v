@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+set -euo pipefail
+# tier: targeted
+# changed_paths: 1
+./vnew check-md README.md
