@@ -9,8 +9,9 @@ This file is a compact execution index, not a second policy source.
 
 ## Quick Scan
 - Canonical source: `AGENTS.md`
-- Read gate: `Top Rules`, `Build & Rebuild`, `Testing`, `Reporting`
+- Read gate: `Agent Core Profile (Must Read)`, then `Build & Rebuild`, `Testing`, `Reporting`
 - Bootstrap: `git status` -> build `./vnew` -> use `./vnew` only
+- Next steps helper: `make agent-next local=1 FILES='path/to/changed_file.v'`
 - Safety: never overwrite `./v`; never run `./v self` without `-o`
 - Done means: change done, checks run, tests run/justified, summary complete
 

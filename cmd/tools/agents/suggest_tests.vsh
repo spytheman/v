@@ -82,6 +82,8 @@ mut:
 	tier                  string = 'targeted'
 	output_format         string = 'human'
 	changed_from          string
+	verbose               bool
+	show_derived_paths    bool
 	strict_unmatched      bool
 	require_non_fallback  bool
 	explain_match         bool
@@ -171,7 +173,7 @@ fn main() {
 			effective_tier: options.tier
 			warnings:       warnings
 		}
-		print_result(empty, options.output_format)
+		print_result(empty, options)
 		return
 	}
 	matrix_path := 'cmd/tools/agents/agent_test_matrix.yaml'
@@ -348,7 +350,9 @@ fn main() {
 		default_budget := parse_default_budget_seconds(matrix_path, effective_tier) or { 0.0 }
 		if default_budget > 0 {
 			effective_budget = default_budget
-			warnings << 'applied default budget ${effective_budget}s for tier `${effective_tier}`'
+			if options.verbose {
+				warnings << 'applied default budget ${effective_budget}s for tier `${effective_tier}`'
+			}
 		}
 	}
 	mut commands := []string{}
@@ -434,7 +438,7 @@ fn main() {
 			}
 		}
 	}
-	print_result(result, options.output_format)
+	print_result(result, options)
 	if options.strict_unmatched && result.unmatched_paths.len > 0 {
 		eprintln('strict-unmatched: ${result.unmatched_paths.len} unmatched path(s) found')
 		exit(2)
@@ -482,6 +486,16 @@ fn parse_options(args []string) !SuggestOptions {
 		}
 		if arg == '--json' {
 			options.output_format = 'json'
+			i++
+			continue
+		}
+		if arg == '--verbose' {
+			options.verbose = true
+			i++
+			continue
+		}
+		if arg == '--show-derived-paths' {
+			options.show_derived_paths = true
 			i++
 			continue
 		}
@@ -676,6 +690,8 @@ fn print_help() {
 	println('  --max-paths-warn <n>    warn if changed path count > n (default: ${default_max_paths_warn})')
 	println('  --max-paths-limit <n>   truncate path set to n (default: ${default_max_paths_limit}, 0 disables)')
 	println('  --budget-seconds <n>    keep highest-value commands within runtime budget')
+	println('  --verbose               include non-critical planning warnings')
+	println('  --show-derived-paths    display synthetic impact paths in human output')
 	println('  --fail-below-confidence <n>  fail when selected command confidence is below n')
 	println('  --impact-mode <mode>    impact expansion mode: off|basic|semantic (default: semantic)')
 	println('  --strict-unmatched      exit non-zero when unmatched paths are present')
@@ -695,8 +711,8 @@ fn print_help() {
 	println('Rules source: cmd/tools/agents/agent_test_matrix.yaml')
 }
 
-fn print_result(result SuggestResult, output_format string) {
-	match output_format {
+fn print_result(result SuggestResult, options SuggestOptions) {
+	match options.output_format {
 		'json' {
 			println(to_json(result))
 		}
@@ -707,31 +723,66 @@ fn print_result(result SuggestResult, output_format string) {
 			print_agent_result(result)
 		}
 		else {
-			print_human_result(result)
+			print_human_result(result, options.show_derived_paths)
 		}
 	}
 }
 
-fn print_human_result(result SuggestResult) {
+fn print_human_result(result SuggestResult, show_derived_paths bool) {
+	mut direct_changed_paths := []string{}
+	mut derived_changed_paths := []string{}
+	for path in result.changed_paths {
+		if is_derived_impact_path(path) {
+			derived_changed_paths << path
+		} else {
+			direct_changed_paths << path
+		}
+	}
 	println('Tier: ${result.tier}')
 	if result.effective_tier != '' && result.effective_tier != result.tier {
 		println('Effective tier: ${result.effective_tier}')
 	}
-	println('Changed paths: ${result.changed_paths.len}')
-	for path in result.changed_paths {
+	println('Changed paths: ${direct_changed_paths.len}')
+	for path in direct_changed_paths {
 		marker := if path in result.matched_paths { '+' } else { '-' }
 		println('  ${marker} ${path}')
 	}
-	if result.unmatched_paths.len > 0 {
+	if derived_changed_paths.len > 0 {
+		if show_derived_paths {
+			println('\nDerived paths:')
+			for path in derived_changed_paths {
+				marker := if path in result.matched_paths { '+' } else { '-' }
+				println('  ${marker} ${path} [derived]')
+			}
+		} else {
+			println('  (derived paths hidden: ${derived_changed_paths.len}; use --show-derived-paths to display)')
+		}
+	}
+	mut unmatched_paths := result.unmatched_paths.clone()
+	if !show_derived_paths {
+		unmatched_paths = unmatched_paths.filter(!is_derived_impact_path(it))
+	}
+	if unmatched_paths.len > 0 {
 		println('\nUnmatched paths:')
-		for path in result.unmatched_paths {
+		for path in unmatched_paths {
 			println('  - ${path}')
 		}
 	}
 	if result.matched_rules.len > 0 {
 		println('\nMatched rules:')
 		for rule in result.matched_rules {
-			println('  - owner=${rule.owner} risk=${rule.risk} patterns=${rule.patterns.join(', ')} matched=${rule.matched_paths.join(', ')}')
+			mut matched_paths := rule.matched_paths.clone()
+			if !show_derived_paths {
+				matched_paths = matched_paths.filter(!is_derived_impact_path(it))
+			}
+			matched_display := if matched_paths.len > 0 {
+				matched_paths.join(', ')
+			} else if rule.matched_paths.len > 0 {
+				'[derived-only hidden]'
+			} else {
+				''
+			}
+			println('  - owner=${rule.owner} risk=${rule.risk} patterns=${rule.patterns.join(', ')} matched=${matched_display}')
 		}
 	}
 	if result.path_matches.len > 0 {
@@ -1151,7 +1202,7 @@ fn apply_impact_map(paths []string, limit int) ([]string, []string, int) {
 					return expanded, warnings, added
 				}
 				expanded << related
-				warnings << 'impact map: ${path} -> ${related}'
+				warnings << 'impact map (derived): ${path} -> ${related}'
 				added++
 			}
 		}
@@ -1204,7 +1255,7 @@ fn apply_import_impact_map(paths []string, limit int) ([]string, []string, int) 
 					return expanded, warnings, added
 				}
 				expanded << hint_path
-				warnings << 'semantic impact: ${path} imports ${imported_mod} -> ${hint_path}'
+				warnings << 'semantic impact (derived): ${path} imports ${imported_mod} -> ${hint_path}'
 				added++
 				break
 			}
@@ -1387,6 +1438,10 @@ fn normalize_path(path string) string {
 		normalized = normalized[2..]
 	}
 	return normalized
+}
+
+fn is_derived_impact_path(path string) bool {
+	return path.contains('/__impact__.')
 }
 
 fn unquote(value string) string {

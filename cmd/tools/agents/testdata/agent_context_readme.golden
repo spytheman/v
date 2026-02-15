@@ -9,6 +9,3 @@ Changed paths:
 
 Minimal validation commands:
   - [0.75 ~5.0s] ./vnew check-md README.md
-
-Warnings:
-  - applied default budget 600.0s for tier `targeted`

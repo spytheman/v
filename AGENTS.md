@@ -13,6 +13,7 @@ make agent-context local=1 FILES='path/to/changed_file.v'
 ```
 
 ## Contents
+* Agent Core Profile (Must Read)
 * Quick Start
 * Top Rules
 * Agent Rules
@@ -41,6 +42,67 @@ make agent-context local=1 FILES='path/to/changed_file.v'
 * Commits and PRs
 * Environment Variables
 * Gotchas
+
+## Agent Core Profile (Must Read)
+This section is the required low-context contract for day-to-day bugfix work.
+Use it first; treat the rest of this file as appendices and edge-case guidance.
+
+### Core loop
+1. `git status`
+2. Build/rebuild compiler only if needed:
+   * missing `./v`: `make`
+   * missing/stale `./vnew`: `./v -g -keepc -o ./vnew cmd/v`
+3. Edit only files needed for the task.
+4. Format/check touched files:
+   * V/VSH: `./vnew fmt -w <file>`
+   * Markdown: `./vnew check-md <file.md>`
+5. Run smallest relevant tests.
+6. Report: behavior change, tests run, touched files.
+
+### Non-negotiables
+* Never overwrite working `./v`.
+* Never run `./v self` without `-o`.
+* Use `./v` only to build `./vnew`; use `./vnew` for all other work.
+* Do not modify unrelated files.
+* Do not touch `thirdparty/` unless explicitly requested.
+* Ask before touching `ci/` or `Dockerfile*`.
+
+### Rebuild triggers
+Rebuild `./vnew` when changes touch:
+* `vlib/v/**`
+* `cmd/v/**`
+* `vlib/builtin/**`, `vlib/strings/**`, `vlib/os/**`,
+  `vlib/strconv/**`, `vlib/time/**`
+
+### Minimum test routing
+* Docs-only: `./vnew check-md <file.md>`
+* Compiler (`vlib/v/`, `cmd/v/`):
+  * `./vnew -silent vlib/v/compiler_errors_test.v`
+  * `./vnew -silent test vlib/v/`
+* Parser-only: `./vnew -silent test vlib/v/parser/`
+* Checker-only: `./vnew -silent test vlib/v/checker/`
+* C codegen: `./vnew -silent vlib/v/gen/c/coutput_test.v`
+* Diagnostics/output text: `./vnew -silent vlib/v/slow_tests/inout/compiler_test.v`
+* REPL: `./vnew -silent vlib/v/slow_tests/repl/repl_test.v`
+* Tools (`cmd/tools/`): tool-specific test or nearest relevant `*_test.v`
+
+### Ask-first gates
+* More than 5 files, or changes across multiple root dirs (`cmd/`, `vlib/`, `doc/`, `examples/`).
+* Large user-visible behavior changes (CLI flags/output, diagnostics text/order, codegen shape).
+* Running `./vnew test-all` unless explicitly requested.
+
+### Quick commands
+```bash
+make agent-ready VEXE=./vnew local=1
+make agent-context local=1 FILES='path/to/changed_file.v'
+make agent-next local=1 FILES='path/to/changed_file.v'
+```
+
+### Appendix pointers
+* Detailed rebuild rules: `Build & Rebuild`
+* Full trigger matrix: `Testing`
+* Final summary requirements: `Reporting`
+* Debug flags and techniques: `Debug`
 
 ## Quick Start
 Get operational from the repo root in three steps:

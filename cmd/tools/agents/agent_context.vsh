@@ -99,7 +99,9 @@ fn print_context(payload string) ! {
 	mut derived_warnings := []string{}
 	mut normal_warnings := []string{}
 	for warning in warnings {
-		if warning.starts_with('impact map:') || warning.starts_with('semantic impact:') {
+		if warning.starts_with('impact map:')
+			|| warning.starts_with('impact map (derived):') || warning.starts_with('semantic impact:')
+			|| warning.starts_with('semantic impact (derived):') {
 			derived_warnings << warning
 		} else {
 			normal_warnings << warning

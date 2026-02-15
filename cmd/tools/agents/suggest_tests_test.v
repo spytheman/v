@@ -85,6 +85,16 @@ fn test_sh_output_mode() {
 	assert result.output.trim_space() == golden.trim_space()
 }
 
+fn test_default_budget_warning_is_suppressed_without_verbose() {
+	result := run_cmd('./cmd/tools/agents/suggest_tests.vsh README.md') or { panic(err) }
+	assert !result.output.contains('applied default budget')
+}
+
+fn test_verbose_mode_shows_default_budget_warning() {
+	result := run_cmd('./cmd/tools/agents/suggest_tests.vsh --verbose README.md') or { panic(err) }
+	assert result.output.contains('applied default budget')
+}
+
 fn test_max_paths_warning() {
 	result := run_cmd('./cmd/tools/agents/suggest_tests.vsh --max-paths-warn 1 README.md TESTS.md') or {
 		panic(err)
@@ -143,7 +153,7 @@ fn test_impact_mode_basic_adds_related_area() {
 	result := run_cmd('./cmd/tools/agents/suggest_tests.vsh --tier targeted vlib/v/parser/parser.v') or {
 		panic(err)
 	}
-	assert result.output.contains('impact map:')
+	assert result.output.contains('impact map (derived):')
 	assert result.output.contains('owner=checker')
 	assert result.output.contains('./vnew -silent vlib/v/compiler_errors_test.v')
 }
@@ -157,8 +167,24 @@ fn test_impact_mode_semantic_uses_imports() {
 	result := run_cmd('./cmd/tools/agents/suggest_tests.vsh --impact-mode semantic ${os.quoted_path(tmp)}') or {
 		panic(err)
 	}
-	assert result.output.contains('semantic impact:')
+	assert result.output.contains('semantic impact (derived):')
 	assert result.output.contains('owner=checker')
+}
+
+fn test_human_output_hides_derived_paths_by_default() {
+	result := run_cmd('./cmd/tools/agents/suggest_tests.vsh --tier targeted vlib/v/parser/parser.v') or {
+		panic(err)
+	}
+	assert result.output.contains('derived paths hidden:')
+	assert !result.output.contains('Derived paths:')
+}
+
+fn test_show_derived_paths_flag_includes_derived_section() {
+	result := run_cmd('./cmd/tools/agents/suggest_tests.vsh --show-derived-paths --tier targeted vlib/v/parser/parser.v') or {
+		panic(err)
+	}
+	assert result.output.contains('Derived paths:')
+	assert result.output.contains('[derived]')
 }
 
 fn test_changed_from_and_explicit_paths_conflict() {

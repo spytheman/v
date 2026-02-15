@@ -8,6 +8,7 @@ required_files:
   - cmd/tools/agents/agent_policy_min.yaml
   - cmd/tools/agents/agent_test_matrix.yaml
   - cmd/tools/agents/suggest_tests.vsh
+  - cmd/tools/agents/agent_next.vsh
   - cmd/tools/agents/bootstrap_check.vsh
   - cmd/tools/agents/validate_agent_contract.vsh
   - cmd/tools/agents/sync_agent_docs.vsh
@@ -32,5 +33,6 @@ commands:
 
 next_commands:
   - ./cmd/tools/agents/suggest_tests.vsh
+  - ./cmd/tools/agents/agent_next.vsh
   - ./cmd/tools/agents/sync_agent_docs.vsh --check
   - make agent-check VEXE=./vnew local=1

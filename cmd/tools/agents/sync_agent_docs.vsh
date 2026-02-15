@@ -203,11 +203,18 @@ fn append_slice(mut out []string, title string, description string, section_name
 			out << ''
 			continue
 		}
-		summary := section_summary_text(sections[name])
-		prefix := '- `${name}`: '
+		summary := section_summary_text(sections[name], name)
+		prefix := '- `${name}` summary: '
 		wrapped := wrap_text_with_prefix(prefix, summary, 100)
 		for line in wrapped {
 			out << line
+		}
+		for action in section_action_lines(sections[name], 2) {
+			action_prefix := '- `${name}` action: '
+			action_wrapped := wrap_text_with_prefix(action_prefix, action, 100)
+			for line in action_wrapped {
+				out << line
+			}
 		}
 	}
 	out << ''
@@ -237,7 +244,11 @@ fn extract_h2_sections(content string) map[string]string {
 	return sections
 }
 
-fn section_summary_text(section string) string {
+fn section_summary_text(section string, name string) string {
+	fallback := section_summary_by_name(name)
+	if fallback != '' {
+		return fallback
+	}
 	lines := section.split_into_lines()
 	mut i := 0
 	for i < lines.len {
@@ -284,6 +295,105 @@ fn section_summary_text(section string) string {
 		return normalize_spaces(parts.join(' '))
 	}
 	return '_No summary line found in AGENTS.md._'
+}
+
+fn section_summary_by_name(name string) string {
+	return match name {
+		'Top Rules' { 'Use `./v` only to build `./vnew`; use `./vnew` for all other tasks.' }
+		'Common Workflow' { 'Use this order: verify state, edit, rebuild if needed, format, then run targeted tests.' }
+		'Build & Rebuild' { 'Rebuild `./vnew` after compiler/core changes with `./v -g -keepc -o ./vnew cmd/v`.' }
+		'Testing' { 'Start from the smallest relevant tests and escalate when change scope or triggers require it.' }
+		'Debug' { 'Use compiler debug flags (`-keepc`, `-cg`, trace flags) to localize parser/checker/cgen issues.' }
+		'Reporting' { 'Final summaries must include behavior change, tests run, and touched files.' }
+		'When to Escalate to Broad' { 'Escalate for multi-owner high-risk changes, diagnostics changes, REPL changes, or fallback matches.' }
+		'Compiler Architecture' { 'Compiler pipeline: scanner -> parser -> checker -> transformer -> markused -> gen.c.' }
+		'Error Reporting (checker/parser)' { 'Use checker diagnostics helpers (`c.error`, `c.warn`, `c.note`) with source positions.' }
+		'Agent Rules' { 'Keep scope tight; ask before wide refactors or major behavior changes.' }
+		'Code Style' { 'Use minimal comments, keep markdown <=100 chars, and add V doc comments for public APIs.' }
+		'Tools' { 'Use `agent-context`, `fmt`, and `check-md` on touched files before final reporting.' }
+		else { '' }
+	}
+}
+
+fn section_action_lines(section string, max_items int) []string {
+	if max_items <= 0 {
+		return []string{}
+	}
+	lines := section.split_into_lines()
+	mut actions := []string{}
+	mut seen := map[string]bool{}
+	mut i := 0
+	for i < lines.len {
+		raw := lines[i]
+		trimmed := raw.trim_space()
+		if trimmed == '' || trimmed.starts_with('#') || is_table_line(trimmed) {
+			i++
+			continue
+		}
+		mut parts := []string{}
+		if is_list_item_line(trimmed) {
+			parts << list_item_text(trimmed)
+			i++
+			for i < lines.len {
+				next_raw := lines[i]
+				next := next_raw.trim_space()
+				if next == '' || next.starts_with('#') || is_table_line(next)
+					|| is_list_item_line(next) {
+					break
+				}
+				if next_raw.starts_with(' ') || next_raw.starts_with('\t') {
+					parts << next
+					i++
+					continue
+				}
+				break
+			}
+		} else {
+			parts << trimmed
+			i++
+		}
+		text := normalize_spaces(parts.join(' '))
+		if text == '' {
+			if i == 0 {
+				i++
+			}
+			continue
+		}
+		if !looks_actionable_text(text) {
+			if i == 0 {
+				i++
+			}
+			continue
+		}
+		if text in seen {
+			continue
+		}
+		seen[text] = true
+		actions << text
+		if actions.len >= max_items {
+			break
+		}
+	}
+	return actions
+}
+
+fn looks_actionable_text(text string) bool {
+	action_tokens := [
+		'./vnew',
+		'./v ',
+		'./cmd/tools/agents/',
+		'make ',
+		'check-md',
+		'fmt -w',
+		'test ',
+		'compiler_errors_test.v',
+	]
+	for token in action_tokens {
+		if text.contains(token) {
+			return true
+		}
+	}
+	return false
 }
 
 fn is_table_line(line string) bool {
