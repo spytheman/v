@@ -92,6 +92,8 @@ mut:
 	budget_explicit       bool
 	impact_mode           string = 'semantic'
 	fail_below_confidence f64
+	small_change_lane     bool
+	allow_broad           bool
 }
 
 struct SuggestResult {
@@ -217,11 +219,21 @@ fn main() {
 			high_risk_rules++
 		}
 	}
-	mut effective_tier := options.tier
-	if options.tier != 'broad' && high_risk_rules >= 2 {
-		effective_tier = 'broad'
-		escalation_reason = 'auto-promoted to broad due to ${high_risk_rules} high-risk areas'
-		warnings << 'auto-promoted tier to broad due to ${high_risk_rules} high-risk areas'
+	mut requested_tier := options.tier
+	if options.small_change_lane && !options.allow_broad && options.tier == 'broad' {
+		requested_tier = 'targeted'
+		warnings << 'small-change lane capped requested tier `broad` to `targeted` (use --allow-broad to opt in)'
+	}
+	mut effective_tier := requested_tier
+	if requested_tier != 'broad' && high_risk_rules >= 2 {
+		if options.small_change_lane && !options.allow_broad {
+			escalation_reason = 'broad recommended due to ${high_risk_rules} high-risk areas; capped to targeted by small-change lane'
+			warnings << 'small-change lane kept tier targeted despite ${high_risk_rules} high-risk areas (use --allow-broad to opt in)'
+		} else {
+			effective_tier = 'broad'
+			escalation_reason = 'auto-promoted to broad due to ${high_risk_rules} high-risk areas'
+			warnings << 'auto-promoted tier to broad due to ${high_risk_rules} high-risk areas'
+		}
 	}
 	for index in selected_rule_indexes {
 		rule := rules[index]
@@ -450,6 +462,16 @@ fn parse_options(args []string) !SuggestOptions {
 			i++
 			continue
 		}
+		if arg == '--small-change-lane' {
+			options.small_change_lane = true
+			i++
+			continue
+		}
+		if arg == '--allow-broad' {
+			options.allow_broad = true
+			i++
+			continue
+		}
 		if arg == '--explain-match' {
 			options.explain_match = true
 			i++
@@ -570,6 +592,8 @@ fn print_help() {
 	println('  --impact-mode <mode>    impact expansion mode: off|basic|semantic (default: semantic)')
 	println('  --strict-unmatched      exit non-zero when unmatched paths are present')
 	println('  --require-non-fallback  exit non-zero when fallback rule is selected')
+	println('  --small-change-lane     cap to targeted tier unless --allow-broad is provided')
+	println('  --allow-broad           allow broad tier when using --small-change-lane')
 	println('  --explain-match         show matching owner/pattern per changed path')
 	println('')
 	println('Without paths, changed files are read from:')

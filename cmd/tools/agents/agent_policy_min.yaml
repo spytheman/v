@@ -1,0 +1,35 @@
+version: 1
+
+required_files:
+  - v.mod
+  - AGENTS.md
+  - LLMS.md
+  - cmd/tools/agents/agent_policy_min.yaml
+  - cmd/tools/agents/agent_test_matrix.yaml
+  - cmd/tools/agents/suggest_tests.vsh
+  - cmd/tools/agents/bootstrap_check.vsh
+  - cmd/tools/agents/validate_agent_contract.vsh
+  - cmd/tools/agents/sync_agent_docs.vsh
+
+required_tools:
+  - git
+  - make
+  - cc
+
+rebuild_triggers:
+  - vlib/v/**
+  - cmd/v/**
+  - vlib/builtin/**
+  - vlib/strings/**
+  - vlib/os/**
+  - vlib/strconv/**
+  - vlib/time/**
+
+commands:
+  build_vnew: ./v -g -keepc -o ./vnew cmd/v
+  check_vnew: ./vnew version
+
+next_commands:
+  - ./cmd/tools/agents/suggest_tests.vsh
+  - ./cmd/tools/agents/sync_agent_docs.vsh --check
+  - make agent-check VEXE=./vnew local=1

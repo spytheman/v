@@ -32,6 +32,12 @@ Build a compact execution context from changed files:
 make agent-context local=1 FILES='path/to/changed_file.v'
 ```
 
+Quick bugfix loop (disable semantic import expansion noise):
+
+```bash
+./cmd/tools/agents/agent_context.vsh --no-semantic-impact path/to/changed_file.v
+```
+
 This wraps `suggest_tests` and prints owner/risk hints, rebuild requirements,
 minimal validation commands, and warnings in one short block.
 
@@ -95,6 +101,9 @@ Use the matrix-driven suggester:
   `./cmd/tools/agents/suggest_tests.vsh --impact-mode semantic --tier targeted`
 - Time-budgeted command selection:
   `./cmd/tools/agents/suggest_tests.vsh --budget-seconds 600 --tier targeted`
+- Small-change lane (prevents broad escalation unless explicitly allowed):
+  `./cmd/tools/agents/suggest_tests.vsh --small-change-lane --tier targeted`
+  Add `--allow-broad` when broad coverage is desired.
 
 Human and JSON outputs include timing telemetry for collection/matching/total durations.
 JSON output now also includes `effective_tier`, `risk`, runtime estimates,

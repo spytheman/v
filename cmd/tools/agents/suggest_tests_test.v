@@ -111,6 +111,24 @@ fn test_multiple_high_risk_rules_promote_to_broad() {
 	assert result.output.contains('./vnew -silent test vlib/v/')
 }
 
+fn test_small_change_lane_caps_auto_promotion_to_targeted() {
+	result := run_cmd('./cmd/tools/agents/suggest_tests.vsh --small-change-lane --tier targeted vlib/v/parser/parser.v vlib/v/checker/checker.v') or {
+		panic(err)
+	}
+	assert result.output.contains('Tier: targeted')
+	assert !result.output.contains('Effective tier: broad')
+	assert result.output.contains('small-change lane kept tier targeted')
+	assert !result.output.contains('./vnew -silent test vlib/v/')
+}
+
+fn test_small_change_lane_allow_broad_keeps_broad_behavior() {
+	result := run_cmd('./cmd/tools/agents/suggest_tests.vsh --small-change-lane --allow-broad --tier targeted vlib/v/parser/parser.v vlib/v/checker/checker.v') or {
+		panic(err)
+	}
+	assert result.output.contains('Effective tier: broad')
+	assert result.output.contains('./vnew -silent test vlib/v/')
+}
+
 fn test_impact_mode_basic_adds_related_area() {
 	result := run_cmd('./cmd/tools/agents/suggest_tests.vsh --tier targeted vlib/v/parser/parser.v') or {
 		panic(err)

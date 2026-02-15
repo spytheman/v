@@ -13,6 +13,7 @@ on:
       - "doc/agent_bugfix_playbook.md"
       - "GNUmakefile"
       - "cmd/tools/agents/agent_test_matrix.yaml"
+      - "cmd/tools/agents/agent_policy_min.yaml"
       - "cmd/tools/agents/**"
   push:
     paths:
@@ -26,6 +27,7 @@ on:
       - "doc/agent_bugfix_playbook.md"
       - "GNUmakefile"
       - "cmd/tools/agents/agent_test_matrix.yaml"
+      - "cmd/tools/agents/agent_policy_min.yaml"
       - "cmd/tools/agents/**"
   workflow_dispatch:
 

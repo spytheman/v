@@ -35,6 +35,7 @@ fn main() {
 	}
 	mut errors := []string{}
 	validate_matrix(options.matrix_path, mut errors)
+	validate_agent_policy(mut errors)
 	if !options.matrix_only {
 		validate_docs(mut errors)
 		validate_no_runtime_artifacts(mut errors)
@@ -110,6 +111,25 @@ fn validate_matrix(path string, mut errors []string) {
 	check_rule_order(path, lines, mut errors)
 	validate_minimum_top_level_coverage(path, lines, mut errors)
 	validate_flaky_registry(mut errors)
+}
+
+fn validate_agent_policy(mut errors []string) {
+	path := 'cmd/tools/agents/agent_policy_min.yaml'
+	if !os.exists(path) {
+		errors << 'Missing ${path}'
+		return
+	}
+	lines := os.read_lines(path) or {
+		errors << 'Failed to read ${path}: ${err}'
+		return
+	}
+	content := lines.join('\n')
+	for required in ['version:', 'required_files:', 'required_tools:', 'rebuild_triggers:',
+		'commands:', 'build_vnew:', 'check_vnew:', 'next_commands:'] {
+		if !content.contains(required) {
+			errors << '${path}: missing `${required}`'
+		}
+	}
 }
 
 fn validate_default_budget_header(path string, lines []string, mut errors []string) {

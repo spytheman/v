@@ -1,6 +1,6 @@
 Agent context:
   tier=targeted effective_tier=targeted rebuild_vnew=n
-  changed_paths=1 owners=docs:low
+  changed_paths=1 derived=0 owners=docs:low
   runtime_estimate_sec total=5.0 selected=5.0
   escalation_reason=none
 

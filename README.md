@@ -30,6 +30,7 @@ If you are an AI coding agent working in this repo, start with:
 
 - `AGENTS.md` (canonical workflow and policy contract)
 - `LLMS.md` (compact startup index)
+- `cmd/tools/agents/agent_policy_min.yaml` (machine-readable minimal policy index)
 - `doc/agent_workflow.md` (operational flow and commands)
 - `doc/agent_bugfix_playbook.md` (subsystem bugfix quick paths)
 

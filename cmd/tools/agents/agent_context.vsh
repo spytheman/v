@@ -24,15 +24,52 @@ fn main() {
 }
 
 fn build_suggest_command(args []string) string {
+	parsed := parse_context_args(args)
 	mut escaped := []string{}
-	for arg in args {
+	for arg in parsed.forwarded_args {
 		escaped << os.quoted_path(arg)
 	}
-	mut cmd := './cmd/tools/agents/suggest_tests.vsh --json --explain-match --impact-mode semantic'
+	mut cmd := './cmd/tools/agents/suggest_tests.vsh --json --explain-match --impact-mode ${parsed.impact_mode}'
 	if escaped.len > 0 {
 		cmd += ' ' + escaped.join(' ')
 	}
 	return cmd
+}
+
+struct ParsedContextArgs {
+mut:
+	forwarded_args []string
+	impact_mode    string = 'semantic'
+}
+
+fn parse_context_args(args []string) ParsedContextArgs {
+	mut parsed := ParsedContextArgs{}
+	mut i := 0
+	for i < args.len {
+		arg := args[i]
+		if arg == '--no-semantic-impact' {
+			if parsed.impact_mode == 'semantic' {
+				parsed.impact_mode = 'basic'
+			}
+			i++
+			continue
+		}
+		if arg == '--impact-mode' {
+			if i + 1 < args.len {
+				parsed.impact_mode = args[i + 1]
+				parsed.forwarded_args << arg
+				parsed.forwarded_args << args[i + 1]
+				i += 2
+				continue
+			}
+		}
+		if arg.starts_with('--impact-mode=') {
+			parsed.impact_mode = arg.all_after('--impact-mode=')
+		}
+		parsed.forwarded_args << arg
+		i++
+	}
+	return parsed
 }
 
 fn print_context(payload string) ! {
@@ -46,10 +83,28 @@ fn print_context(payload string) ! {
 	escalation_reason := require_string(root, 'escalation_reason', 'context payload')!
 	runtime_total := require_number(root, 'runtime_total_sec', 'context payload')!
 	runtime_used := require_number(root, 'runtime_used_sec', 'context payload')!
-	changed_paths := require_string_array(root, 'changed_paths', 'context payload')!
+	changed_paths_raw := require_string_array(root, 'changed_paths', 'context payload')!
 	warnings := require_string_array(root, 'warnings', 'context payload')!
 	owners := extract_owner_risk_pairs(root, 'context payload')!
 	suggested := extract_suggested(root, 'context payload')!
+	mut changed_paths := []string{}
+	mut derived_paths := []string{}
+	for path in changed_paths_raw {
+		if is_derived_impact_path(path) {
+			derived_paths << path
+		} else {
+			changed_paths << path
+		}
+	}
+	mut derived_warnings := []string{}
+	mut normal_warnings := []string{}
+	for warning in warnings {
+		if warning.starts_with('impact map:') || warning.starts_with('semantic impact:') {
+			derived_warnings << warning
+		} else {
+			normal_warnings << warning
+		}
+	}
 
 	println('Agent context:')
 	println('  tier=${tier} effective_tier=${effective_tier} rebuild_vnew=${if rebuild {
@@ -60,15 +115,33 @@ fn print_context(payload string) ! {
 	if rebuild {
 		println('  rebuild_command=${rebuild_command}')
 	}
-	println('  changed_paths=${changed_paths.len} owners=' +
+	println('  changed_paths=${changed_paths.len} derived=${derived_paths.len} owners=' +
 		if owners.len == 0 { 'none' } else { owners.join(', ') })
 	println('  runtime_estimate_sec total=${runtime_total} selected=${runtime_used}')
 	println('  escalation_reason=${escalation_reason}')
 
 	println('')
 	println('Changed paths:')
-	for path in changed_paths {
-		println('  - ${path}')
+	if changed_paths.len == 0 {
+		println('  - none')
+	} else {
+		for path in changed_paths {
+			println('  - ${path}')
+		}
+	}
+	if derived_paths.len > 0 {
+		println('')
+		println('Derived impact paths:')
+		for path in derived_paths {
+			println('  - ${path}')
+		}
+	}
+	if derived_warnings.len > 0 {
+		println('')
+		println('Derived impact notes:')
+		for warning in derived_warnings {
+			println('  - ${warning}')
+		}
 	}
 
 	println('')
@@ -81,13 +154,17 @@ fn print_context(payload string) ! {
 		}
 	}
 
-	if warnings.len > 0 {
+	if normal_warnings.len > 0 {
 		println('')
 		println('Warnings:')
-		for warning in warnings {
+		for warning in normal_warnings {
 			println('  - ${warning}')
 		}
 	}
+}
+
+fn is_derived_impact_path(path string) bool {
+	return path.contains('/__impact__.')
 }
 
 fn extract_owner_risk_pairs(root map[string]json2.Any, path string) ![]string {
@@ -206,7 +283,9 @@ fn expect_object(value json2.Any, ctx string) !map[string]json2.Any {
 fn print_help() {
 	println('Usage:')
 	println('  ./cmd/tools/agents/agent_context.vsh [--tier ...] [--changed-from ...] [paths ...]')
+	println('  ./cmd/tools/agents/agent_context.vsh --no-semantic-impact [--tier ...] [paths ...]')
 	println('')
 	println('Builds a compact, execution-ready context summary by calling suggest_tests.')
 	println('Defaults to: --json --explain-match --impact-mode semantic')
+	println('--no-semantic-impact switches the default to --impact-mode basic for faster loops.')
 }

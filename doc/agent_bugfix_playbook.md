@@ -44,6 +44,8 @@ Use matrix-derived suggestions for current changes:
 
 Known flaky commands are tracked in `cmd/tools/agents/flaky_tests.yaml`.
 If a command is marked flaky, keep it in the run but call out flakiness in the summary.
+For quick subsystem orientation, check:
+`vlib/v/parser/AGENT_HINTS.md` and `vlib/v/checker/AGENT_HINTS.md`.
 
 ## Quick Mappings
 

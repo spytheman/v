@@ -2,6 +2,18 @@
 
 import os
 
+const agent_policy_path = 'cmd/tools/agents/agent_policy_min.yaml'
+
+struct AgentPolicy {
+mut:
+	required_files     []string
+	required_tools     []string
+	rebuild_triggers   []string
+	build_vnew_command string
+	check_vnew_command string
+	next_commands      []string
+}
+
 fn main() {
 	args := os.args[1..]
 	if '--help' in args || '-h' in args {
@@ -12,18 +24,20 @@ fn main() {
 	rebuild_stale := '--rebuild-stale' in args
 	mut failures := []string{}
 	mut warnings := []string{}
-	check_file('v.mod', mut failures)
-	check_file('AGENTS.md', mut failures)
-	check_file('LLMS.md', mut failures)
-	check_file('cmd/tools/agents/agent_test_matrix.yaml', mut failures)
-	check_file('cmd/tools/agents/suggest_tests.vsh', mut failures)
-	check_file('cmd/tools/agents/bootstrap_check.vsh', mut failures)
-	check_file('cmd/tools/agents/validate_agent_contract.vsh', mut failures)
-	check_file('cmd/tools/agents/sync_agent_docs.vsh', mut failures)
-	check_tool('git', mut failures)
-	check_tool('make', mut failures)
-	cc := os.getenv_opt('CC') or { 'cc' }
-	check_tool(cc.split(' ')[0], mut warnings)
+	policy := load_policy(agent_policy_path) or {
+		warnings << 'failed to parse ${agent_policy_path}: ${err}; using built-in defaults'
+		default_policy()
+	}
+	for path in policy.required_files {
+		check_file(path, mut failures)
+	}
+	for tool in policy.required_tools {
+		if tool == 'cc' {
+			check_tool(resolve_cc_tool(), mut warnings)
+			continue
+		}
+		check_tool(tool, mut failures)
+	}
 	if !os.exists('v') {
 		failures << './v is missing. Build it first with: make'
 	} else {
@@ -31,40 +45,40 @@ fn main() {
 	}
 	if !os.exists('vnew') {
 		if build_missing {
-			println('[run] ./v -g -keepc -o ./vnew cmd/v')
-			build_result := os.execute('./v -g -keepc -o ./vnew cmd/v')
+			println('[run] ${policy.build_vnew_command}')
+			build_result := os.execute(policy.build_vnew_command)
 			if build_result.exit_code != 0 {
 				failures << 'Failed to build ./vnew automatically.'
 			} else {
 				println('[ok] Built ./vnew')
 			}
 		} else {
-			failures << './vnew is missing. Build it with: ./v -g -keepc -o ./vnew cmd/v'
+			failures << './vnew is missing. Build it with: ${policy.build_vnew_command}'
 		}
 	} else {
 		println('[ok] Found ./vnew')
 	}
 	if os.exists('vnew') {
-		stale_info := check_vnew_freshness()
+		stale_info := check_vnew_freshness(policy)
 		if stale_info.stale {
 			if rebuild_stale {
 				println('[stale] ./vnew is stale: ${stale_info.reason}')
-				println('[run] ./v -g -keepc -o ./vnew cmd/v')
-				rebuild_result := os.execute('./v -g -keepc -o ./vnew cmd/v')
+				println('[run] ${policy.build_vnew_command}')
+				rebuild_result := os.execute(policy.build_vnew_command)
 				if rebuild_result.exit_code != 0 {
 					failures << 'Failed to rebuild stale ./vnew automatically.'
 				} else {
 					println('[ok] Rebuilt ./vnew (stale reason: ${stale_info.reason})')
 				}
 			} else {
-				failures << './vnew is stale: ${stale_info.reason}. Rebuild with: ./v -g -keepc -o ./vnew cmd/v'
+				failures << './vnew is stale: ${stale_info.reason}. Rebuild with: ${policy.build_vnew_command}'
 			}
 		} else {
 			println('[ok] ./vnew freshness: ${stale_info.reason}')
 		}
-		version_result := os.execute('./vnew version')
+		version_result := os.execute(policy.check_vnew_command)
 		if version_result.exit_code != 0 {
-			failures << './vnew exists but failed to run: ./vnew version'
+			failures << './vnew exists but failed to run: ${policy.check_vnew_command}'
 		} else {
 			println('[ok] ./vnew runs (${version_result.output.trim_space()})')
 		}
@@ -90,9 +104,9 @@ fn main() {
 		}
 	}
 	println('\nNext commands:')
-	println('  ./cmd/tools/agents/suggest_tests.vsh')
-	println('  ./cmd/tools/agents/sync_agent_docs.vsh --check')
-	println('  make agent-check VEXE=./vnew local=1')
+	for command in policy.next_commands {
+		println('  ${command}')
+	}
 }
 
 struct StaleInfo {
@@ -100,7 +114,7 @@ struct StaleInfo {
 	reason string
 }
 
-fn check_vnew_freshness() StaleInfo {
+fn check_vnew_freshness(policy AgentPolicy) StaleInfo {
 	if !os.exists('vnew') {
 		return StaleInfo{
 			stale:  false
@@ -122,7 +136,7 @@ fn check_vnew_freshness() StaleInfo {
 	}
 	mut trigger_paths := []string{}
 	for path in changed_paths {
-		if is_rebuild_trigger_path(path) && os.exists(path) {
+		if is_rebuild_trigger_path(path, policy) && is_v_source_path(path) && os.exists(path) {
 			trigger_paths << path
 		}
 	}
@@ -181,11 +195,17 @@ fn collect_changed_paths() ![]string {
 	return paths
 }
 
-fn is_rebuild_trigger_path(path string) bool {
-	return path.starts_with('vlib/v/') || path.starts_with('cmd/v/')
-		|| path.starts_with('vlib/builtin/') || path.starts_with('vlib/strings/')
-		|| path.starts_with('vlib/os/') || path.starts_with('vlib/strconv/')
-		|| path.starts_with('vlib/time/')
+fn is_rebuild_trigger_path(path string, policy AgentPolicy) bool {
+	for pattern in policy.rebuild_triggers {
+		if pattern_matches_path(pattern, path) {
+			return true
+		}
+	}
+	return false
+}
+
+fn is_v_source_path(path string) bool {
+	return path.ends_with('.v') || path.ends_with('.vsh') || path.ends_with('.vv')
 }
 
 fn normalize_path(path string) string {
@@ -214,6 +234,119 @@ fn check_tool(name string, mut issues []string) {
 		return
 	}
 	issues << 'Tool not found in PATH: ${name}'
+}
+
+fn pattern_matches_path(pattern string, path string) bool {
+	if pattern.ends_with('/**') {
+		prefix := pattern[..pattern.len - 3]
+		if path.starts_with(prefix) {
+			return true
+		}
+	}
+	if path.match_glob(pattern) {
+		return true
+	}
+	if !pattern.contains('/') {
+		return os.file_name(path).match_glob(pattern)
+	}
+	return false
+}
+
+fn resolve_cc_tool() string {
+	cc := os.getenv_opt('CC') or { 'cc' }
+	cc_token := cc.split_any(' \t').filter(it != '')
+	return if cc_token.len > 0 { cc_token[0] } else { 'cc' }
+}
+
+fn load_policy(path string) !AgentPolicy {
+	if !os.exists(path) {
+		return error('missing ${path}')
+	}
+	lines := os.read_lines(path)!
+	mut policy := AgentPolicy{}
+	mut section := ''
+	for raw in lines {
+		line := raw.trim_space()
+		if line == '' || line.starts_with('#') {
+			continue
+		}
+		if line == 'required_files:' || line == 'required_tools:' || line == 'rebuild_triggers:'
+			|| line == 'commands:' || line == 'next_commands:' {
+			section = line[..line.len - 1]
+			continue
+		}
+		if line.starts_with('- ') {
+			item := line.all_after('- ').trim_space()
+			if section == 'required_files' {
+				policy.required_files << item
+			} else if section == 'required_tools' {
+				policy.required_tools << item
+			} else if section == 'rebuild_triggers' {
+				policy.rebuild_triggers << item
+			} else if section == 'next_commands' {
+				policy.next_commands << item
+			}
+			continue
+		}
+		if line.contains(':') && section == 'commands' {
+			key := line.all_before(':').trim_space()
+			value := line.all_after(':').trim_space()
+			if key == 'build_vnew' {
+				policy.build_vnew_command = value
+			} else if key == 'check_vnew' {
+				policy.check_vnew_command = value
+			}
+		}
+	}
+	if policy.required_files.len == 0 {
+		return error('required_files is empty')
+	}
+	if policy.required_tools.len == 0 {
+		return error('required_tools is empty')
+	}
+	if policy.rebuild_triggers.len == 0 {
+		return error('rebuild_triggers is empty')
+	}
+	if policy.build_vnew_command == '' || policy.check_vnew_command == '' {
+		return error('commands section is incomplete')
+	}
+	if policy.next_commands.len == 0 {
+		return error('next_commands is empty')
+	}
+	return policy
+}
+
+fn default_policy() AgentPolicy {
+	return AgentPolicy{
+		required_files:     [
+			'v.mod',
+			'AGENTS.md',
+			'LLMS.md',
+			'cmd/tools/agents/agent_policy_min.yaml',
+			'cmd/tools/agents/agent_test_matrix.yaml',
+			'cmd/tools/agents/suggest_tests.vsh',
+			'cmd/tools/agents/bootstrap_check.vsh',
+			'cmd/tools/agents/validate_agent_contract.vsh',
+			'cmd/tools/agents/sync_agent_docs.vsh',
+		]
+		required_tools:     ['git', 'make', 'cc']
+		rebuild_triggers:   [
+			'vlib/v/**',
+			'cmd/v/**',
+			'vlib/builtin/**',
+			'vlib/strings/**',
+			'vlib/os/**',
+			'vlib/strconv/**',
+			'vlib/time/**',
+		]
+		build_vnew_command: './v -g -keepc -o ./vnew cmd/v'
+		check_vnew_command: './vnew version'
+		next_commands:      [
+			'./cmd/tools/agents/suggest_tests.vsh',
+			'./cmd/tools/agents/sync_agent_docs.vsh --check',
+			'make agent-check VEXE=./vnew local=1',
+		]
+	}
 }
 
 fn print_help() {
