@@ -27,6 +27,8 @@ const vexe = @VEXE
 struct CheckResult {
 pub mut:
 	files    int
+	lines    int
+	examples int
 	oks      int
 	warnings int
 	ferrors  int
@@ -36,6 +38,8 @@ pub mut:
 fn (v1 CheckResult) + (v2 CheckResult) CheckResult {
 	return CheckResult{
 		files:    v1.files + v2.files
+		lines:    v1.lines + v2.lines
+		examples: v1.examples + v2.examples
 		oks:      v1.oks + v2.oks
 		warnings: v1.warnings + v2.warnings
 		ferrors:  v1.ferrors + v2.ferrors
@@ -89,7 +93,7 @@ fn main() {
 	if res.errors == 0 && show_progress {
 		clear_previous_line()
 	}
-	println('Checked .md files: ${res.files} | OKs: ${res.oks} | Warnings: ${res.warnings} | Errors: ${res.errors} | Formatting errors: ${res.ferrors}')
+	println('Checked .md files: ${res.files} | Ex.: ${res.examples} | Lines: ${res.lines} | OKs: ${res.oks} | Warnings: ${res.warnings} | Errors: ${res.errors} | Formatting errors: ${res.ferrors}')
 	if res.ferrors > 0 && !should_autofix {
 		println('Note: you can use `VAUTOFIX=1 v check-md file.md`, or `v check-md -fix file.md`,')
 		println('      to fix the V formatting errors in the markdown code blocks, when possible.')
@@ -183,7 +187,7 @@ mut:
 fn (mut f MDFile) progress(message string) {
 	if show_progress {
 		clear_previous_line()
-		println('File: ${f.path}, ${message}')
+		println('${message} | File: ${f.path}')
 	}
 }
 
@@ -244,6 +248,8 @@ fn (mut f MDFile) check() CheckResult {
 	f.check_examples()
 	return CheckResult{
 		files:    1
+		lines:    f.lines.len
+		examples: f.examples.len
 		oks:      f.oks
 		warnings: f.warnings
 		errors:   f.errors
@@ -476,7 +482,7 @@ fn (mut f MDFile) check_examples() {
 		nofmt := 'nofmt' in acommands
 		for command in acommands {
 			f.progress('OK: ${f.oks:3}, W: ${f.warnings:2}, E: ${f.errors:2}, F: ${f.ferrors:2}, example ${
-				eidx + 1}/${f.examples.len}, from line ${e.sline} to line ${e.eline}, lines: ${f.lines.len:5}, command: ${command}')
+				eidx + 1:4}/${f.examples.len:4}, from line ${e.sline:5} to line ${e.eline:5}, lines: ${f.lines.len:5}, command: ${command:12s}')
 			fmt_res := if nofmt { 0 } else { get_fmt_exit_code(vfile, vexe) }
 			f.ferrors += fmt_res
 			match command {
