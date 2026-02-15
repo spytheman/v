@@ -1,6 +1,7 @@
 #!/usr/bin/env -S v run
 
 import os
+import cmn
 
 struct CheckResult {
 	name   string
@@ -23,7 +24,7 @@ fn main() {
 	checks << check_file('cmd/tools/agents/suggest_tests.vsh', 'Restore cmd/tools/agents/suggest_tests.vsh.')
 	checks << check_tool('git', 'Install git and ensure it is in PATH.')
 	checks << check_tool('make', 'Install make and ensure it is in PATH.')
-	checks << check_tool(resolve_cc_tool(), 'Install the C compiler in CC (or `cc`) and ensure it is in PATH.')
+	checks << check_tool(cmn.resolve_cc_tool(), 'Install the C compiler in CC (or `cc`) and ensure it is in PATH.')
 	checks << check_file('v', 'Build bootstrap compiler with: make')
 	checks << check_file('vnew', 'Build working compiler with: ./v -g -keepc -o ./vnew cmd/v')
 	checks << check_vnew_freshness()
@@ -88,7 +89,7 @@ fn check_vnew_freshness() CheckResult {
 			remedy: 'Rebuild ./vnew: ./v -g -keepc -o ./vnew cmd/v'
 		}
 	}
-	changed_paths := collect_changed_paths() or {
+	changed_paths := cmn.collect_changed_paths() or {
 		return CheckResult{
 			name:   'vnew freshness'
 			ok:     true
@@ -133,55 +134,11 @@ fn check_vnew_freshness() CheckResult {
 	}
 }
 
-fn collect_changed_paths() ![]string {
-	commands := [
-		'git diff --name-only',
-		'git diff --cached --name-only',
-		'git ls-files --others --exclude-standard',
-	]
-	mut paths := []string{}
-	mut seen := map[string]bool{}
-	mut command_ok := false
-	for command in commands {
-		result := os.execute(command)
-		if result.exit_code != 0 {
-			continue
-		}
-		command_ok = true
-		for line in result.output.split_into_lines() {
-			path := normalize_path(line)
-			if path == '' || path in seen {
-				continue
-			}
-			seen[path] = true
-			paths << path
-		}
-	}
-	if !command_ok {
-		return error('git commands failed')
-	}
-	return paths
-}
-
 fn is_rebuild_trigger_path(path string) bool {
 	return path.starts_with('vlib/v/') || path.starts_with('cmd/v/')
 		|| path.starts_with('vlib/builtin/') || path.starts_with('vlib/strings/')
 		|| path.starts_with('vlib/os/') || path.starts_with('vlib/strconv/')
 		|| path.starts_with('vlib/time/')
-}
-
-fn normalize_path(path string) string {
-	mut normalized := path.trim_space()
-	for normalized.starts_with('./') {
-		normalized = normalized[2..]
-	}
-	return normalized
-}
-
-fn resolve_cc_tool() string {
-	cc := os.getenv_opt('CC') or { 'cc' }
-	cc_token := cc.split_any(' \t').filter(it != '')
-	return if cc_token.len > 0 { cc_token[0] } else { 'cc' }
 }
 
 fn check_cmd(command string, remedy string) CheckResult {

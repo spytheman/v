@@ -2,6 +2,7 @@
 
 import os
 import time
+import cmn
 
 const valid_tiers = ['fast', 'targeted', 'broad']
 const valid_formats = ['human', 'json', 'sh', 'agent']
@@ -861,7 +862,7 @@ fn collect_changed_paths(options SuggestOptions) ![]string {
 	mut paths := []string{}
 	if options.paths.len > 0 {
 		for raw_path in options.paths {
-			path := normalize_path(raw_path)
+			path := cmn.normalize_path(raw_path)
 			if path != '' && path !in paths {
 				paths << path
 			}
@@ -881,7 +882,7 @@ fn collect_changed_paths(options SuggestOptions) ![]string {
 			continue
 		}
 		for line in result.output.split_into_lines() {
-			path := normalize_path(line)
+			path := cmn.normalize_path(line)
 			if path != '' && path !in paths {
 				paths << path
 			}
@@ -1190,7 +1191,7 @@ fn apply_impact_map(paths []string, limit int) ([]string, []string, int) {
 	mut added := 0
 	for path in paths {
 		for pattern, related_paths in impact_map {
-			if !pattern_matches_path(pattern, path) {
+			if !cmn.pattern_matches_path(pattern, path) {
 				continue
 			}
 			for related in related_paths {
@@ -1415,29 +1416,11 @@ fn rule_matches_path(rule Rule, path string) bool {
 
 fn first_matching_pattern(rule Rule, path string) string {
 	for pattern in rule.paths {
-		if pattern_matches_path(pattern, path) {
+		if cmn.pattern_matches_path(pattern, path) {
 			return pattern
 		}
 	}
 	return ''
-}
-
-fn pattern_matches_path(pattern string, path string) bool {
-	if path.match_glob(pattern) {
-		return true
-	}
-	if !pattern.contains('/') {
-		return os.file_name(path).match_glob(pattern)
-	}
-	return false
-}
-
-fn normalize_path(path string) string {
-	mut normalized := path.trim_space()
-	for normalized.starts_with('./') {
-		normalized = normalized[2..]
-	}
-	return normalized
 }
 
 fn is_derived_impact_path(path string) bool {

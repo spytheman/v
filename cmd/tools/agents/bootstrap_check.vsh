@@ -1,6 +1,7 @@
 #!/usr/bin/env -S v run
 
 import os
+import cmn
 
 const agent_policy_path = 'cmd/tools/agents/agent_policy_min.yaml'
 
@@ -33,7 +34,7 @@ fn main() {
 	}
 	for tool in policy.required_tools {
 		if tool == 'cc' {
-			check_tool(resolve_cc_tool(), mut warnings)
+			check_tool(cmn.resolve_cc_tool(), mut warnings)
 			continue
 		}
 		check_tool(tool, mut failures)
@@ -128,7 +129,7 @@ fn check_vnew_freshness(policy AgentPolicy) StaleInfo {
 			reason: './v is newer than ./vnew'
 		}
 	}
-	changed_paths := collect_changed_paths() or {
+	changed_paths := cmn.collect_changed_paths() or {
 		return StaleInfo{
 			stale:  false
 			reason: 'skipped (unable to read git changes)'
@@ -165,39 +166,9 @@ fn check_vnew_freshness(policy AgentPolicy) StaleInfo {
 	}
 }
 
-fn collect_changed_paths() ![]string {
-	commands := [
-		'git diff --name-only',
-		'git diff --cached --name-only',
-		'git ls-files --others --exclude-standard',
-	]
-	mut paths := []string{}
-	mut seen := map[string]bool{}
-	mut command_ok := false
-	for command in commands {
-		result := os.execute(command)
-		if result.exit_code != 0 {
-			continue
-		}
-		command_ok = true
-		for line in result.output.split_into_lines() {
-			path := normalize_path(line)
-			if path == '' || path in seen {
-				continue
-			}
-			seen[path] = true
-			paths << path
-		}
-	}
-	if !command_ok {
-		return error('git commands failed')
-	}
-	return paths
-}
-
 fn is_rebuild_trigger_path(path string, policy AgentPolicy) bool {
 	for pattern in policy.rebuild_triggers {
-		if pattern_matches_path(pattern, path) {
+		if cmn.pattern_matches_path(pattern, path) {
 			return true
 		}
 	}
@@ -206,14 +177,6 @@ fn is_rebuild_trigger_path(path string, policy AgentPolicy) bool {
 
 fn is_v_source_path(path string) bool {
 	return path.ends_with('.v') || path.ends_with('.vsh') || path.ends_with('.vv')
-}
-
-fn normalize_path(path string) string {
-	mut normalized := path.trim_space()
-	for normalized.starts_with('./') {
-		normalized = normalized[2..]
-	}
-	return normalized
 }
 
 fn check_file(path string, mut failures []string) {
@@ -234,28 +197,6 @@ fn check_tool(name string, mut issues []string) {
 		return
 	}
 	issues << 'Tool not found in PATH: ${name}'
-}
-
-fn pattern_matches_path(pattern string, path string) bool {
-	if pattern.ends_with('/**') {
-		prefix := pattern[..pattern.len - 3]
-		if path.starts_with(prefix) {
-			return true
-		}
-	}
-	if path.match_glob(pattern) {
-		return true
-	}
-	if !pattern.contains('/') {
-		return os.file_name(path).match_glob(pattern)
-	}
-	return false
-}
-
-fn resolve_cc_tool() string {
-	cc := os.getenv_opt('CC') or { 'cc' }
-	cc_token := cc.split_any(' \t').filter(it != '')
-	return if cc_token.len > 0 { cc_token[0] } else { 'cc' }
 }
 
 fn load_policy(path string) !AgentPolicy {
