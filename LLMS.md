@@ -69,10 +69,12 @@ If uncertain, ask instead of guessing.
 ## Minimal Execution Loop
 1. Confirm repo state with `git status`
 2. Make the smallest change set that solves the request
-3. Rebuild `./vnew` only if rebuild triggers apply
-4. Format touched files and run markdown checks for touched docs
-5. Run the smallest relevant tests for changed scope
-6. Report behavior change, tests run, and touched files
+3. Build a compact validation brief with
+`make agent-context local=1 FILES='path/to/changed_file.v'` when scope is unclear
+4. Rebuild `./vnew` only if rebuild triggers apply
+5. Format touched files and run markdown checks for touched docs
+6. Run the smallest relevant tests for changed scope
+7. Report behavior change, tests run, and touched files
 For edge cases, defer to `AGENTS.md` `Build & Rebuild`, `Testing`, and `Reporting`.
 
 ## Rebuild and Validation Contract

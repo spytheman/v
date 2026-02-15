@@ -5,7 +5,7 @@ import time
 
 const valid_tiers = ['fast', 'targeted', 'broad']
 const valid_formats = ['human', 'json', 'sh', 'agent']
-const valid_impact_modes = ['off', 'basic']
+const valid_impact_modes = ['off', 'basic', 'semantic']
 const default_max_paths_warn = 200
 const default_max_paths_limit = 4000
 const flaky_registry_path = 'cmd/tools/agents/flaky_tests.yaml'
@@ -90,7 +90,7 @@ mut:
 	max_paths_limit       int = default_max_paths_limit
 	budget_seconds        f64
 	budget_explicit       bool
-	impact_mode           string = 'basic'
+	impact_mode           string = 'semantic'
 	fail_below_confidence f64
 }
 
@@ -136,10 +136,15 @@ fn main() {
 	collect_ms := int(collect_sw.elapsed().milliseconds())
 	initial_paths, mut warnings := apply_path_guardrails(raw_paths, options)
 	mut changed_paths := initial_paths.clone()
-	if options.impact_mode == 'basic' {
+	if options.impact_mode in ['basic', 'semantic'] {
 		expanded_paths, impact_warnings := apply_impact_map(changed_paths)
 		changed_paths = expanded_paths.clone()
 		warnings << impact_warnings
+	}
+	if options.impact_mode == 'semantic' {
+		expanded_paths, semantic_warnings := apply_import_impact_map(changed_paths)
+		changed_paths = expanded_paths.clone()
+		warnings << semantic_warnings
 	}
 	if changed_paths.len == 0 {
 		empty := SuggestResult{
@@ -562,7 +567,7 @@ fn print_help() {
 	println('  --max-paths-limit <n>   truncate path set to n (default: ${default_max_paths_limit}, 0 disables)')
 	println('  --budget-seconds <n>    keep highest-value commands within runtime budget')
 	println('  --fail-below-confidence <n>  fail when selected command confidence is below n')
-	println('  --impact-mode <mode>    impact expansion mode: off|basic (default: basic)')
+	println('  --impact-mode <mode>    impact expansion mode: off|basic|semantic (default: semantic)')
 	println('  --strict-unmatched      exit non-zero when unmatched paths are present')
 	println('  --require-non-fallback  exit non-zero when fallback rule is selected')
 	println('  --explain-match         show matching owner/pattern per changed path')
@@ -1027,6 +1032,54 @@ fn apply_impact_map(paths []string) ([]string, []string) {
 				}
 				expanded << related
 				warnings << 'impact map: ${path} -> ${related}'
+			}
+		}
+	}
+	return expanded, warnings
+}
+
+fn apply_import_impact_map(paths []string) ([]string, []string) {
+	module_impacts := {
+		'v.parser':   'vlib/v/parser/__impact__.v'
+		'v.checker':  'vlib/v/checker/__impact__.v'
+		'v.gen.c':    'vlib/v/gen/c/__impact__.v'
+		'v.fmt':      'vlib/v/fmt/__impact__.v'
+		'v.comptime': 'vlib/v/comptime/__impact__.v'
+		'builtin':    'vlib/builtin/__impact__.v'
+		'strings':    'vlib/strings/__impact__.v'
+		'os':         'vlib/os/__impact__.v'
+		'strconv':    'vlib/strconv/__impact__.v'
+		'time':       'vlib/time/__impact__.v'
+	}
+	mut expanded := paths.clone()
+	mut warnings := []string{}
+	for path in paths {
+		if !(path.ends_with('.v') || path.ends_with('.vsh') || path.ends_with('.vv')) {
+			continue
+		}
+		if !os.exists(path) {
+			continue
+		}
+		lines := os.read_lines(path) or { continue }
+		for line in lines {
+			trimmed := line.trim_space()
+			if !trimmed.starts_with('import ') {
+				continue
+			}
+			imported_mod := trimmed.all_after('import ').all_before(' {').trim_space()
+			if imported_mod == '' {
+				continue
+			}
+			for prefix, hint_path in module_impacts {
+				if !(imported_mod == prefix || imported_mod.starts_with(prefix + '.')) {
+					continue
+				}
+				if hint_path in expanded {
+					break
+				}
+				expanded << hint_path
+				warnings << 'semantic impact: ${path} imports ${imported_mod} -> ${hint_path}'
+				break
 			}
 		}
 	}

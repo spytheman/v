@@ -9,6 +9,7 @@ Written for AI coding agents; useful for humans too.
 ```bash
 git status
 make agent-ready VEXE=./vnew local=1
+make agent-context local=1 FILES='path/to/changed_file.v'
 ```
 
 ## Contents
@@ -699,6 +700,9 @@ If you touch multiple high-risk areas, prefer `--tier broad` in
 
 ## Tools
 * Note: if a rule overlaps with Testing, follow Testing.
+* Agent execution context:
+  `make agent-context local=1 FILES='path/to/changed_file.v'`
+  (builds a compact summary with owner/risk, rebuild need, and minimal tests).
 * Format: `./vnew fmt -w <file>` for touched `.v` and `.vsh` files.
   Format only touched files unless explicitly asked to reformat broader
   scope.

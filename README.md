@@ -39,10 +39,20 @@ Canonical one-command startup:
 make agent-ready VEXE=./vnew local=1
 ```
 
+For contributor/agent tasks inside this repository, prefer the `AGENTS.md` workflow:
+build `./vnew` and run checks/tests with `./vnew`. Keep the generic `v ...` commands below
+for end-user installation usage, not for in-repo compiler development flow.
+
 Full agent preflight:
 
 ```bash
 make agent-preflight VEXE=./vnew local=1
+```
+
+Compact execution context from changed files:
+
+```bash
+make agent-context local=1 FILES='path/to/changed_file.v'
 ```
 
 Deterministic local/CI parity smoke:

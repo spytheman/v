@@ -1,8 +1,9 @@
 import os
 import rand
+import cmn
 
 fn run_cmd(cmd string) !os.Result {
-	result := os.execute(cmd)
+	result := cmn.run_in_repo(cmd)
 	if result.exit_code != 0 {
 		return error('command failed (${result.exit_code}): ${cmd}\n${result.output}')
 	}
@@ -25,7 +26,7 @@ fn test_parser_path_suggests_parser_tests() {
 }
 
 fn test_fast_tier_prefers_fast_commands() {
-	result := run_cmd('./cmd/tools/agents/suggest_tests.vsh --tier fast cmd/tools/vdoc/vdoc.v') or {
+	result := run_cmd('./cmd/tools/agents/suggest_tests.vsh --tier fast --impact-mode off cmd/tools/vdoc/vdoc.v') or {
 		panic(err)
 	}
 	assert result.output.contains('Tier: fast')
@@ -38,7 +39,7 @@ fn test_broad_tier_adds_broad_commands() {
 		panic(err)
 	}
 	assert result.output.contains('Tier: broad')
-	assert result.output.contains('./vnew -silent test vlib/v/checker/')
+	assert result.output.contains('./vnew -silent vlib/v/compiler_errors_test.v')
 	assert result.output.contains('./vnew -silent test vlib/v/')
 }
 
@@ -78,7 +79,9 @@ fn test_sh_output_mode() {
 	result := run_cmd('./cmd/tools/agents/suggest_tests.vsh --format sh README.md') or {
 		panic(err)
 	}
-	golden := os.read_file('cmd/tools/agents/testdata/suggest_sh_readme.golden') or { panic(err) }
+	golden := os.read_file(cmn.repo_path('cmd/tools/agents/testdata/suggest_sh_readme.golden')) or {
+		panic(err)
+	}
 	assert result.output.trim_space() == golden.trim_space()
 }
 
@@ -113,29 +116,43 @@ fn test_impact_mode_basic_adds_related_area() {
 		panic(err)
 	}
 	assert result.output.contains('impact map:')
-	assert result.output.contains('./vnew -silent test vlib/v/checker/')
+	assert result.output.contains('owner=checker')
+	assert result.output.contains('./vnew -silent vlib/v/compiler_errors_test.v')
+}
+
+fn test_impact_mode_semantic_uses_imports() {
+	tmp := cmn.repo_path(os.join_path('cmd/tools/agents/testdata', 'tmp_semantic_${rand.ulid()}.v'))
+	defer {
+		os.rm(tmp) or {}
+	}
+	os.write_file(tmp, 'module main\n\nimport v.checker\n') or { panic(err) }
+	result := run_cmd('./cmd/tools/agents/suggest_tests.vsh --impact-mode semantic ${os.quoted_path(tmp)}') or {
+		panic(err)
+	}
+	assert result.output.contains('semantic impact:')
+	assert result.output.contains('owner=checker')
 }
 
 fn test_changed_from_and_explicit_paths_conflict() {
-	result := os.execute('./cmd/tools/agents/suggest_tests.vsh --changed-from HEAD README.md')
+	result := cmn.run_in_repo('./cmd/tools/agents/suggest_tests.vsh --changed-from HEAD README.md')
 	assert result.exit_code != 0
 }
 
 fn test_strict_unmatched_succeeds_with_fallback_rule() {
-	result := os.execute('./cmd/tools/agents/suggest_tests.vsh --strict-unmatched unknown_path.xyz')
+	result := cmn.run_in_repo('./cmd/tools/agents/suggest_tests.vsh --strict-unmatched unknown_path.xyz')
 	assert result.exit_code == 0
 	assert result.output.contains('owner=fallback')
 	assert result.output.contains('./cmd/tools/agents/bootstrap_check.vsh')
 }
 
 fn test_require_non_fallback_fails_when_fallback_rule_selected() {
-	result := os.execute('./cmd/tools/agents/suggest_tests.vsh --require-non-fallback unknown_path.xyz')
+	result := cmn.run_in_repo('./cmd/tools/agents/suggest_tests.vsh --require-non-fallback unknown_path.xyz')
 	assert result.exit_code != 0
 	assert result.output.contains('owner=fallback')
 }
 
 fn test_fail_below_confidence_fails_for_low_confidence_commands() {
-	result := os.execute('./cmd/tools/agents/suggest_tests.vsh --fail-below-confidence 0.95 README.md')
+	result := cmn.run_in_repo('./cmd/tools/agents/suggest_tests.vsh --fail-below-confidence 0.95 README.md')
 	assert result.exit_code != 0
 	assert result.output.contains('./vnew check-md README.md')
 }
@@ -162,7 +179,7 @@ fn test_changed_from_uses_controlled_git_history() {
 	run_cmd_in(tmp, 'git add a.md && git commit -q -m "init"') or { panic(err) }
 	os.write_file(os.join_path(tmp, 'a.md'), '# a\nupdated\n') or { panic(err) }
 	run_cmd_in(tmp, 'git add a.md && git commit -q -m "update"') or { panic(err) }
-	script := os.real_path('cmd/tools/agents/suggest_tests.vsh')
+	script := cmn.repo_path('cmd/tools/agents/suggest_tests.vsh')
 	result := run_cmd('GIT_DIR=${os.quoted_path(os.join_path(tmp, '.git'))} GIT_WORK_TREE=${os.quoted_path(tmp)} ${os.quoted_path(script)} --changed-from HEAD~1 --json') or {
 		panic(err)
 	}

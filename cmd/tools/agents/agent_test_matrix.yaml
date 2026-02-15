@@ -28,11 +28,9 @@ rules:
     fast_tests:
       - { command: "./cmd/tools/agents/bootstrap_check.vsh", confidence: 0.90, runtime_sec: 1, runtime_band: tiny }
     targeted_tests:
-      - { command: "./cmd/tools/agents/bootstrap_check.vsh", confidence: 0.75, runtime_sec: 1, runtime_band: tiny }
-      - { command: "make -n agent-check VEXE=./vnew local=1", confidence: 0.75, runtime_sec: 1, runtime_band: tiny }
+        - { command: "make -n agent-check VEXE=./vnew local=1", confidence: 0.75, runtime_sec: 1, runtime_band: tiny }
     broad_tests:
-      - { command: "./cmd/tools/agents/bootstrap_check.vsh", confidence: 0.60, runtime_sec: 1, runtime_band: tiny }
-      - { command: "make -n agent-check VEXE=./vnew local=1", confidence: 0.60, runtime_sec: 1, runtime_band: tiny }
+        - { command: "make -n agent-check VEXE=./vnew local=1", confidence: 0.60, runtime_sec: 1, runtime_band: tiny }
   - paths:
       - "*.md"
     rebuild_vnew: false
@@ -83,7 +81,6 @@ rules:
     targeted_tests:
       - { command: "./cmd/tools/agents/validate_agent_contract.vsh", confidence: 0.75, runtime_sec: 1, runtime_band: tiny }
     broad_tests:
-      - { command: "./cmd/tools/agents/validate_agent_contract.vsh", confidence: 0.60, runtime_sec: 1, runtime_band: tiny }
       - { command: "./vnew cmd/tools/agents/validate_agent_contract_test.v", confidence: 0.60, runtime_sec: 2, runtime_band: tiny }
   - paths:
       - "ci/**"
@@ -95,7 +92,6 @@ rules:
     targeted_tests:
       - { command: "./vnew check-md ci/", confidence: 0.75, runtime_sec: 1, runtime_band: tiny }
     broad_tests:
-      - { command: "./vnew check-md ci/", confidence: 0.60, runtime_sec: 1, runtime_band: tiny }
       - { command: "./cmd/tools/agents/validate_agent_contract.vsh", confidence: 0.60, runtime_sec: 1, runtime_band: tiny }
   - paths:
       - "examples/**"
@@ -172,7 +168,6 @@ rules:
     fast_tests:
       - { command: "./vnew -silent test vlib/v/checker/", confidence: 0.90, runtime_sec: 2, runtime_band: tiny }
     targeted_tests:
-      - { command: "./vnew -silent test vlib/v/checker/", confidence: 0.75, runtime_sec: 2, runtime_band: tiny }
       - { command: "./vnew -silent vlib/v/compiler_errors_test.v", confidence: 0.75, runtime_sec: 160, runtime_band: long }
     broad_tests:
       - { command: "./vnew -silent test vlib/v/", confidence: 0.60, runtime_sec: 800, runtime_band: xlong }
@@ -300,11 +295,10 @@ rules:
     owner: vtimeout
     risk: medium
     fast_tests:
-      - { command: "./vnew -silent cmd/tools/vtimeout_test.v", confidence: 0.90, runtime_sec: 3, runtime_band: tiny }
+      - { command: "./vnew cmd/tools/vtimeout_test.v", confidence: 0.90, runtime_sec: 3, runtime_band: tiny }
     targeted_tests:
-      - { command: "./vnew -silent cmd/tools/vtimeout_test.v", confidence: 0.75, runtime_sec: 3, runtime_band: tiny }
+      - { command: "./vnew cmd/tools/vtimeout_test.v", confidence: 0.75, runtime_sec: 3, runtime_band: tiny }
     broad_tests:
-      - { command: "./vnew -silent cmd/tools/vtimeout_test.v", confidence: 0.60, runtime_sec: 3, runtime_band: tiny }
       - { command: "./vnew -silent test cmd/tools/", confidence: 0.60, runtime_sec: 25, runtime_band: short }
   - paths:
       - "cmd/tools/vcomplete*.v"
@@ -312,11 +306,10 @@ rules:
     owner: vcomplete
     risk: medium
     fast_tests:
-      - { command: "./vnew -silent cmd/tools/vcomplete_test.v", confidence: 0.90, runtime_sec: 2, runtime_band: tiny }
+      - { command: "./vnew cmd/tools/vcomplete_test.v", confidence: 0.90, runtime_sec: 2, runtime_band: tiny }
     targeted_tests:
-      - { command: "./vnew -silent cmd/tools/vcomplete_test.v", confidence: 0.75, runtime_sec: 2, runtime_band: tiny }
+      - { command: "./vnew cmd/tools/vcomplete_test.v", confidence: 0.75, runtime_sec: 2, runtime_band: tiny }
     broad_tests:
-      - { command: "./vnew -silent cmd/tools/vcomplete_test.v", confidence: 0.60, runtime_sec: 2, runtime_band: tiny }
       - { command: "./vnew -silent test cmd/tools/", confidence: 0.60, runtime_sec: 25, runtime_band: short }
   - paths:
       - "cmd/tools/vvet/**"
@@ -324,23 +317,22 @@ rules:
     owner: vvet
     risk: medium
     fast_tests:
-      - { command: "./vnew -silent cmd/tools/vvet/vet_test.v", confidence: 0.90, runtime_sec: 1, runtime_band: tiny }
+      - { command: "./vnew cmd/tools/vvet/vet_test.v", confidence: 0.90, runtime_sec: 1, runtime_band: tiny }
     targeted_tests:
-      - { command: "./vnew -silent cmd/tools/vvet/vet_test.v", confidence: 0.75, runtime_sec: 1, runtime_band: tiny }
+      - { command: "./vnew cmd/tools/vvet/vet_test.v", confidence: 0.75, runtime_sec: 1, runtime_band: tiny }
     broad_tests:
-      - { command: "./vnew -silent cmd/tools/vvet/vet_test.v", confidence: 0.60, runtime_sec: 1, runtime_band: tiny }
-      - { command: "./vnew -silent test cmd/tools/", confidence: 0.60, runtime_sec: 25, runtime_band: short }
+      - { command: "./vnew -silent test cmd/tools/vvet/", confidence: 0.75, runtime_sec: 1, runtime_band: tiny }
   - paths:
       - "cmd/tools/vcheck-md.v"
     rebuild_vnew: false
     owner: vcheck-md
     risk: medium
     fast_tests:
-      - { command: "./vnew check-md README.md", confidence: 0.90, runtime_sec: 1, runtime_band: tiny }
+      - { command: "./vnew -silent check-md README.md", confidence: 0.90, runtime_sec: 1, runtime_band: tiny }
     targeted_tests:
-      - { command: "./vnew check-md README.md", confidence: 0.75, runtime_sec: 1, runtime_band: tiny }
+      - { command: "./vnew -silent check-md README.md", confidence: 0.75, runtime_sec: 1, runtime_band: tiny }
     broad_tests:
-      - { command: "./vnew check-md README.md", confidence: 0.60, runtime_sec: 1, runtime_band: tiny }
+      - { command: "./vnew -silent check-md README.md", confidence: 0.60, runtime_sec: 1, runtime_band: tiny }
       - { command: "./vnew -silent test cmd/tools/", confidence: 0.60, runtime_sec: 25, runtime_band: short }
   - paths:
       - "cmd/tools/vpm/**"
@@ -348,24 +340,21 @@ rules:
     owner: vpm
     risk: medium
     fast_tests:
-      - { command: "./vnew -silent cmd/tools/vpm/vcs_test.v", confidence: 0.90, runtime_sec: 1, runtime_band: tiny }
+      - { command: "./vnew cmd/tools/vpm/vcs_test.v", confidence: 0.90, runtime_sec: 1, runtime_band: tiny }
     targeted_tests:
-      - { command: "./vnew -silent cmd/tools/vpm/vcs_test.v", confidence: 0.75, runtime_sec: 1, runtime_band: tiny }
       - { command: "./vnew -silent test cmd/tools/vpm/", confidence: 0.70, runtime_sec: 5, runtime_band: tiny }
     broad_tests:
-      - { command: "./vnew -silent test cmd/tools/vpm/", confidence: 0.60, runtime_sec: 5, runtime_band: tiny }
-      - { command: "./vnew -silent test cmd/tools/", confidence: 0.60, runtime_sec: 25, runtime_band: short }
+      - { command: "./vnew -d network -silent test cmd/tools/vpm/", confidence: 0.60, runtime_sec: 5, runtime_band: tiny }
   - paths:
       - "cmd/tools/vcreate/**"
     rebuild_vnew: false
     owner: vcreate
     risk: medium
     fast_tests:
-      - { command: "./vnew -silent cmd/tools/vcreate/vcreate_new_test.v", confidence: 0.90, runtime_sec: 1, runtime_band: tiny }
+      - { command: "./vnew cmd/tools/vcreate/vcreate_new_test.v", confidence: 0.90, runtime_sec: 1, runtime_band: tiny }
     targeted_tests:
-      - { command: "./vnew -silent cmd/tools/vcreate/vcreate_new_test.v", confidence: 0.75, runtime_sec: 1, runtime_band: tiny }
-    broad_tests:
       - { command: "./vnew -silent test cmd/tools/vcreate/", confidence: 0.60, runtime_sec: 3, runtime_band: tiny }
+    broad_tests:
       - { command: "./vnew -silent test cmd/tools/", confidence: 0.60, runtime_sec: 25, runtime_band: short }
   - paths:
       - "cmd/tools/vast/**"
@@ -373,13 +362,12 @@ rules:
     owner: vast
     risk: medium
     fast_tests:
-      - { command: "./vnew -silent cmd/tools/vast/vast.v", confidence: 0.90, runtime_sec: 20, runtime_band: short }
+      - { command: "./vnew -silent cmd/tools/vast", confidence: 0.90, runtime_sec: 20, runtime_band: short }
     targeted_tests:
-      - { command: "./vnew cmd/tools/vast/vast.v", confidence: 0.75, runtime_sec: 3, runtime_band: tiny }
+      - { command: "./vnew cmd/tools/vast", confidence: 0.75, runtime_sec: 3, runtime_band: tiny }
       - { command: "./vnew cmd/tools/vast/test/demo.v", confidence: 0.70, runtime_sec: 1, runtime_band: tiny }
     broad_tests:
-      - { command: "./vnew cmd/tools/vast/vast.v", confidence: 0.60, runtime_sec: 3, runtime_band: tiny }
-      - { command: "./vnew test cmd/tools/", confidence: 0.60, runtime_sec: 25, runtime_band: short }
+      - { command: "./vnew -silent test cmd/tools/", confidence: 0.60, runtime_sec: 25, runtime_band: short }
   - paths:
       - "cmd/tools/**"
     rebuild_vnew: false
@@ -391,7 +379,6 @@ rules:
       - { command: "make -n agent-check VEXE=./vnew local=1", confidence: 0.70, runtime_sec: 90, runtime_band: medium }
     broad_tests:
       - { command: "./vnew -silent test cmd/tools/", confidence: 0.60, runtime_sec: 25, runtime_band: short }
-      - { command: "make agent-check VEXE=./vnew local=1", confidence: 0.60, runtime_sec: 240, runtime_band: long }
   - paths:
       - "vlib/v/**"
       - "cmd/v/**"

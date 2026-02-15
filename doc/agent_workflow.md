@@ -24,6 +24,17 @@ commands. It also fails on fallback matches, validates the run-summary schema,
 and writes a JSON artifact to
 `/tmp/agent_run_summary.json` (override with `AGENT_ARTIFACT=...`).
 
+## Context Brief
+
+Build a compact execution context from changed files:
+
+```bash
+make agent-context local=1 FILES='path/to/changed_file.v'
+```
+
+This wraps `suggest_tests` and prints owner/risk hints, rebuild requirements,
+minimal validation commands, and warnings in one short block.
+
 ## Preflight
 
 Run fast bootstrap + contract + smoke checks:
@@ -80,8 +91,8 @@ Use the matrix-driven suggester:
   `./cmd/tools/agents/suggest_tests.vsh --require-non-fallback --changed-from origin/master`
 - Explain exactly which matrix rule pattern matched each changed path:
   `./cmd/tools/agents/suggest_tests.vsh --explain-match --tier targeted`
-- Impact-aware expansion (basic ownership map):
-  `./cmd/tools/agents/suggest_tests.vsh --impact-mode basic --tier targeted`
+- Impact-aware expansion:
+  `./cmd/tools/agents/suggest_tests.vsh --impact-mode semantic --tier targeted`
 - Time-budgeted command selection:
   `./cmd/tools/agents/suggest_tests.vsh --budget-seconds 600 --tier targeted`
 

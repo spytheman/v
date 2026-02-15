@@ -91,7 +91,7 @@ endif
 endif
 endif
 
-.PHONY: all clean rebuild check fresh_vc fresh_tcc fresh_legacy check_for_working_tcc etags ctags agent-check agent-suggest agent-bootstrap-check agent-contract-check agent-summary-schema-check agent-doctor agent-ready agent-preflight agent-smoke agent-run agent-bugfix-min agent-doc-sync-check agent-artifact-clean-check agent-clean-local
+.PHONY: all clean rebuild check fresh_vc fresh_tcc fresh_legacy check_for_working_tcc etags ctags agent-check agent-suggest agent-context agent-bootstrap-check agent-contract-check agent-summary-schema-check agent-doctor agent-ready agent-preflight agent-smoke agent-run agent-bugfix-min agent-doc-sync-check agent-artifact-clean-check agent-clean-local
 
 ifdef prod
 VFLAGS+=-prod
@@ -233,6 +233,9 @@ agent-check:
 agent-suggest:
 	./cmd/tools/agents/suggest_tests.vsh $(ARGS) $(FILES)
 
+agent-context:
+	./cmd/tools/agents/agent_context.vsh $(ARGS) $(FILES)
+
 agent-bootstrap-check:
 	./cmd/tools/agents/bootstrap_check.vsh
 
@@ -242,6 +245,7 @@ agent-contract-check:
 	$(VEXE)$(EXE_EXT) cmd/tools/agents/validate_agent_contract_test.v
 	$(VEXE)$(EXE_EXT) cmd/tools/agents/validate_agent_run_summary_test.v
 	$(VEXE)$(EXE_EXT) cmd/tools/agents/print_agent_run_summary_test.v
+	$(VEXE)$(EXE_EXT) cmd/tools/agents/agent_context_test.v
 	$(VEXE)$(EXE_EXT) cmd/tools/agents/doctor_test.v
 	$(VEXE)$(EXE_EXT) -nocache cmd/tools/agents/sync_agent_docs_test.v
 	./cmd/tools/agents/sync_agent_docs.vsh --check
