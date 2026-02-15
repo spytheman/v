@@ -183,7 +183,7 @@ Use broad validation when one or more of the following is true:
 
 | Trigger | Escalate? | Minimum action |
 | --- | --- | --- |
-| two or more high-risk owners matched by `suggest_tests` | Yes | Use `--tier broad` or accept auto-promotion |
+| two or more direct high-risk owners matched by `suggest_tests` | Yes | Use `--tier broad` or accept auto-promotion |
 | diagnostics/output text changes | Yes | Run `./vnew -silent vlib/v/slow_tests/inout/compiler_test.v` |
 | repl behavior changes | Yes | Run `./vnew -silent vlib/v/slow_tests/repl/repl_test.v` |
 | fallback rule matched for any changed path | Yes | Fix coverage in `cmd/tools/agents/agent_test_matrix.yaml` before final run |

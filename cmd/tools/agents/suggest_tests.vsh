@@ -189,12 +189,29 @@ fn main() {
 	}
 	mut selected_rule_indexes := []int{}
 	mut selected_rule_seen := map[string]bool{}
+	mut direct_rule_indexes := []int{}
+	mut direct_rule_seen := map[string]bool{}
 	mut rule_matched_paths := map[string][]string{}
 	mut matched_path_seen := map[string]bool{}
 	mut matched_rule_by_path := map[string]int{}
 	mut matched_pattern_by_path := map[string]string{}
 	mut unmatched_paths := []string{}
 	match_sw := time.new_stopwatch()
+	for path in initial_paths {
+		for i, rule in rules {
+			if !owner_allowed(rule.owner, options.focus_owners, options.exclude_owners) {
+				continue
+			}
+			if first_matching_pattern(rule, path) != '' {
+				key := i.str()
+				if key !in direct_rule_seen {
+					direct_rule_seen[key] = true
+					direct_rule_indexes << i
+				}
+				break
+			}
+		}
+	}
 	for path in changed_paths {
 		mut matched := false
 		for i, rule in rules {
@@ -231,6 +248,7 @@ fn main() {
 	mut needs_rebuild := false
 	mut matched_rules := []RuleMatchSummary{}
 	mut high_risk_rules := 0
+	mut high_risk_direct_rules := 0
 	mut fallback_paths := []string{}
 	mut fallback_seen := map[string]bool{}
 	mut escalation_reason := 'none'
@@ -239,21 +257,29 @@ fn main() {
 			high_risk_rules++
 		}
 	}
+	for index in direct_rule_indexes {
+		if rules[index].risk == 'high' {
+			high_risk_direct_rules++
+		}
+	}
 	mut requested_tier := options.tier
 	if options.small_change_lane && !options.allow_broad && options.tier == 'broad' {
 		requested_tier = 'targeted'
 		warnings << 'small-change lane capped requested tier `broad` to `targeted` (use --allow-broad to opt in)'
 	}
 	mut effective_tier := requested_tier
-	if requested_tier != 'broad' && high_risk_rules >= 2 {
+	if requested_tier != 'broad' && high_risk_direct_rules >= 2 {
 		if options.small_change_lane && !options.allow_broad {
-			escalation_reason = 'broad recommended due to ${high_risk_rules} high-risk areas; capped to targeted by small-change lane'
-			warnings << 'small-change lane kept tier targeted despite ${high_risk_rules} high-risk areas (use --allow-broad to opt in)'
+			escalation_reason = 'broad recommended due to ${high_risk_direct_rules} direct high-risk areas; capped to targeted by small-change lane'
+			warnings << 'small-change lane kept tier targeted despite ${high_risk_direct_rules} direct high-risk areas (use --allow-broad to opt in)'
 		} else {
 			effective_tier = 'broad'
-			escalation_reason = 'auto-promoted to broad due to ${high_risk_rules} high-risk areas'
-			warnings << 'auto-promoted tier to broad due to ${high_risk_rules} high-risk areas'
+			escalation_reason = 'auto-promoted to broad due to ${high_risk_direct_rules} direct high-risk areas'
+			warnings << 'auto-promoted tier to broad due to ${high_risk_direct_rules} direct high-risk areas'
 		}
+	}
+	if requested_tier != 'broad' && high_risk_direct_rules < 2 && high_risk_rules >= 2 {
+		warnings << 'broad escalation not auto-applied: ${high_risk_direct_rules} direct high-risk area(s); additional high-risk matches are derived impact paths'
 	}
 	for index in selected_rule_indexes {
 		rule := rules[index]

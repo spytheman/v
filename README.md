@@ -24,62 +24,6 @@
 
 </div>
 
-## AI Agent Entrypoint
-
-If you are an AI coding agent working in this repo, start with:
-
-- `AGENTS.md` (canonical workflow and policy contract)
-- `LLMS.md` (compact startup index)
-- `cmd/tools/agents/agent_policy_min.yaml` (machine-readable minimal policy index)
-- `doc/agent_workflow.md` (operational flow and commands)
-- `doc/agent_bugfix_playbook.md` (subsystem bugfix quick paths)
-
-Canonical one-command startup:
-
-```bash
-make agent-ready VEXE=./vnew local=1
-```
-
-For contributor/agent tasks inside this repository, prefer the `AGENTS.md` workflow:
-build `./vnew` and run checks/tests with `./vnew`. Keep the generic `v ...` commands below
-for end-user installation usage, not for in-repo compiler development flow.
-
-Full agent preflight:
-
-```bash
-make agent-preflight VEXE=./vnew local=1
-```
-
-Compact execution context from changed files:
-
-```bash
-make agent-context local=1 FILES='path/to/changed_file.v'
-```
-
-Deterministic local/CI parity smoke:
-
-```bash
-make agent-smoke VEXE=./vnew local=1
-```
-
-One-command minimum bugfix recipe:
-
-```bash
-make agent-bugfix-min VEXE=./vnew local=1 FILES='path/to/changed_file.v'
-```
-
-Dry run (plan only, no execution):
-
-```bash
-make agent-bugfix-min VEXE=./vnew local=1 AGENT_DRY_RUN=1 FILES='path/to/changed_file.v'
-```
-
-Clean local agent artifacts:
-
-```bash
-make agent-clean-local
-```
-
 ## Key Features of V
 
 - Simplicity: the language can be learned over the course of a weekend
@@ -318,47 +262,6 @@ To bring IDE functions for the V programming languages to your editor, check out
 
 ## Testing and running the examples
 
-For AI agent workflows in this repository, read `AGENTS.md` and `LLMS.md`
-first, then use the `./vnew` bootstrap flow from those files.
-
-### Agent runbook
-
-Quick preflight (bootstrap + contract + smoke):
-
-```bash
-make agent-ready VEXE=./vnew local=1
-```
-
-Default end-to-end command:
-
-```bash
-make agent-run ARGS='--tier targeted'
-```
-
-`agent-run` writes a machine-readable summary artifact to:
-`/tmp/agent_run_summary.<pid>.json` (override with `AGENT_ARTIFACT=...`).
-
-Optional confidence gate (fail fast on low-confidence suggestions):
-
-```bash
-make agent-run ARGS='--tier targeted' AGENT_MIN_CONFIDENCE=0.7
-```
-
-Equivalent explicit commands:
-
-```bash
-git status
-./cmd/tools/agents/bootstrap_check.vsh
-./cmd/tools/agents/suggest_tests.vsh --strict-unmatched --tier targeted
-make agent-contract-check VEXE=./vnew
-make agent-check VEXE=./vnew local=1
-```
-
-Detailed agent workflow reference:
-`doc/agent_workflow.md`.
-Common compiler bugfix playbook:
-`doc/agent_bugfix_playbook.md`.
-
 Make sure V can compile itself:
 
 ```bash
@@ -384,7 +287,6 @@ v run word_counter/word_counter.v word_counter/cinderella.txt
 v run news_fetcher.v
 v run tetris/tetris.v
 ```
-
 
 <img src='https://raw.githubusercontent.com/vlang/v/master/examples/tetris/screenshot.png' width=300 alt='tetris screenshot'>
 
@@ -534,3 +436,97 @@ section on our
 [SponsorUrl]: https://github.com/sponsors/medvednikov
 [XUrl]: https://x.com/v_language
 [ModulesUrl]: https://modules.vlang.io
+
+## Agent runbook
+For AI agent workflows in this repository, read `AGENTS.md` and `LLMS.md`
+first, then use the `./vnew` bootstrap flow from those files.
+
+Quick preflight (bootstrap + contract + smoke):
+
+```bash
+make agent-ready VEXE=./vnew local=1
+```
+
+Default end-to-end command:
+
+```bash
+make agent-run ARGS='--tier targeted'
+```
+
+`agent-run` writes a machine-readable summary artifact to:
+`/tmp/agent_run_summary.<pid>.json` (override with `AGENT_ARTIFACT=...`).
+
+Optional confidence gate (fail fast on low-confidence suggestions):
+
+```bash
+make agent-run ARGS='--tier targeted' AGENT_MIN_CONFIDENCE=0.7
+```
+
+Equivalent explicit commands:
+
+```bash
+git status
+./cmd/tools/agents/bootstrap_check.vsh
+./cmd/tools/agents/suggest_tests.vsh --strict-unmatched --tier targeted
+make agent-contract-check VEXE=./vnew
+make agent-check VEXE=./vnew local=1
+```
+
+Detailed agent workflow reference: `doc/agent_workflow.md`.
+Common compiler bugfix playbook: `doc/agent_bugfix_playbook.md`.
+
+## AI Agent Entrypoint
+
+If you are an AI coding agent working in this repo, start with:
+
+- `AGENTS.md` (canonical workflow and policy contract)
+- `LLMS.md` (compact startup index)
+- `cmd/tools/agents/agent_policy_min.yaml` (machine-readable minimal policy index)
+- `doc/agent_workflow.md` (operational flow and commands)
+- `doc/agent_bugfix_playbook.md` (subsystem bugfix quick paths)
+
+Canonical one-command startup:
+
+```bash
+make agent-ready VEXE=./vnew local=1
+```
+
+For contributor/agent tasks inside this repository, prefer the `AGENTS.md` workflow:
+build `./vnew` and run checks/tests with `./vnew`. Keep the generic `v ...` commands below
+for end-user installation usage, not for in-repo compiler development flow.
+
+Full agent preflight:
+
+```bash
+make agent-preflight VEXE=./vnew local=1
+```
+
+Compact execution context from changed files:
+
+```bash
+make agent-context local=1 FILES='path/to/changed_file.v'
+```
+
+Deterministic local/CI parity smoke:
+
+```bash
+make agent-smoke VEXE=./vnew local=1
+```
+
+One-command minimum bugfix recipe:
+
+```bash
+make agent-bugfix-min VEXE=./vnew local=1 FILES='path/to/changed_file.v'
+```
+
+Dry run (plan only, no execution):
+
+```bash
+make agent-bugfix-min VEXE=./vnew local=1 AGENT_DRY_RUN=1 FILES='path/to/changed_file.v'
+```
+
+Clean local agent artifacts:
+
+```bash
+make agent-clean-local
+```

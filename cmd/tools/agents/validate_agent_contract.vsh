@@ -499,7 +499,7 @@ fn validate_docs(mut errors []string) {
 	check_doc('TESTS.md', ['make agent-check VEXE=./vnew'], mut errors)
 	check_doc('doc/agent_workflow.md', ['--changed-from', '--json', '--format',
 		'cmd/tools/agents/agent_test_matrix.yaml'], mut errors)
-	check_doc('AGENTS.md', ['## When to Escalate to Broad', 'two or more high-risk owners',
+	check_doc('AGENTS.md', ['## When to Escalate to Broad', 'two or more direct high-risk owners',
 		'diagnostics/output text changes', 'repl behavior changes', 'fallback rule matched'], mut
 		errors)
 	check_not_contains('README.md', ['\n$ v self\n'], mut errors)

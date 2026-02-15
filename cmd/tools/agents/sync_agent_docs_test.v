@@ -12,6 +12,7 @@ fn test_sync_agent_docs_check_fails_before_sync() {
 	assert result.exit_code != 0
 	assert result.output.contains('Agent docs out of sync with canonical contract')
 	assert result.output.contains('LLMS.md')
+	assert result.output.contains('doc/agent_task_slices.md')
 }
 
 fn test_sync_agent_docs_rewrites_from_template_to_golden() {
@@ -28,6 +29,12 @@ fn test_sync_agent_docs_rewrites_from_template_to_golden() {
 		panic(err)
 	}
 	assert got == expected
+	slices := os.read_file(os.join_path(tmp, 'doc', 'agent_task_slices.md')) or { panic(err) }
+	assert slices.contains('# Agent Task Slices')
+	assert slices.contains('- Canonical source: `AGENTS.md`')
+	assert slices.contains('## Bugfix Slice')
+	assert slices.contains('_Missing from AGENTS.md while generating slices._')
+	assert slices.contains('## Docs Slice')
 	check := os.execute('${os.quoted_path(script)} --root ${os.quoted_path(tmp)} --check')
 	assert check.exit_code == 0
 	assert check.output.contains('Agent docs sync check passed.')

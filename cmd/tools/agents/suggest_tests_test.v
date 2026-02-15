@@ -129,6 +129,16 @@ fn test_small_change_lane_allow_broad_keeps_broad_behavior() {
 	assert result.output.contains('./vnew -silent test vlib/v/')
 }
 
+fn test_single_direct_high_risk_with_derived_impacts_stays_targeted() {
+	result := run_cmd('./cmd/tools/agents/suggest_tests.vsh --tier targeted vlib/v/checker/checker.v') or {
+		panic(err)
+	}
+	assert result.output.contains('Tier: targeted')
+	assert !result.output.contains('Effective tier: broad')
+	assert result.output.contains('broad escalation not auto-applied')
+	assert result.output.contains('derived impact paths')
+}
+
 fn test_impact_mode_basic_adds_related_area() {
 	result := run_cmd('./cmd/tools/agents/suggest_tests.vsh --tier targeted vlib/v/parser/parser.v') or {
 		panic(err)

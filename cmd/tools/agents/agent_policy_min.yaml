@@ -4,6 +4,7 @@ required_files:
   - v.mod
   - AGENTS.md
   - LLMS.md
+  - doc/agent_task_slices.md
   - cmd/tools/agents/agent_policy_min.yaml
   - cmd/tools/agents/agent_test_matrix.yaml
   - cmd/tools/agents/suggest_tests.vsh
