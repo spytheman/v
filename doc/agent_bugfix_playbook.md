@@ -1,6 +1,6 @@
-<!-- generated: canonical source is AGENTS.md; run ./scripts/agent/sync_agent_docs.vsh -->
+<!-- generated: canonical source is AGENTS.md; run ./cmd/tools/agents/sync_agent_docs.vsh -->
 - Canonical source: `AGENTS.md`
-- Drift policy: update `AGENTS.md` first, then run `./scripts/agent/sync_agent_docs.vsh`.
+- Drift policy: update `AGENTS.md` first, then run `./cmd/tools/agents/sync_agent_docs.vsh`.
 If anything here differs from `AGENTS.md`, follow `AGENTS.md` and treat this file as stale.
 
 # Agent Bugfix Playbook
@@ -11,7 +11,7 @@ Fast paths for common bugfix tasks in this repository.
 
 ```bash
 git status
-./scripts/agent/bootstrap_check.vsh
+./cmd/tools/agents/bootstrap_check.vsh
 ./v -g -keepc -o ./vnew cmd/v
 ```
 
@@ -39,10 +39,10 @@ Use `./vnew` for all commands after bootstrap.
 Use matrix-derived suggestions for current changes:
 
 ```bash
-./scripts/agent/suggest_tests.vsh --tier targeted --explain-match
+./cmd/tools/agents/suggest_tests.vsh --tier targeted --explain-match
 ```
 
-Known flaky commands are tracked in `scripts/agent/flaky_tests.yaml`.
+Known flaky commands are tracked in `cmd/tools/agents/flaky_tests.yaml`.
 If a command is marked flaky, keep it in the run but call out flakiness in the summary.
 
 ## Quick Mappings
@@ -103,19 +103,19 @@ For `vdoc`-specific changes:
 Get suggested tests from changed files:
 
 ```bash
-./scripts/agent/suggest_tests.vsh --tier targeted
+./cmd/tools/agents/suggest_tests.vsh --tier targeted
 ```
 
 Fail if any changed path has no rule:
 
 ```bash
-./scripts/agent/suggest_tests.vsh --strict-unmatched --tier targeted
+./cmd/tools/agents/suggest_tests.vsh --strict-unmatched --tier targeted
 ```
 
 Fail if any changed path uses the fallback rule:
 
 ```bash
-./scripts/agent/suggest_tests.vsh --require-non-fallback --tier targeted
+./cmd/tools/agents/suggest_tests.vsh --require-non-fallback --tier targeted
 ```
 
 Run suggestions end to end:

@@ -91,7 +91,7 @@ endif
 endif
 endif
 
-.PHONY: all clean rebuild check fresh_vc fresh_tcc fresh_legacy check_for_working_tcc etags ctags agent-check agent-suggest agent-bootstrap-check agent-contract-check agent-summary-schema-check agent-doctor agent-preflight agent-smoke agent-run agent-bugfix-min agent-doc-sync-check agent-artifact-clean-check agent-clean-local
+.PHONY: all clean rebuild check fresh_vc fresh_tcc fresh_legacy check_for_working_tcc etags ctags agent-check agent-suggest agent-bootstrap-check agent-contract-check agent-summary-schema-check agent-doctor agent-ready agent-preflight agent-smoke agent-run agent-bugfix-min agent-doc-sync-check agent-artifact-clean-check agent-clean-local
 
 ifdef prod
 VFLAGS+=-prod
@@ -231,90 +231,108 @@ agent-check:
 	$(VEXE)$(EXE_EXT) check-md LLMS.md
 
 agent-suggest:
-	./scripts/agent/suggest_tests.vsh $(ARGS) $(FILES)
+	./cmd/tools/agents/suggest_tests.vsh $(ARGS) $(FILES)
 
 agent-bootstrap-check:
-	./scripts/agent/bootstrap_check.vsh
+	./cmd/tools/agents/bootstrap_check.vsh
 
 agent-contract-check:
-	./scripts/agent/validate_agent_contract.vsh
-	$(VEXE)$(EXE_EXT) scripts/agent/suggest_tests_test.v
-	$(VEXE)$(EXE_EXT) scripts/agent/validate_agent_contract_test.v
-	$(VEXE)$(EXE_EXT) scripts/agent/validate_agent_run_summary_test.v
-	$(VEXE)$(EXE_EXT) scripts/agent/print_agent_run_summary_test.v
-	$(VEXE)$(EXE_EXT) scripts/agent/doctor_test.v
-	$(VEXE)$(EXE_EXT) -nocache scripts/agent/sync_agent_docs_test.v
-	./scripts/agent/sync_agent_docs.vsh --check
+	./cmd/tools/agents/validate_agent_contract.vsh
+	$(VEXE)$(EXE_EXT) cmd/tools/agents/suggest_tests_test.v
+	$(VEXE)$(EXE_EXT) cmd/tools/agents/validate_agent_contract_test.v
+	$(VEXE)$(EXE_EXT) cmd/tools/agents/validate_agent_run_summary_test.v
+	$(VEXE)$(EXE_EXT) cmd/tools/agents/print_agent_run_summary_test.v
+	$(VEXE)$(EXE_EXT) cmd/tools/agents/doctor_test.v
+	$(VEXE)$(EXE_EXT) -nocache cmd/tools/agents/sync_agent_docs_test.v
+	./cmd/tools/agents/sync_agent_docs.vsh --check
 	$(MAKE) agent-artifact-clean-check
 
 agent-summary-schema-check:
-	./scripts/agent/validate_agent_run_summary.vsh $(AGENT_ARTIFACT)
+	./cmd/tools/agents/validate_agent_run_summary.vsh $(AGENT_ARTIFACT)
 
 agent-doctor:
-	./scripts/agent/doctor.vsh
+	./cmd/tools/agents/doctor.vsh
 
-AGENT_ARTIFACT ?= /tmp/agent_run_summary.json
-AGENT_RUN_SCRIPT ?= /tmp/agent_run_commands.sh
-AGENT_BUGFIX_ARTIFACT ?= /tmp/agent_bugfix_min_summary.json
-AGENT_BUGFIX_SCRIPT ?= /tmp/agent_bugfix_min_commands.sh
+agent-ready:
+	./cmd/tools/agents/bootstrap_check.vsh --build-missing --rebuild-stale
+	$(MAKE) agent-preflight VEXE=./vnew local=1
+
+AGENT_PREFLIGHT_ARTIFACT_DEFAULT := $(shell mktemp /tmp/agent_preflight_smoke.XXXXXX.json)
+AGENT_SMOKE_ARTIFACT_DEFAULT := $(shell mktemp /tmp/agent_smoke_summary.XXXXXX.json)
+AGENT_SMOKE_SCRIPT_DEFAULT := $(shell mktemp /tmp/agent_smoke_commands.XXXXXX.sh)
+AGENT_ARTIFACT_DEFAULT := $(shell mktemp /tmp/agent_run_summary.XXXXXX.json)
+AGENT_RUN_SCRIPT_DEFAULT := $(shell mktemp /tmp/agent_run_commands.XXXXXX.sh)
+AGENT_BUGFIX_ARTIFACT_DEFAULT := $(shell mktemp /tmp/agent_bugfix_min_summary.XXXXXX.json)
+AGENT_BUGFIX_SCRIPT_DEFAULT := $(shell mktemp /tmp/agent_bugfix_min_commands.XXXXXX.sh)
+AGENT_PREFLIGHT_ARTIFACT ?= $(AGENT_PREFLIGHT_ARTIFACT_DEFAULT)
+AGENT_SMOKE_ARTIFACT ?= $(AGENT_SMOKE_ARTIFACT_DEFAULT)
+AGENT_SMOKE_SCRIPT ?= $(AGENT_SMOKE_SCRIPT_DEFAULT)
+AGENT_ARTIFACT ?= $(AGENT_ARTIFACT_DEFAULT)
+AGENT_RUN_SCRIPT ?= $(AGENT_RUN_SCRIPT_DEFAULT)
+AGENT_BUGFIX_ARTIFACT ?= $(AGENT_BUGFIX_ARTIFACT_DEFAULT)
+AGENT_BUGFIX_SCRIPT ?= $(AGENT_BUGFIX_SCRIPT_DEFAULT)
 DRY_RUN ?= 0
 AGENT_DRY_RUN ?= $(DRY_RUN)
+AGENT_MIN_CONFIDENCE ?= 0
 
 agent-preflight:
-	./scripts/agent/bootstrap_check.vsh
-	./scripts/agent/validate_agent_contract.vsh --matrix-only
-	./scripts/agent/sync_agent_docs.vsh --check
-	./scripts/agent/suggest_tests.vsh --tier fast --json --require-non-fallback README.md > /tmp/agent_preflight_smoke.json
+	./cmd/tools/agents/bootstrap_check.vsh --build-missing --rebuild-stale
+	./cmd/tools/agents/validate_agent_contract.vsh --matrix-only
+	./cmd/tools/agents/sync_agent_docs.vsh --check
+	./cmd/tools/agents/suggest_tests.vsh --tier fast --json --require-non-fallback README.md > $(AGENT_PREFLIGHT_ARTIFACT)
+	@echo "Wrote preflight summary artifact to $(AGENT_PREFLIGHT_ARTIFACT)"
 	@echo "Preflight OK"
 
 agent-smoke:
-	./scripts/agent/bootstrap_check.vsh
-	./scripts/agent/validate_agent_contract.vsh
-	./scripts/agent/sync_agent_docs.vsh --check
-	./scripts/agent/suggest_tests.vsh --tier fast --json --strict-unmatched --require-non-fallback README.md > /tmp/agent_smoke_summary.json
-	./scripts/agent/validate_agent_run_summary.vsh /tmp/agent_smoke_summary.json
-	./scripts/agent/suggest_tests.vsh --tier fast --format sh --strict-unmatched --require-non-fallback README.md > /tmp/agent_smoke_commands.sh
-	bash /tmp/agent_smoke_commands.sh
-	./scripts/agent/print_agent_run_summary.vsh /tmp/agent_smoke_summary.json
+	./cmd/tools/agents/bootstrap_check.vsh --build-missing --rebuild-stale
+	./cmd/tools/agents/validate_agent_contract.vsh
+	./cmd/tools/agents/sync_agent_docs.vsh --check
+	./cmd/tools/agents/suggest_tests.vsh --tier fast --json --strict-unmatched --require-non-fallback README.md > $(AGENT_SMOKE_ARTIFACT)
+	./cmd/tools/agents/validate_agent_run_summary.vsh $(AGENT_SMOKE_ARTIFACT)
+	./cmd/tools/agents/suggest_tests.vsh --tier fast --format sh --strict-unmatched --require-non-fallback README.md > $(AGENT_SMOKE_SCRIPT)
+	bash $(AGENT_SMOKE_SCRIPT)
+	./cmd/tools/agents/print_agent_run_summary.vsh $(AGENT_SMOKE_ARTIFACT)
 	$(MAKE) agent-artifact-clean-check
+	@echo "Wrote smoke summary artifact to $(AGENT_SMOKE_ARTIFACT)"
+	@echo "Wrote smoke command script to $(AGENT_SMOKE_SCRIPT)"
 	@echo "Agent smoke passed."
 
 agent-run:
-	./scripts/agent/bootstrap_check.vsh
+	./cmd/tools/agents/bootstrap_check.vsh --build-missing --rebuild-stale
 	mkdir -p $(dir $(AGENT_ARTIFACT))
 	mkdir -p $(dir $(AGENT_RUN_SCRIPT))
-	./scripts/agent/suggest_tests.vsh --strict-unmatched --require-non-fallback --json $(ARGS) $(FILES) > $(AGENT_ARTIFACT)
-	./scripts/agent/validate_agent_run_summary.vsh $(AGENT_ARTIFACT)
-	./scripts/agent/suggest_tests.vsh --strict-unmatched --require-non-fallback --format sh $(ARGS) $(FILES) > $(AGENT_RUN_SCRIPT)
+	./cmd/tools/agents/suggest_tests.vsh --strict-unmatched --require-non-fallback --fail-below-confidence $(AGENT_MIN_CONFIDENCE) --json $(ARGS) $(FILES) > $(AGENT_ARTIFACT)
+	./cmd/tools/agents/validate_agent_run_summary.vsh $(AGENT_ARTIFACT)
+	./cmd/tools/agents/suggest_tests.vsh --strict-unmatched --require-non-fallback --fail-below-confidence $(AGENT_MIN_CONFIDENCE) --format sh $(ARGS) $(FILES) > $(AGENT_RUN_SCRIPT)
 ifeq ($(AGENT_DRY_RUN),1)
 	@echo "Dry run enabled: not executing $(AGENT_RUN_SCRIPT)"
 	@cat $(AGENT_RUN_SCRIPT)
 else
 	bash $(AGENT_RUN_SCRIPT)
 endif
-	./scripts/agent/print_agent_run_summary.vsh $(AGENT_ARTIFACT)
+	./cmd/tools/agents/print_agent_run_summary.vsh $(AGENT_ARTIFACT)
 	@echo "Wrote agent summary artifact to $(AGENT_ARTIFACT)"
 	@echo "Wrote agent command script to $(AGENT_RUN_SCRIPT)"
 
 agent-bugfix-min:
-	./scripts/agent/bootstrap_check.vsh
-	./scripts/agent/suggest_tests.vsh --tier targeted --strict-unmatched --require-non-fallback $(FILES)
+	./cmd/tools/agents/bootstrap_check.vsh
+	./cmd/tools/agents/suggest_tests.vsh --tier targeted --strict-unmatched --require-non-fallback $(FILES)
 	$(MAKE) agent-run ARGS='--tier targeted' FILES='$(FILES)' AGENT_ARTIFACT='$(AGENT_BUGFIX_ARTIFACT)' AGENT_RUN_SCRIPT='$(AGENT_BUGFIX_SCRIPT)' AGENT_DRY_RUN='$(AGENT_DRY_RUN)'
 
 agent-doc-sync-check:
-	./scripts/agent/sync_agent_docs.vsh --check
+	./cmd/tools/agents/sync_agent_docs.vsh --check
 
 agent-artifact-clean-check:
-	@if ls scripts/agent/tmp.* >/dev/null 2>&1; then \
-		echo "runtime artifacts found under scripts/agent/: scripts/agent/tmp.*"; \
-		echo "clean with: rm -f scripts/agent/tmp.*"; \
+	@if ls cmd/tools/agents/tmp.* >/dev/null 2>&1; then \
+		echo "runtime artifacts found under cmd/tools/agents/: cmd/tools/agents/tmp.*"; \
+		echo "clean with: rm -f cmd/tools/agents/tmp.*"; \
 		exit 1; \
 	fi
 
 agent-clean-local:
-	rm -f scripts/agent/tmp.*
-	rm -f /tmp/agent_preflight_smoke.json
-	rm -f /tmp/agent_smoke_summary.json /tmp/agent_smoke_commands.sh
+	rm -f cmd/tools/agents/tmp.*
+	rm -f /tmp/agent_preflight_smoke*.json
+	rm -f /tmp/agent_smoke_summary*.json /tmp/agent_smoke_commands*.sh
 	rm -f /tmp/agent_run_summary*.json /tmp/agent_run_summary*.sh
 	rm -f /tmp/agent_run_dry*.json /tmp/agent_run_dry*.sh
 	rm -f /tmp/agent_bugfix_min*.json /tmp/agent_bugfix_min*.sh

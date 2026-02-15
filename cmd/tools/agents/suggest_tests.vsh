@@ -4,16 +4,24 @@ import os
 import time
 
 const valid_tiers = ['fast', 'targeted', 'broad']
-const valid_formats = ['human', 'json', 'sh']
+const valid_formats = ['human', 'json', 'sh', 'agent']
 const valid_impact_modes = ['off', 'basic']
 const default_max_paths_warn = 200
 const default_max_paths_limit = 4000
-const flaky_registry_path = 'scripts/agent/flaky_tests.yaml'
+const flaky_registry_path = 'cmd/tools/agents/flaky_tests.yaml'
+const default_runtime_band_seconds = {
+	'tiny':   5.0
+	'short':  20.0
+	'medium': 90.0
+	'long':   300.0
+	'xlong':  1200.0
+}
 
 struct CommandSpec {
-	command     string
-	confidence  f64
-	runtime_sec f64
+	command      string
+	confidence   f64
+	runtime_sec  f64
+	runtime_band string
 }
 
 struct Rule {
@@ -55,6 +63,7 @@ mut:
 	confidence       f64
 	confidence_label string
 	runtime_sec      f64
+	runtime_band     string
 	why_selected     string
 	flaky            bool
 	flaky_reason     string
@@ -70,17 +79,19 @@ struct DroppedBudgetCommand {
 
 struct SuggestOptions {
 mut:
-	tier                 string = 'targeted'
-	output_format        string = 'human'
-	changed_from         string
-	strict_unmatched     bool
-	require_non_fallback bool
-	explain_match        bool
-	paths                []string
-	max_paths_warn       int = default_max_paths_warn
-	max_paths_limit      int = default_max_paths_limit
-	budget_seconds       f64
-	impact_mode          string = 'basic'
+	tier                  string = 'targeted'
+	output_format         string = 'human'
+	changed_from          string
+	strict_unmatched      bool
+	require_non_fallback  bool
+	explain_match         bool
+	paths                 []string
+	max_paths_warn        int = default_max_paths_warn
+	max_paths_limit       int = default_max_paths_limit
+	budget_seconds        f64
+	budget_explicit       bool
+	impact_mode           string = 'basic'
+	fail_below_confidence f64
 }
 
 struct SuggestResult {
@@ -100,6 +111,7 @@ struct SuggestResult {
 	budget_seconds     f64
 	runtime_total_sec  f64
 	runtime_used_sec   f64
+	escalation_reason  string
 	collect_ms         int
 	match_ms           int
 	total_ms           int
@@ -138,12 +150,13 @@ fn main() {
 		print_result(empty, options.output_format)
 		return
 	}
-	rules := parse_rules('agent_test_matrix.yaml') or {
-		eprintln('Failed to parse agent_test_matrix.yaml: ${err}')
+	matrix_path := 'cmd/tools/agents/agent_test_matrix.yaml'
+	rules := parse_rules(matrix_path) or {
+		eprintln('Failed to parse cmd/tools/agents/agent_test_matrix.yaml: ${err}')
 		exit(1)
 	}
 	if rules.len == 0 {
-		eprintln('No rules found in agent_test_matrix.yaml.')
+		eprintln('No rules found in cmd/tools/agents/agent_test_matrix.yaml.')
 		exit(1)
 	}
 	flaky_entries := parse_flaky_registry(flaky_registry_path) or {
@@ -193,6 +206,7 @@ fn main() {
 	mut high_risk_rules := 0
 	mut fallback_paths := []string{}
 	mut fallback_seen := map[string]bool{}
+	mut escalation_reason := 'none'
 	for index in selected_rule_indexes {
 		if rules[index].risk == 'high' {
 			high_risk_rules++
@@ -201,6 +215,7 @@ fn main() {
 	mut effective_tier := options.tier
 	if options.tier != 'broad' && high_risk_rules >= 2 {
 		effective_tier = 'broad'
+		escalation_reason = 'auto-promoted to broad due to ${high_risk_rules} high-risk areas'
 		warnings << 'auto-promoted tier to broad due to ${high_risk_rules} high-risk areas'
 	}
 	for index in selected_rule_indexes {
@@ -236,6 +251,7 @@ fn main() {
 					confidence:       spec.confidence
 					confidence_label: confidence_label(spec.confidence)
 					runtime_sec:      spec.runtime_sec
+					runtime_band:     normalized_runtime_band(spec.runtime_band, spec.runtime_sec)
 					why_selected:     'selected by matched rule at tier `${effective_tier}`'
 				}
 				for entry in flaky_entries {
@@ -264,12 +280,20 @@ fn main() {
 			}
 		}
 	}
+	mut effective_budget := options.budget_seconds
+	if !options.budget_explicit {
+		default_budget := parse_default_budget_seconds(matrix_path, effective_tier) or { 0.0 }
+		if default_budget > 0 {
+			effective_budget = default_budget
+			warnings << 'applied default budget ${effective_budget}s for tier `${effective_tier}`'
+		}
+	}
 	mut commands := []string{}
 	for detail in command_details {
 		commands << detail.command
 	}
 	total_runtime := sum_runtime(command_details)
-	selected_budget, dropped_commands, used_runtime := apply_budget(command_details, options.budget_seconds)
+	selected_budget, dropped_commands, used_runtime := apply_budget(command_details, effective_budget)
 	command_details = selected_budget.clone()
 	mut dropped_by_budget := []DroppedBudgetCommand{}
 	for dropped in dropped_commands {
@@ -277,20 +301,23 @@ fn main() {
 			command:               dropped.command
 			confidence:            dropped.confidence
 			runtime_sec:           command_runtime(dropped)
-			why_dropped_by_budget: 'excluded to satisfy budget ${options.budget_seconds}s after higher score selections'
+			why_dropped_by_budget: 'excluded to satisfy budget ${effective_budget}s after higher score selections'
 		}
 	}
-	if options.budget_seconds > 0 {
+	if effective_budget > 0 {
 		for i, item in command_details {
 			mut selected := item
-			selected.why_selected = 'kept by confidence/runtime ranking within budget ${options.budget_seconds}s'
+			selected.why_selected = 'kept by confidence/runtime ranking within budget ${effective_budget}s'
 			command_details[i] = selected
 		}
 	}
 	if dropped_commands.len > 0 {
-		warnings << 'budget ${options.budget_seconds}s kept ${command_details.len}/${commands.len} suggested command(s)'
+		warnings << 'budget ${effective_budget}s kept ${command_details.len}/${commands.len} suggested command(s)'
 	}
 	if fallback_paths.len > 0 {
+		if escalation_reason == 'none' {
+			escalation_reason = 'fallback rule matched ${fallback_paths.len} path(s)'
+		}
 		warnings << 'fallback rule matched ${fallback_paths.len} path(s): ${fallback_paths.join(', ')}'
 	}
 	commands = command_details.map(it.command)
@@ -328,12 +355,21 @@ fn main() {
 		dropped_by_budget:  dropped_by_budget
 		suggested_commands: commands
 		warnings:           warnings
-		budget_seconds:     options.budget_seconds
+		budget_seconds:     effective_budget
 		runtime_total_sec:  total_runtime
 		runtime_used_sec:   used_runtime
+		escalation_reason:  escalation_reason
 		collect_ms:         collect_ms
 		match_ms:           int(match_sw.elapsed().milliseconds())
 		total_ms:           int(total_sw.elapsed().milliseconds())
+	}
+	mut below_confidence := []string{}
+	if options.fail_below_confidence > 0 {
+		for item in result.suggested {
+			if item.confidence < options.fail_below_confidence {
+				below_confidence << '${item.command} (${item.confidence.str()})'
+			}
+		}
 	}
 	print_result(result, options.output_format)
 	if options.strict_unmatched && result.unmatched_paths.len > 0 {
@@ -343,6 +379,10 @@ fn main() {
 	if options.require_non_fallback && fallback_paths.len > 0 {
 		eprintln('require-non-fallback: fallback rule matched path(s): ${fallback_paths.join(', ')}')
 		exit(3)
+	}
+	if below_confidence.len > 0 {
+		eprintln('fail-below-confidence: threshold ${options.fail_below_confidence.str()} not met by ${below_confidence.len} command(s): ${below_confidence.join(', ')}')
+		exit(4)
 	}
 }
 
@@ -415,11 +455,31 @@ fn parse_options(args []string) !SuggestOptions {
 				return error('Missing value after --budget-seconds')
 			}
 			options.budget_seconds = args[i + 1].f64()
+			options.budget_explicit = true
 			i += 2
 			continue
 		}
 		if arg.starts_with('--budget-seconds=') {
 			options.budget_seconds = arg.all_after('--budget-seconds=').f64()
+			options.budget_explicit = true
+			i++
+			continue
+		}
+		if arg == '--agent-mode' {
+			options.output_format = 'agent'
+			i++
+			continue
+		}
+		if arg == '--fail-below-confidence' {
+			if i + 1 >= args.len {
+				return error('Missing value after --fail-below-confidence')
+			}
+			options.fail_below_confidence = args[i + 1].f64()
+			i += 2
+			continue
+		}
+		if arg.starts_with('--fail-below-confidence=') {
+			options.fail_below_confidence = arg.all_after('--fail-below-confidence=').f64()
 			i++
 			continue
 		}
@@ -480,6 +540,9 @@ fn parse_options(args []string) !SuggestOptions {
 	if options.budget_seconds < 0 {
 		return error('`--budget-seconds` must be >= 0.')
 	}
+	if options.fail_below_confidence < 0 || options.fail_below_confidence > 1 {
+		return error('`--fail-below-confidence` must be in [0, 1].')
+	}
 	if options.impact_mode !in valid_impact_modes {
 		return error('Invalid impact mode `${options.impact_mode}`. Valid impact modes: ${valid_impact_modes.join(', ')}')
 	}
@@ -488,15 +551,17 @@ fn parse_options(args []string) !SuggestOptions {
 
 fn print_help() {
 	println('Usage:')
-	println('  ./scripts/agent/suggest_tests.vsh [--tier fast|targeted|broad] [--json]')
-	println('  ./scripts/agent/suggest_tests.vsh [--format human|json|sh]')
-	println('  ./scripts/agent/suggest_tests.vsh --changed-from <rev> [--tier ...] [--format ...]')
-	println('  ./scripts/agent/suggest_tests.vsh [changed_file ...]')
+	println('  ./cmd/tools/agents/suggest_tests.vsh [--tier fast|targeted|broad] [--json]')
+	println('  ./cmd/tools/agents/suggest_tests.vsh [--format human|json|sh|agent]')
+	println('  ./cmd/tools/agents/suggest_tests.vsh --agent-mode [--tier ...]')
+	println('  ./cmd/tools/agents/suggest_tests.vsh --changed-from <rev> [--tier ...] [--format ...]')
+	println('  ./cmd/tools/agents/suggest_tests.vsh [changed_file ...]')
 	println('')
 	println('Guardrails:')
 	println('  --max-paths-warn <n>    warn if changed path count > n (default: ${default_max_paths_warn})')
 	println('  --max-paths-limit <n>   truncate path set to n (default: ${default_max_paths_limit}, 0 disables)')
 	println('  --budget-seconds <n>    keep highest-value commands within runtime budget')
+	println('  --fail-below-confidence <n>  fail when selected command confidence is below n')
 	println('  --impact-mode <mode>    impact expansion mode: off|basic (default: basic)')
 	println('  --strict-unmatched      exit non-zero when unmatched paths are present')
 	println('  --require-non-fallback  exit non-zero when fallback rule is selected')
@@ -507,7 +572,7 @@ fn print_help() {
 	println('  2. git diff --cached --name-only')
 	println('  3. git ls-files --others --exclude-standard')
 	println('')
-	println('Rules source: agent_test_matrix.yaml')
+	println('Rules source: cmd/tools/agents/agent_test_matrix.yaml')
 }
 
 fn print_result(result SuggestResult, output_format string) {
@@ -517,6 +582,9 @@ fn print_result(result SuggestResult, output_format string) {
 		}
 		'sh' {
 			print_sh_result(result)
+		}
+		'agent' {
+			print_agent_result(result)
 		}
 		else {
 			print_human_result(result)
@@ -602,6 +670,20 @@ fn print_sh_result(result SuggestResult) {
 	for command in result.suggested_commands {
 		println(command)
 	}
+}
+
+fn print_agent_result(result SuggestResult) {
+	println('rebuild_vnew: ${if result.rebuild_vnew { `y` } else { `n` }}')
+	println('rebuild_reason: ${if result.rebuild_vnew {
+		'matched rebuild-trigger owner(s): ' + rebuild_owners(result.matched_rules)
+	} else {
+		'none'
+	}}')
+	println('minimal_tests:')
+	for command in result.suggested_commands {
+		println('- ${command}')
+	}
+	println('escalation_reason: ${result.escalation_reason}')
 }
 
 fn collect_changed_paths(options SuggestOptions) ![]string {
@@ -762,9 +844,10 @@ fn parse_command_spec(value string, default_confidence f64) !CommandSpec {
 	trimmed := value.trim_space()
 	if !(trimmed.starts_with('{') && trimmed.ends_with('}')) {
 		return CommandSpec{
-			command:     unquote(trimmed)
-			confidence:  default_confidence
-			runtime_sec: 0.0
+			command:      unquote(trimmed)
+			confidence:   default_confidence
+			runtime_sec:  0.0
+			runtime_band: 'medium'
 		}
 	}
 	fields := parse_inline_fields(trimmed)
@@ -773,11 +856,15 @@ fn parse_command_spec(value string, default_confidence f64) !CommandSpec {
 	}
 	mut confidence := default_confidence
 	mut runtime_sec := 0.0
+	mut runtime_band := ''
 	if 'confidence' in fields {
 		confidence = fields['confidence'].f64()
 	}
 	if 'runtime_sec' in fields {
 		runtime_sec = fields['runtime_sec'].f64()
+	}
+	if 'runtime_band' in fields {
+		runtime_band = fields['runtime_band']
 	}
 	if confidence < 0.0 || confidence > 1.0 {
 		return error('confidence must be between 0 and 1')
@@ -786,10 +873,30 @@ fn parse_command_spec(value string, default_confidence f64) !CommandSpec {
 		return error('runtime_sec must be >= 0')
 	}
 	return CommandSpec{
-		command:     fields['command']
-		confidence:  confidence
-		runtime_sec: runtime_sec
+		command:      fields['command']
+		confidence:   confidence
+		runtime_sec:  runtime_sec
+		runtime_band: normalized_runtime_band(runtime_band, runtime_sec)
 	}
+}
+
+fn normalized_runtime_band(runtime_band string, runtime_sec f64) string {
+	if runtime_band in default_runtime_band_seconds {
+		return runtime_band
+	}
+	if runtime_sec <= 5 {
+		return 'tiny'
+	}
+	if runtime_sec <= 30 {
+		return 'short'
+	}
+	if runtime_sec <= 120 {
+		return 'medium'
+	}
+	if runtime_sec <= 600 {
+		return 'long'
+	}
+	return 'xlong'
 }
 
 fn parse_inline_fields(value string) map[string]string {
@@ -935,7 +1042,13 @@ fn sum_runtime(commands []SuggestedCommand) f64 {
 }
 
 fn command_runtime(command SuggestedCommand) f64 {
-	return if command.runtime_sec > 0 { command.runtime_sec } else { 60.0 }
+	if command.runtime_sec > 0 {
+		return command.runtime_sec
+	}
+	if command.runtime_band in default_runtime_band_seconds {
+		return default_runtime_band_seconds[command.runtime_band]
+	}
+	return 60.0
 }
 
 fn apply_budget(commands []SuggestedCommand, budget_seconds f64) ([]SuggestedCommand, []SuggestedCommand, f64) {
@@ -1105,6 +1218,53 @@ fn unquote(value string) string {
 	return result
 }
 
+fn parse_default_budget_seconds(path string, tier string) !f64 {
+	lines := os.read_lines(path)!
+	mut in_budget := false
+	for raw in lines {
+		line := raw.trim_space()
+		if line == 'default_budget_seconds:' {
+			in_budget = true
+			continue
+		}
+		if !in_budget {
+			continue
+		}
+		if line == '' || line.starts_with('#') {
+			continue
+		}
+		if line.starts_with('rules:') {
+			break
+		}
+		if !line.contains(':') {
+			continue
+		}
+		key := line.all_before(':').trim_space()
+		value := line.all_after(':').trim_space()
+		if key == tier {
+			return value.f64()
+		}
+	}
+	return error('default budget not set for tier `${tier}`')
+}
+
+fn rebuild_owners(rules []RuleMatchSummary) string {
+	mut owners := []string{}
+	for rule in rules {
+		if !rule.rebuild_vnew {
+			continue
+		}
+		if rule.owner in owners {
+			continue
+		}
+		owners << rule.owner
+	}
+	if owners.len == 0 {
+		return 'none'
+	}
+	return owners.join(', ')
+}
+
 fn to_json(result SuggestResult) string {
 	mut fields := []string{}
 	fields << '"tier":"' + json_escape(result.tier) + '"'
@@ -1123,6 +1283,7 @@ fn to_json(result SuggestResult) string {
 	fields << '"budget_seconds":' + result.budget_seconds.str()
 	fields << '"runtime_total_sec":' + result.runtime_total_sec.str()
 	fields << '"runtime_used_sec":' + result.runtime_used_sec.str()
+	fields << '"escalation_reason":"' + json_escape(result.escalation_reason) + '"'
 	fields << '"timings_ms":{"collect":' + result.collect_ms.str() + ',"match":' +
 		result.match_ms.str() + ',"total":' + result.total_ms.str() + '}'
 	return '{' + fields.join(',') + '}'
@@ -1153,10 +1314,10 @@ fn json_suggested_commands(commands []SuggestedCommand) string {
 	for item in commands {
 		items << '{"command":"' + json_escape(item.command) + '","confidence":' +
 			item.confidence.str() + ',"confidence_label":"' + json_escape(item.confidence_label) +
-			'","runtime_sec":' + item.runtime_sec.str() + ',"why_selected":"' +
-			json_escape(item.why_selected) + '","flaky":' + item.flaky.str() + ',"flaky_reason":"' +
-			json_escape(item.flaky_reason) + '","flaky_issue":"' + json_escape(item.flaky_issue) +
-			'"}'
+			'","runtime_sec":' + item.runtime_sec.str() + ',"runtime_band":"' +
+			json_escape(item.runtime_band) + '","why_selected":"' + json_escape(item.why_selected) +
+			'","flaky":' + item.flaky.str() + ',"flaky_reason":"' + json_escape(item.flaky_reason) +
+			'","flaky_issue":"' + json_escape(item.flaky_issue) + '"}'
 	}
 	return '[' + items.join(',') + ']'
 }

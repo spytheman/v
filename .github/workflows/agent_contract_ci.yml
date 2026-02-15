@@ -12,8 +12,8 @@ on:
       - "doc/agent_workflow.md"
       - "doc/agent_bugfix_playbook.md"
       - "GNUmakefile"
-      - "agent_test_matrix.yaml"
-      - "scripts/agent/**"
+      - "cmd/tools/agents/agent_test_matrix.yaml"
+      - "cmd/tools/agents/**"
   push:
     paths:
       - ".github/workflows/agent_contract_ci.yml"
@@ -25,8 +25,8 @@ on:
       - "doc/agent_workflow.md"
       - "doc/agent_bugfix_playbook.md"
       - "GNUmakefile"
-      - "agent_test_matrix.yaml"
-      - "scripts/agent/**"
+      - "cmd/tools/agents/agent_test_matrix.yaml"
+      - "cmd/tools/agents/**"
   workflow_dispatch:
 
 jobs:
@@ -43,19 +43,19 @@ jobs:
         run: ./v -g -keepc -o ./vnew cmd/v
 
       - name: Validate agent contract
-        run: ./scripts/agent/validate_agent_contract.vsh
+        run: ./cmd/tools/agents/validate_agent_contract.vsh
 
       - name: Validate agent docs sync
-        run: ./scripts/agent/sync_agent_docs.vsh --check
+        run: ./cmd/tools/agents/sync_agent_docs.vsh --check
 
       - name: Run agent script tests
         run: |
-          ./vnew scripts/agent/suggest_tests_test.v
-          ./vnew scripts/agent/validate_agent_contract_test.v
-          ./vnew scripts/agent/validate_agent_run_summary_test.v
-          ./vnew scripts/agent/print_agent_run_summary_test.v
-          ./vnew scripts/agent/doctor_test.v
-          ./vnew scripts/agent/sync_agent_docs_test.v
+          ./vnew cmd/tools/agents/suggest_tests_test.v
+          ./vnew cmd/tools/agents/validate_agent_contract_test.v
+          ./vnew cmd/tools/agents/validate_agent_run_summary_test.v
+          ./vnew cmd/tools/agents/print_agent_run_summary_test.v
+          ./vnew cmd/tools/agents/doctor_test.v
+          ./vnew cmd/tools/agents/sync_agent_docs_test.v
 
       - name: Check agent runtime artifacts
         run: make agent-artifact-clean-check
@@ -80,17 +80,17 @@ jobs:
       - name: Agent suggest smoke (changed-from, all formats)
         run: |
           BASE_REF="$(git rev-parse --verify HEAD~1 || git rev-parse HEAD)"
-          ./scripts/agent/suggest_tests.vsh --changed-from "$BASE_REF" --tier targeted --strict-unmatched --require-non-fallback
-          ./scripts/agent/suggest_tests.vsh --changed-from "$BASE_REF" --tier targeted --json --require-non-fallback
-          ./scripts/agent/suggest_tests.vsh --changed-from "$BASE_REF" --tier targeted --format sh --require-non-fallback
+          ./cmd/tools/agents/suggest_tests.vsh --changed-from "$BASE_REF" --tier targeted --strict-unmatched --require-non-fallback
+          ./cmd/tools/agents/suggest_tests.vsh --changed-from "$BASE_REF" --tier targeted --json --require-non-fallback
+          ./cmd/tools/agents/suggest_tests.vsh --changed-from "$BASE_REF" --tier targeted --format sh --require-non-fallback
           AGENT_ARTIFACT="$(mktemp "/tmp/agent_ci_run_summary.${GITHUB_RUN_ID:-local}.${GITHUB_RUN_ATTEMPT:-0}.XXXXXX.json")"
-          ./scripts/agent/suggest_tests.vsh --tier targeted --json --require-non-fallback README.md > "$AGENT_ARTIFACT"
-          ./scripts/agent/validate_agent_run_summary.vsh "$AGENT_ARTIFACT"
+          ./cmd/tools/agents/suggest_tests.vsh --tier targeted --json --require-non-fallback README.md > "$AGENT_ARTIFACT"
+          ./cmd/tools/agents/validate_agent_run_summary.vsh "$AGENT_ARTIFACT"
           rm -f "$AGENT_ARTIFACT"
 
       - name: Agent suggest fallback sanity
         run: |
-          if ! ./scripts/agent/suggest_tests.vsh --strict-unmatched definitely_unmatched.file | grep -q "owner=fallback"; then
+          if ! ./cmd/tools/agents/suggest_tests.vsh --strict-unmatched definitely_unmatched.file | grep -q "owner=fallback"; then
             echo "expected fallback owner to be selected"
             exit 1
           fi

@@ -5,6 +5,12 @@
 Practical quick reference for the V compiler, standard library, and tools.
 Written for AI coding agents; useful for humans too.
 
+## 30-Second Agent Start
+```bash
+git status
+make agent-ready VEXE=./vnew local=1
+```
+
 ## Contents
 * Quick Start
 * Top Rules
@@ -179,7 +185,7 @@ Use broad validation when one or more of the following is true:
 | two or more high-risk owners matched by `suggest_tests` | Yes | Use `--tier broad` or accept auto-promotion |
 | diagnostics/output text changes | Yes | Run `./vnew -silent vlib/v/slow_tests/inout/compiler_test.v` |
 | repl behavior changes | Yes | Run `./vnew -silent vlib/v/slow_tests/repl/repl_test.v` |
-| fallback rule matched for any changed path | Yes | Fix coverage in `agent_test_matrix.yaml` before final run |
+| fallback rule matched for any changed path | Yes | Fix coverage in `cmd/tools/agents/agent_test_matrix.yaml` before final run |
 | cross-subsystem compiler edits (`parser` + `checker` + `cgen`) | Yes | Run broad set plus `./vnew -silent test vlib/v/` |
 
 If broad is selected, report the reason explicitly in the final summary.
@@ -624,7 +630,7 @@ v.callgraph, etc.
 
 ## Subsystem Ownership Map
 Quick routing map for common bugfix areas.
-Use `agent_test_matrix.yaml` as the source of truth for owner labels.
+Use `cmd/tools/agents/agent_test_matrix.yaml` as the source of truth for owner labels.
 
 | Area | Owner hint | First command |
 | --- | --- | --- |
@@ -636,7 +642,7 @@ Use `agent_test_matrix.yaml` as the source of truth for owner labels.
 | `cmd/tools/**` | `tools` | `./vnew -silent test cmd/tools/` |
 
 If you touch multiple high-risk areas, prefer `--tier broad` in
-`./scripts/agent/suggest_tests.vsh` and widen test coverage.
+`./cmd/tools/agents/suggest_tests.vsh` and widen test coverage.
 
 ### Key Directories
 * `vlib/`: Standard library (changes here can affect the compiler

@@ -19,8 +19,8 @@ fn main() {
 	checks << check_file('v.mod', 'Run from repo root.')
 	checks << check_file('AGENTS.md', 'Sync repository agent docs.')
 	checks << check_file('LLMS.md', 'Regenerate or restore LLMS.md.')
-	checks << check_file('agent_test_matrix.yaml', 'Restore agent_test_matrix.yaml.')
-	checks << check_file('scripts/agent/suggest_tests.vsh', 'Restore scripts/agent/suggest_tests.vsh.')
+	checks << check_file('cmd/tools/agents/agent_test_matrix.yaml', 'Restore cmd/tools/agents/agent_test_matrix.yaml.')
+	checks << check_file('cmd/tools/agents/suggest_tests.vsh', 'Restore cmd/tools/agents/suggest_tests.vsh.')
 	checks << check_tool('git', 'Install git and ensure it is in PATH.')
 	checks << check_tool('make', 'Install make and ensure it is in PATH.')
 	checks << check_tool(resolve_cc_tool(), 'Install the C compiler in CC (or `cc`) and ensure it is in PATH.')
@@ -28,8 +28,9 @@ fn main() {
 	checks << check_file('vnew', 'Build working compiler with: ./v -g -keepc -o ./vnew cmd/v')
 	checks << check_vnew_freshness()
 	checks << check_cmd('./vnew version', 'Build/fix ./vnew: ./v -g -keepc -o ./vnew cmd/v')
-	checks << check_cmd('./scripts/agent/validate_agent_contract.vsh --matrix-only', 'Fix matrix/schema issues reported by validate_agent_contract.vsh.')
-	checks << check_cmd('./scripts/agent/suggest_tests.vsh --tier fast --json README.md',
+	checks << check_cmd('./cmd/tools/agents/validate_agent_contract.vsh --matrix-only',
+		'Fix matrix/schema issues reported by validate_agent_contract.vsh.')
+	checks << check_cmd('./cmd/tools/agents/suggest_tests.vsh --tier fast --json README.md',
 		'Fix suggest_tests script/matrix and re-run with README.md.')
 
 	mut failed := 0
@@ -78,6 +79,15 @@ fn check_vnew_freshness() CheckResult {
 			remedy: 'Build working compiler with: ./v -g -keepc -o ./vnew cmd/v'
 		}
 	}
+	vnew_mtime := os.file_last_mod_unix('vnew')
+	if os.exists('v') && os.file_last_mod_unix('v') > vnew_mtime {
+		return CheckResult{
+			name:   'vnew freshness'
+			ok:     false
+			detail: 'stale because ./v is newer than ./vnew'
+			remedy: 'Rebuild ./vnew: ./v -g -keepc -o ./vnew cmd/v'
+		}
+	}
 	changed_paths := collect_changed_paths() or {
 		return CheckResult{
 			name:   'vnew freshness'
@@ -100,7 +110,6 @@ fn check_vnew_freshness() CheckResult {
 			remedy: ''
 		}
 	}
-	vnew_mtime := os.file_last_mod_unix('vnew')
 	mut stale_paths := []string{}
 	for path in trigger_paths {
 		if os.file_last_mod_unix(path) > vnew_mtime {
@@ -187,7 +196,7 @@ fn check_cmd(command string, remedy string) CheckResult {
 
 fn print_help() {
 	println('Usage:')
-	println('  ./scripts/agent/doctor.vsh')
+	println('  ./cmd/tools/agents/doctor.vsh')
 	println('')
 	println('Runs local prerequisite and agent-contract checks in one pass,')
 	println('then prints actionable fixes for any failed checks.')

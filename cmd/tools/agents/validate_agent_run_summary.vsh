@@ -20,7 +20,7 @@ fn main() {
 
 fn print_help() {
 	println('Usage:')
-	println('  ./scripts/agent/validate_agent_run_summary.vsh [path/to/agent_run_summary.json]')
+	println('  ./cmd/tools/agents/validate_agent_run_summary.vsh [path/to/agent_run_summary.json]')
 	println('Default path: /tmp/agent_run_summary.json')
 }
 

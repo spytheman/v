@@ -33,13 +33,13 @@ If you are an AI coding agent working in this repo, start with:
 - `doc/agent_workflow.md` (operational flow and commands)
 - `doc/agent_bugfix_playbook.md` (subsystem bugfix quick paths)
 
-Run this first:
+Canonical one-command startup:
 
 ```bash
-./scripts/agent/bootstrap_check.vsh
+make agent-ready VEXE=./vnew local=1
 ```
 
-One-command full agent preflight:
+Full agent preflight:
 
 ```bash
 make agent-preflight VEXE=./vnew local=1
@@ -315,7 +315,7 @@ first, then use the `./vnew` bootstrap flow from those files.
 Quick preflight (bootstrap + contract + smoke):
 
 ```bash
-make agent-preflight VEXE=./vnew
+make agent-ready VEXE=./vnew local=1
 ```
 
 Default end-to-end command:
@@ -325,14 +325,20 @@ make agent-run ARGS='--tier targeted'
 ```
 
 `agent-run` writes a machine-readable summary artifact to:
-`/tmp/agent_run_summary.json` (override with `AGENT_ARTIFACT=...`).
+`/tmp/agent_run_summary.<pid>.json` (override with `AGENT_ARTIFACT=...`).
+
+Optional confidence gate (fail fast on low-confidence suggestions):
+
+```bash
+make agent-run ARGS='--tier targeted' AGENT_MIN_CONFIDENCE=0.7
+```
 
 Equivalent explicit commands:
 
 ```bash
 git status
-./scripts/agent/bootstrap_check.vsh
-./scripts/agent/suggest_tests.vsh --strict-unmatched --tier targeted
+./cmd/tools/agents/bootstrap_check.vsh
+./cmd/tools/agents/suggest_tests.vsh --strict-unmatched --tier targeted
 make agent-contract-check VEXE=./vnew
 make agent-check VEXE=./vnew local=1
 ```

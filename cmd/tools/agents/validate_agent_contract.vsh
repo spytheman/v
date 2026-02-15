@@ -3,10 +3,11 @@
 import os
 
 const required_tiers = ['fast', 'targeted', 'broad']
+const required_runtime_bands = ['tiny', 'short', 'medium', 'long', 'xlong']
 
 struct ValidateOptions {
 mut:
-	matrix_path string = 'agent_test_matrix.yaml'
+	matrix_path string = 'cmd/tools/agents/agent_test_matrix.yaml'
 	matrix_only bool
 }
 
@@ -78,7 +79,7 @@ fn parse_options(args []string) !ValidateOptions {
 
 fn print_help() {
 	println('Usage:')
-	println('  ./scripts/agent/validate_agent_contract.vsh [--matrix path/to/matrix.yaml] [--matrix-only]')
+	println('  ./cmd/tools/agents/validate_agent_contract.vsh [--matrix path/to/matrix.yaml] [--matrix-only]')
 }
 
 fn validate_matrix(path string, mut errors []string) {
@@ -101,12 +102,76 @@ fn validate_matrix(path string, mut errors []string) {
 		errors << '${path}: missing `rules`.'
 	}
 	validate_tier_header(path, lines, mut errors)
+	validate_default_budget_header(path, lines, mut errors)
+	validate_runtime_band_header(path, lines, mut errors)
 	validate_placeholders(path, lines, mut errors)
 	validate_rule_schema(path, lines, mut errors)
 	validate_command_references(path, lines, mut errors)
 	check_rule_order(path, lines, mut errors)
 	validate_minimum_top_level_coverage(path, lines, mut errors)
 	validate_flaky_registry(mut errors)
+}
+
+fn validate_default_budget_header(path string, lines []string, mut errors []string) {
+	mut in_budget := false
+	mut found := map[string]bool{}
+	for raw in lines {
+		line := raw.trim_space()
+		if line == 'default_budget_seconds:' {
+			in_budget = true
+			continue
+		}
+		if !in_budget {
+			continue
+		}
+		if line == '' || line.starts_with('#') {
+			continue
+		}
+		if line.starts_with('runtime_band_seconds:') || line.starts_with('rules:') {
+			break
+		}
+		if !line.contains(':') {
+			continue
+		}
+		key := line.all_before(':').trim_space()
+		found[key] = true
+	}
+	for tier in required_tiers {
+		if tier !in found {
+			errors << '${path}: default_budget_seconds missing `${tier}`.'
+		}
+	}
+}
+
+fn validate_runtime_band_header(path string, lines []string, mut errors []string) {
+	mut in_bands := false
+	mut found := map[string]bool{}
+	for raw in lines {
+		line := raw.trim_space()
+		if line == 'runtime_band_seconds:' {
+			in_bands = true
+			continue
+		}
+		if !in_bands {
+			continue
+		}
+		if line == '' || line.starts_with('#') {
+			continue
+		}
+		if line.starts_with('rules:') {
+			break
+		}
+		if !line.contains(':') {
+			continue
+		}
+		key := line.all_before(':').trim_space()
+		found[key] = true
+	}
+	for band in required_runtime_bands {
+		if band !in found {
+			errors << '${path}: runtime_band_seconds missing `${band}`.'
+		}
+	}
 }
 
 fn validate_tier_header(path string, lines []string, mut errors []string) {
@@ -283,7 +348,7 @@ fn validate_command_references(path string, lines []string, mut errors []string)
 		if in_command_block && line.starts_with('- ') {
 			entry := line.all_after('- ').trim_space()
 			if !(entry.starts_with('{') && entry.ends_with('}')) {
-				errors << '${path}: rule #${rule_idx} command entry must use inline map `{ command: ..., confidence: ..., runtime_sec: ... }`.'
+				errors << '${path}: rule #${rule_idx} command entry must use inline map `{ command: ..., confidence: ..., runtime_sec: ..., runtime_band: ... }`.'
 				continue
 			}
 			command := parse_inline_field(entry, 'command')
@@ -308,6 +373,14 @@ fn validate_command_references(path string, lines []string, mut errors []string)
 			runtime_value := runtime_sec.f64()
 			if runtime_value < 0 {
 				errors << '${path}: rule #${rule_idx} runtime_sec must be >= 0.'
+			}
+			runtime_band := parse_inline_field(entry, 'runtime_band')
+			if runtime_band == '' {
+				errors << '${path}: rule #${rule_idx} command entry is missing `runtime_band`.'
+				continue
+			}
+			if runtime_band !in required_runtime_bands {
+				errors << '${path}: rule #${rule_idx} runtime_band must be one of `${required_runtime_bands.join('|')}`.'
 			}
 			validate_command_reference(path, repo_root, rule_idx, command, mut errors)
 		}
@@ -405,7 +478,7 @@ fn validate_docs(mut errors []string) {
 	check_doc('CONTRIBUTING.md', ['./vnew'], mut errors)
 	check_doc('TESTS.md', ['make agent-check VEXE=./vnew'], mut errors)
 	check_doc('doc/agent_workflow.md', ['--changed-from', '--json', '--format',
-		'agent_test_matrix.yaml'], mut errors)
+		'cmd/tools/agents/agent_test_matrix.yaml'], mut errors)
 	check_doc('AGENTS.md', ['## When to Escalate to Broad', 'two or more high-risk owners',
 		'diagnostics/output text changes', 'repl behavior changes', 'fallback rule matched'], mut
 		errors)
@@ -413,7 +486,7 @@ fn validate_docs(mut errors []string) {
 }
 
 fn validate_flaky_registry(mut errors []string) {
-	path := 'scripts/agent/flaky_tests.yaml'
+	path := 'cmd/tools/agents/flaky_tests.yaml'
 	if !os.exists(path) {
 		errors << 'Missing ${path}'
 		return
@@ -476,8 +549,8 @@ fn validate_no_runtime_artifacts(mut errors []string) {
 	if artifacts.len == 0 {
 		return
 	}
-	errors << 'runtime artifacts found under scripts/agent/: ${artifacts.join(', ')}'
-	errors << 'clean with: rm -f scripts/agent/tmp.*'
+	errors << 'runtime artifacts found under cmd/tools/agents/: ${artifacts.join(', ')}'
+	errors << 'clean with: rm -f cmd/tools/agents/tmp.*'
 }
 
 fn check_flaky_entry_schema(path string, index int, has_match bool, has_reason bool, has_issue bool, mut errors []string) {

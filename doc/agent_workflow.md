@@ -1,6 +1,6 @@
-<!-- generated: canonical source is AGENTS.md; run ./scripts/agent/sync_agent_docs.vsh -->
+<!-- generated: canonical source is AGENTS.md; run ./cmd/tools/agents/sync_agent_docs.vsh -->
 - Canonical source: `AGENTS.md`
-- Drift policy: update `AGENTS.md` first, then run `./scripts/agent/sync_agent_docs.vsh`.
+- Drift policy: update `AGENTS.md` first, then run `./cmd/tools/agents/sync_agent_docs.vsh`.
 If anything here differs from `AGENTS.md`, follow `AGENTS.md` and treat this file as stale.
 
 # Agent Workflow
@@ -48,7 +48,7 @@ make agent-doctor
 
 ```bash
 git status
-./scripts/agent/bootstrap_check.vsh
+./cmd/tools/agents/bootstrap_check.vsh
 ./v -g -keepc -o ./vnew cmd/v
 ```
 
@@ -59,31 +59,31 @@ Use `./vnew` for build, test, and formatting commands after bootstrap.
 Use the matrix-driven suggester:
 
 ```bash
-./scripts/agent/suggest_tests.vsh --tier targeted
+./cmd/tools/agents/suggest_tests.vsh --tier targeted
 ```
 
 ### Inputs
 
 - Explicit files:
-  `./scripts/agent/suggest_tests.vsh --tier fast vlib/v/parser/parser.v`
+  `./cmd/tools/agents/suggest_tests.vsh --tier fast vlib/v/parser/parser.v`
 - From a base revision:
-  `./scripts/agent/suggest_tests.vsh --changed-from origin/master --tier broad`
+  `./cmd/tools/agents/suggest_tests.vsh --changed-from origin/master --tier broad`
 - JSON output for tool integration:
-  `./scripts/agent/suggest_tests.vsh --json --tier targeted`
+  `./cmd/tools/agents/suggest_tests.vsh --json --tier targeted`
 - Shell command block output:
-  `./scripts/agent/suggest_tests.vsh --format sh --tier targeted`
+  `./cmd/tools/agents/suggest_tests.vsh --format sh --tier targeted`
 - Large diff guardrails:
-  `./scripts/agent/suggest_tests.vsh --max-paths-warn 150 --max-paths-limit 1000`
+  `./cmd/tools/agents/suggest_tests.vsh --max-paths-warn 150 --max-paths-limit 1000`
 - Fail on unmatched paths:
-  `./scripts/agent/suggest_tests.vsh --strict-unmatched --changed-from origin/master`
+  `./cmd/tools/agents/suggest_tests.vsh --strict-unmatched --changed-from origin/master`
 - Fail if any file falls back to the catch-all matrix rule:
-  `./scripts/agent/suggest_tests.vsh --require-non-fallback --changed-from origin/master`
+  `./cmd/tools/agents/suggest_tests.vsh --require-non-fallback --changed-from origin/master`
 - Explain exactly which matrix rule pattern matched each changed path:
-  `./scripts/agent/suggest_tests.vsh --explain-match --tier targeted`
+  `./cmd/tools/agents/suggest_tests.vsh --explain-match --tier targeted`
 - Impact-aware expansion (basic ownership map):
-  `./scripts/agent/suggest_tests.vsh --impact-mode basic --tier targeted`
+  `./cmd/tools/agents/suggest_tests.vsh --impact-mode basic --tier targeted`
 - Time-budgeted command selection:
-  `./scripts/agent/suggest_tests.vsh --budget-seconds 600 --tier targeted`
+  `./cmd/tools/agents/suggest_tests.vsh --budget-seconds 600 --tier targeted`
 
 Human and JSON outputs include timing telemetry for collection/matching/total durations.
 JSON output now also includes `effective_tier`, `risk`, runtime estimates,
@@ -102,14 +102,14 @@ JSON output now also includes `effective_tier`, `risk`, runtime estimates,
 
 ## Matrix and Contract
 
-- Rule source: `agent_test_matrix.yaml`
-- Contract validator: `scripts/agent/validate_agent_contract.vsh`
-- Doc sync check: `scripts/agent/sync_agent_docs.vsh --check`
+- Rule source: `cmd/tools/agents/agent_test_matrix.yaml`
+- Contract validator: `cmd/tools/agents/validate_agent_contract.vsh`
+- Doc sync check: `cmd/tools/agents/sync_agent_docs.vsh --check`
 - CI workflow: `.github/workflows/agent_contract_ci.yml`
 - CI enforces `--require-non-fallback` for agent-contract smoke coverage.
 - Each matrix rule now carries an `owner` hint.
 - Test commands are inline objects with numeric `confidence`.
-- Known flaky command patterns are tracked in `scripts/agent/flaky_tests.yaml`.
+- Known flaky command patterns are tracked in `cmd/tools/agents/flaky_tests.yaml`.
 - `cmd/tools/**` now has finer-grained rules for `vtimeout`, `vcomplete`,
   `vvet`, `vcheck-md`, `vpm`, `vcreate`, and `vast` before the generic
   tools fallback.
@@ -120,11 +120,11 @@ Use this compact map for common agent-tooling failures.
 
 | Symptom | First command | Expected signal |
 | --- | --- | --- |
-| Contract check fails | `./scripts/agent/validate_agent_contract.vsh` | `Agent contract validation passed.` |
-| Doc sync mismatch | `./scripts/agent/sync_agent_docs.vsh --check` | `Agent docs sync check passed.` |
-| Suggestion mismatch/unmatched paths | `./scripts/agent/suggest_tests.vsh --tier targeted --strict-unmatched --explain-match` | no `Unmatched paths` section |
-| Fallback rule unexpectedly selected | `./scripts/agent/suggest_tests.vsh --tier targeted --require-non-fallback <paths>` | exits 0 and no fallback warning |
-| Summary JSON invalid | `./scripts/agent/validate_agent_run_summary.vsh /tmp/agent_run_summary.json` | schema validation passed |
+| Contract check fails | `./cmd/tools/agents/validate_agent_contract.vsh` | `Agent contract validation passed.` |
+| Doc sync mismatch | `./cmd/tools/agents/sync_agent_docs.vsh --check` | `Agent docs sync check passed.` |
+| Suggestion mismatch/unmatched paths | `./cmd/tools/agents/suggest_tests.vsh --strict-unmatched --explain-match` | no `Unmatched paths` section |
+| Fallback rule unexpectedly selected | `./cmd/tools/agents/suggest_tests.vsh --require-non-fallback <paths>` | exits 0 and no fallback warning |
+| Summary JSON invalid | `./cmd/tools/agents/validate_agent_run_summary.vsh /tmp/agent_run_summary.json` | schema validation passed |
 | Runtime artifact cleanliness failure | `make agent-artifact-clean-check` | exits 0 with no output |
 | Full quick parity check | `make agent-smoke VEXE=./vnew local=1` | ends with `Agent smoke passed.` |
 

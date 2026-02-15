@@ -62,7 +62,7 @@ fn main() {
 			for path in changed {
 				eprintln('  - ${path}')
 			}
-			eprintln('Run: ./scripts/agent/sync_agent_docs.vsh --root ${root_abs}')
+			eprintln('Run: ./cmd/tools/agents/sync_agent_docs.vsh --root ${root_abs}')
 			exit(1)
 		}
 		println('Agent docs sync check passed.')
@@ -94,9 +94,9 @@ fn ensure_canonical_banner(root string, rel_path string) !bool {
 	}
 	body := lines[idx..]
 	mut new_header := []string{}
-	new_header << '<!-- generated: canonical source is AGENTS.md; run ./scripts/agent/sync_agent_docs.vsh -->'
+	new_header << '<!-- generated: canonical source is AGENTS.md; run ./cmd/tools/agents/sync_agent_docs.vsh -->'
 	new_header << canonical_line
-	new_header << '- Drift policy: update `AGENTS.md` first, then run `./scripts/agent/sync_agent_docs.vsh`.'
+	new_header << '- Drift policy: update `AGENTS.md` first, then run `./cmd/tools/agents/sync_agent_docs.vsh`.'
 	new_header << stale_line
 	new_header << ''
 	mut merged := new_header.clone()
@@ -112,7 +112,7 @@ fn ensure_canonical_banner(root string, rel_path string) !bool {
 
 fn print_help() {
 	println('Usage:')
-	println('  ./scripts/agent/sync_agent_docs.vsh')
-	println('  ./scripts/agent/sync_agent_docs.vsh --check')
-	println('  ./scripts/agent/sync_agent_docs.vsh --root /path/to/repo')
+	println('  ./cmd/tools/agents/sync_agent_docs.vsh')
+	println('  ./cmd/tools/agents/sync_agent_docs.vsh --check')
+	println('  ./cmd/tools/agents/sync_agent_docs.vsh --root /path/to/repo')
 }

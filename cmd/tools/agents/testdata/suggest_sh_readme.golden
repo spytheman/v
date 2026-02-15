@@ -2,4 +2,5 @@
 set -euo pipefail
 # tier: targeted
 # changed_paths: 1
+# warning: applied default budget 600.0s for tier `targeted`
 ./vnew check-md README.md

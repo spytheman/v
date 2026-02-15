@@ -1,0 +1,34 @@
+version: 2
+default_compiler: ./vnew
+available_tiers:
+  - fast
+  - targeted
+  - broad
+default_budget_seconds:
+  fast: 120
+  targeted: 600
+  broad: 1800
+runtime_band_seconds:
+  tiny: 5
+  short: 20
+  medium: 90
+  long: 300
+  xlong: 1200
+rules:
+  - paths:
+      - "cmd/tools/agents/**"
+    rebuild_vnew: false
+    owner: agent-infra
+    risk: medium
+    fast_tests:
+      - { command: "./cmd/tools/agents/does_not_exist.vsh", confidence: 0.90, runtime_sec: 20, runtime_band: short }
+    targeted_tests:
+      - { command: "./cmd/tools/agents/does_not_exist.vsh", confidence: 0.75, runtime_sec: 90, runtime_band: medium }
+    broad_tests:
+      - { command: "./cmd/tools/agents/does_not_exist.vsh", confidence: 0.60, runtime_sec: 240, runtime_band: long }
+helper_target:
+  command: "make agent-check VEXE=./vnew"
+  description: "x"
+suggest_command:
+  command: "./cmd/tools/agents/suggest_tests.vsh"
+  description: "x"
