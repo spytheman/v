@@ -94,6 +94,9 @@ mut:
 	fail_below_confidence f64
 	small_change_lane     bool
 	allow_broad           bool
+	focus_owners          []string
+	exclude_owners        []string
+	max_derived_impacts   int = 100
 }
 
 struct SuggestResult {
@@ -138,15 +141,29 @@ fn main() {
 	collect_ms := int(collect_sw.elapsed().milliseconds())
 	initial_paths, mut warnings := apply_path_guardrails(raw_paths, options)
 	mut changed_paths := initial_paths.clone()
+	mut derived_count := 0
 	if options.impact_mode in ['basic', 'semantic'] {
-		expanded_paths, impact_warnings := apply_impact_map(changed_paths)
+		remaining := if options.max_derived_impacts - derived_count > 0 {
+			options.max_derived_impacts - derived_count
+		} else {
+			0
+		}
+		expanded_paths, impact_warnings, added := apply_impact_map(changed_paths, remaining)
 		changed_paths = expanded_paths.clone()
 		warnings << impact_warnings
+		derived_count += added
 	}
 	if options.impact_mode == 'semantic' {
-		expanded_paths, semantic_warnings := apply_import_impact_map(changed_paths)
+		remaining := if options.max_derived_impacts - derived_count > 0 {
+			options.max_derived_impacts - derived_count
+		} else {
+			0
+		}
+		expanded_paths, semantic_warnings, added := apply_import_impact_map(changed_paths,
+			remaining)
 		changed_paths = expanded_paths.clone()
 		warnings << semantic_warnings
+		derived_count += added
 	}
 	if changed_paths.len == 0 {
 		empty := SuggestResult{
@@ -181,6 +198,9 @@ fn main() {
 	for path in changed_paths {
 		mut matched := false
 		for i, rule in rules {
+			if !owner_allowed(rule.owner, options.focus_owners, options.exclude_owners) {
+				continue
+			}
 			matching_pattern := first_matching_pattern(rule, path)
 			if matching_pattern != '' {
 				key := i.str()
@@ -472,6 +492,45 @@ fn parse_options(args []string) !SuggestOptions {
 			i++
 			continue
 		}
+		if arg == '--focus-owner' {
+			if i + 1 >= args.len {
+				return error('Missing value after --focus-owner')
+			}
+			options.focus_owners = parse_owner_list(args[i + 1])
+			i += 2
+			continue
+		}
+		if arg.starts_with('--focus-owner=') {
+			options.focus_owners = parse_owner_list(arg.all_after('--focus-owner='))
+			i++
+			continue
+		}
+		if arg == '--exclude-owner' {
+			if i + 1 >= args.len {
+				return error('Missing value after --exclude-owner')
+			}
+			options.exclude_owners = parse_owner_list(args[i + 1])
+			i += 2
+			continue
+		}
+		if arg.starts_with('--exclude-owner=') {
+			options.exclude_owners = parse_owner_list(arg.all_after('--exclude-owner='))
+			i++
+			continue
+		}
+		if arg == '--max-derived-impacts' {
+			if i + 1 >= args.len {
+				return error('Missing value after --max-derived-impacts')
+			}
+			options.max_derived_impacts = args[i + 1].int()
+			i += 2
+			continue
+		}
+		if arg.starts_with('--max-derived-impacts=') {
+			options.max_derived_impacts = arg.all_after('--max-derived-impacts=').int()
+			i++
+			continue
+		}
 		if arg == '--explain-match' {
 			options.explain_match = true
 			i++
@@ -564,6 +623,9 @@ fn parse_options(args []string) !SuggestOptions {
 	if options.max_paths_warn < 0 || options.max_paths_limit < 0 {
 		return error('`--max-paths-warn` and `--max-paths-limit` must be >= 0.')
 	}
+	if options.max_derived_impacts < 0 {
+		return error('`--max-derived-impacts` must be >= 0.')
+	}
 	if options.budget_seconds < 0 {
 		return error('`--budget-seconds` must be >= 0.')
 	}
@@ -594,6 +656,9 @@ fn print_help() {
 	println('  --require-non-fallback  exit non-zero when fallback rule is selected')
 	println('  --small-change-lane     cap to targeted tier unless --allow-broad is provided')
 	println('  --allow-broad           allow broad tier when using --small-change-lane')
+	println('  --focus-owner <a,b>     include only matched rules owned by listed owner(s)')
+	println('  --exclude-owner <a,b>   exclude matched rules owned by listed owner(s)')
+	println('  --max-derived-impacts <n>  cap synthetic impact expansions (default: 100)')
 	println('  --explain-match         show matching owner/pattern per changed path')
 	println('')
 	println('Without paths, changed files are read from:')
@@ -1034,7 +1099,7 @@ fn expand_template_command(command string, md_paths []string) []string {
 	return expanded
 }
 
-fn apply_impact_map(paths []string) ([]string, []string) {
+fn apply_impact_map(paths []string, limit int) ([]string, []string, int) {
 	// Basic ownership map for cross-module regressions that often co-occur.
 	impact_map := {
 		'vlib/v/parser/**':  ['vlib/v/checker/__impact__.v']
@@ -1045,6 +1110,7 @@ fn apply_impact_map(paths []string) ([]string, []string) {
 	}
 	mut expanded := paths.clone()
 	mut warnings := []string{}
+	mut added := 0
 	for path in paths {
 		for pattern, related_paths in impact_map {
 			if !pattern_matches_path(pattern, path) {
@@ -1054,15 +1120,20 @@ fn apply_impact_map(paths []string) ([]string, []string) {
 				if related in expanded {
 					continue
 				}
+				if added >= limit {
+					warnings << 'impact map expansion reached max-derived-impacts=${limit}; skipping further derived paths'
+					return expanded, warnings, added
+				}
 				expanded << related
 				warnings << 'impact map: ${path} -> ${related}'
+				added++
 			}
 		}
 	}
-	return expanded, warnings
+	return expanded, warnings, added
 }
 
-fn apply_import_impact_map(paths []string) ([]string, []string) {
+fn apply_import_impact_map(paths []string, limit int) ([]string, []string, int) {
 	module_impacts := {
 		'v.parser':   'vlib/v/parser/__impact__.v'
 		'v.checker':  'vlib/v/checker/__impact__.v'
@@ -1077,6 +1148,7 @@ fn apply_import_impact_map(paths []string) ([]string, []string) {
 	}
 	mut expanded := paths.clone()
 	mut warnings := []string{}
+	mut added := 0
 	for path in paths {
 		if !(path.ends_with('.v') || path.ends_with('.vsh') || path.ends_with('.vv')) {
 			continue
@@ -1101,13 +1173,18 @@ fn apply_import_impact_map(paths []string) ([]string, []string) {
 				if hint_path in expanded {
 					break
 				}
+				if added >= limit {
+					warnings << 'semantic impact expansion reached max-derived-impacts=${limit}; skipping further derived paths'
+					return expanded, warnings, added
+				}
 				expanded << hint_path
 				warnings << 'semantic impact: ${path} imports ${imported_mod} -> ${hint_path}'
+				added++
 				break
 			}
 		}
 	}
-	return expanded, warnings
+	return expanded, warnings, added
 }
 
 fn sum_runtime(commands []SuggestedCommand) f64 {
@@ -1323,6 +1400,22 @@ fn parse_default_budget_seconds(path string, tier string) !f64 {
 		}
 	}
 	return error('default budget not set for tier `${tier}`')
+}
+
+fn parse_owner_list(raw string) []string {
+	return raw.split(',')
+		.map(it.trim_space())
+		.filter(it != '')
+}
+
+fn owner_allowed(owner string, focus []string, excluded []string) bool {
+	if owner in excluded {
+		return false
+	}
+	if focus.len == 0 {
+		return true
+	}
+	return owner in focus
 }
 
 fn rebuild_owners(rules []RuleMatchSummary) string {

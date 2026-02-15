@@ -183,6 +183,32 @@ fn test_explain_match_shows_pattern_owner_per_path() {
 	assert result.output.contains('vlib/v/parser/parser.v: owner=parser pattern=vlib/v/parser/**')
 }
 
+fn test_focus_owner_limits_to_selected_owner_rules() {
+	result := run_cmd('./cmd/tools/agents/suggest_tests.vsh --focus-owner parser --impact-mode off vlib/v/parser/parser.v vlib/v/checker/checker.v') or {
+		panic(err)
+	}
+	assert result.output.contains('owner=parser')
+	assert !result.output.contains('owner=checker')
+	assert result.output.contains('./vnew -silent vlib/v/compiler_errors_test.v')
+}
+
+fn test_exclude_owner_drops_matching_rules() {
+	result := run_cmd('./cmd/tools/agents/suggest_tests.vsh --exclude-owner parser --impact-mode off vlib/v/parser/parser.v') or {
+		panic(err)
+	}
+	assert result.output.contains('Changed paths: 1')
+	assert !result.output.contains('owner=parser')
+	assert result.output.contains('owner=compiler')
+	assert result.output.contains('./vnew -silent test vlib/v/')
+}
+
+fn test_max_derived_impacts_limits_expansion() {
+	result := run_cmd('./cmd/tools/agents/suggest_tests.vsh --max-derived-impacts 1 vlib/v/parser/parser.v vlib/v/checker/checker.v') or {
+		panic(err)
+	}
+	assert result.output.contains('max-derived-impacts=1')
+}
+
 fn test_changed_from_uses_controlled_git_history() {
 	tmp := os.join_path(os.vtmp_dir(), 'suggest_tests_repo_${rand.ulid()}')
 	os.mkdir_all(tmp) or { panic(err) }
