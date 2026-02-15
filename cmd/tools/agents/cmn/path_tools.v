@@ -2,6 +2,18 @@ module cmn
 
 import os
 
+pub fn file_exists(path string) bool {
+	return os.exists(path)
+}
+
+pub fn command_in_path(name string) bool {
+	if name == '' {
+		return false
+	}
+	result := os.execute('command -v ${name} >/dev/null 2>&1')
+	return result.exit_code == 0
+}
+
 pub fn normalize_path(path string) string {
 	mut normalized := path.trim_space()
 	for normalized.starts_with('./') {

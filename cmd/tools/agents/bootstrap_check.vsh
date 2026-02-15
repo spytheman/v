@@ -180,7 +180,7 @@ fn is_v_source_path(path string) bool {
 }
 
 fn check_file(path string, mut failures []string) {
-	if os.exists(path) {
+	if cmn.file_exists(path) {
 		println('[ok] Found ${path}')
 		return
 	}
@@ -191,8 +191,7 @@ fn check_tool(name string, mut issues []string) {
 	if name == '' {
 		return
 	}
-	result := os.execute('command -v ${name} >/dev/null 2>&1')
-	if result.exit_code == 0 {
+	if cmn.command_in_path(name) {
 		println('[ok] Tool available: ${name}')
 		return
 	}

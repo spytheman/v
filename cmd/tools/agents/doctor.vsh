@@ -53,20 +53,21 @@ fn main() {
 }
 
 fn check_file(path string, remedy string) CheckResult {
+	exists := cmn.file_exists(path)
 	return CheckResult{
 		name:   'file ${path}'
-		ok:     os.exists(path)
-		detail: if os.exists(path) { 'present' } else { 'missing' }
+		ok:     exists
+		detail: if exists { 'present' } else { 'missing' }
 		remedy: remedy
 	}
 }
 
 fn check_tool(name string, remedy string) CheckResult {
-	result := os.execute('command -v ${name} >/dev/null 2>&1')
+	available := cmn.command_in_path(name)
 	return CheckResult{
 		name:   'tool ${name}'
-		ok:     result.exit_code == 0
-		detail: if result.exit_code == 0 { 'available' } else { 'not found in PATH' }
+		ok:     available
+		detail: if available { 'available' } else { 'not found in PATH' }
 		remedy: remedy
 	}
 }

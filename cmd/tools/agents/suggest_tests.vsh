@@ -876,6 +876,9 @@ fn collect_changed_paths(options SuggestOptions) ![]string {
 	commands << 'git diff --name-only'
 	commands << 'git diff --cached --name-only'
 	commands << 'git ls-files --others --exclude-standard'
+	if commands.len == 3 {
+		return cmn.collect_changed_paths()
+	}
 	for command in commands {
 		result := os.execute(command)
 		if result.exit_code != 0 {
