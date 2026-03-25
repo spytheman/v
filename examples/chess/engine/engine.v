@@ -3,6 +3,9 @@ module engine
 import time
 
 const ai_time_limit_ms = 2000
+const tt_bound_exact = 0
+const tt_bound_lower = 1
+const tt_bound_upper = 2
 
 pub fn (mut e Engine) new_position() Position {
 	return Position{
@@ -17,6 +20,12 @@ pub fn (mut e Engine) new_position() Position {
 			[rook, knight, bishop, queen, king, bishop, knight, rook]!,
 		]!
 		white_to_move:   true
+		white_kingside:  true
+		white_queenside: true
+		black_kingside:  true
+		black_queenside: true
+		en_passant_x:    no_square
+		en_passant_y:    no_square
 		fullmove_number: 1
 	}
 }
@@ -33,23 +42,35 @@ pub fn (mut e Engine) search_best_move_with_time(pos Position, side int, time_li
 pub fn (mut e Engine) search_best_move_with_control(pos Position, side int, time_limit_ms int, shared control SearchControl) Move {
 	e.killer_moves = [2][64]int{}
 	e.history = [2][64][64]int{}
-	mut best_score := if side == black_color { -checkmate_score } else { checkmate_score }
+	mut best_score := worst_score_for(side)
 	mut best_move := Move{}
-	mut tied_best_count := 0
 	mut alpha := -checkmate_score
 	mut beta := checkmate_score
 	window := 50
 	start_time := time.ticks()
-	moves := e.legal_moves_for(pos, side)
-	if moves.len == 0 {
+	legal_moves := e.legal_moves_for(pos, side)
+	if legal_moves.len == 0 {
 		return Move{}
 	}
 	for current_depth := 1; current_depth <= search_depth; current_depth++ {
 		if should_stop_search(start_time, time_limit_ms, shared control) {
 			break
 		}
-		for mv in moves {
+		mut depth_best_score := worst_score_for(side)
+		mut depth_best_move := Move{}
+		mut completed_depth := true
+		mut ordered_root := e.order_moves(legal_moves, pos, side, 0)
+		if best_move != Move{} {
+			ordered_root = prioritize_move(ordered_root, best_move)
+		} else {
+			root_key := e.position_key(pos)
+			if root_key in e.transposition_table {
+				ordered_root = prioritize_move(ordered_root, e.transposition_table[root_key].best_move)
+			}
+		}
+		for mv in ordered_root {
 			if should_stop_search(start_time, time_limit_ms, shared control) {
+				completed_depth = false
 				break
 			}
 			mut next := e.copy_position(pos)
@@ -58,19 +79,19 @@ pub fn (mut e Engine) search_best_move_with_control(pos Position, side int, time
 			score := e.search(next, other_side, current_depth - 1, alpha, beta, 0, start_time,
 				time_limit_ms, shared control)
 			if should_stop_search(start_time, time_limit_ms, shared control) {
+				completed_depth = false
 				break
 			}
-			if is_better_root_score(score, best_score, side) {
-				best_score = score
-				best_move = mv
-				tied_best_count = 1
-			} else if score == best_score {
-				tied_best_count++
-				if should_choose_tied_move(start_time, mv, tied_best_count) {
-					best_move = mv
-				}
+			if depth_best_move == Move{} || is_better_root_score(score, depth_best_score, side) {
+				depth_best_score = score
+				depth_best_move = mv
 			}
 		}
+		if !completed_depth || depth_best_move == Move{} {
+			break
+		}
+		best_score = depth_best_score
+		best_move = depth_best_move
 		if best_score <= alpha || best_score >= beta {
 			alpha = -checkmate_score
 			beta = checkmate_score
@@ -80,7 +101,7 @@ pub fn (mut e Engine) search_best_move_with_control(pos Position, side int, time
 		}
 	}
 	if best_move == Move{} {
-		best_move = moves[0]
+		best_move = legal_moves[0]
 	}
 	return best_move
 }
@@ -89,13 +110,88 @@ fn is_better_root_score(score int, best_score int, side int) bool {
 	return if side == black_color { score > best_score } else { score < best_score }
 }
 
-fn should_choose_tied_move(start_time i64, mv Move, tied_best_count int) bool {
-	if tied_best_count <= 1 {
-		return true
+fn worst_score_for(side int) int {
+	return if side == black_color { -checkmate_score } else { checkmate_score }
+}
+
+fn square_index(x int, y int) int {
+	return y * board_cells + x
+}
+
+fn move_order_key(mv Move) int {
+	from_sq := square_index(mv.from_x, mv.from_y)
+	to_sq := square_index(mv.to_x, mv.to_y)
+	return 1 + from_sq * 64 + to_sq + mv.promotion * 4096
+}
+
+fn same_move(a Move, b Move) bool {
+	return a.from_x == b.from_x && a.from_y == b.from_y && a.to_x == b.to_x && a.to_y == b.to_y
+		&& a.promotion == b.promotion
+}
+
+fn prioritize_move(moves []Move, priority Move) []Move {
+	if priority == Move{} {
+		return moves
 	}
-	seed := u64(start_time) + u64(time.ticks()) + u64((mv.from_x + 1) * 17 + (mv.from_y + 1) * 31 +
-		(mv.to_x + 1) * 43 + (mv.to_y + 1) * 59 + (mv.promotion + 1) * 71)
-	return int(seed % u64(tied_best_count)) == 0
+	mut ordered := moves.clone()
+	for i, mv in ordered {
+		if same_move(mv, priority) {
+			ordered[0], ordered[i] = ordered[i], ordered[0]
+			break
+		}
+	}
+	return ordered
+}
+
+fn side_index(side int) int {
+	return if side == black_color { 1 } else { 0 }
+}
+
+fn is_capture_move(pos Position, mv Move) bool {
+	return mv.is_en_passant || pos.board[mv.to_y][mv.to_x] != 0
+}
+
+fn is_tactical_move(pos Position, mv Move) bool {
+	return is_capture_move(pos, mv) || mv.promotion != 0
+}
+
+fn is_quiet_move(pos Position, mv Move) bool {
+	return !is_tactical_move(pos, mv)
+}
+
+fn tactical_order_score(pos Position, mv Move) int {
+	attacker := piece_value(piece_kind(pos.board[mv.from_y][mv.from_x]))
+	victim := if mv.is_en_passant {
+		piece_value(pawn)
+	} else if pos.board[mv.to_y][mv.to_x] != 0 {
+		piece_value(piece_kind(pos.board[mv.to_y][mv.to_x]))
+	} else {
+		0
+	}
+	promotion_bonus := if mv.promotion != 0 { piece_value(mv.promotion) + 50 } else { 0 }
+	return victim * 16 - attacker + promotion_bonus
+}
+
+fn tt_bound_for(score int, alpha_orig int, beta_orig int) int {
+	if score <= alpha_orig {
+		return tt_bound_upper
+	}
+	if score >= beta_orig {
+		return tt_bound_lower
+	}
+	return tt_bound_exact
+}
+
+fn (mut e Engine) store_tt_entry(key string, depth int, score int, bound int, best_move Move) {
+	if key !in e.transposition_table && e.transposition_table.len >= tt_max_entries {
+		e.transposition_table = map[string]TTEntry{}
+	}
+	e.transposition_table[key] = TTEntry{
+		depth:     depth
+		score:     score
+		bound:     bound
+		best_move: best_move
+	}
 }
 
 fn (mut e Engine) search(pos Position, side int, depth int, alpha0 int, beta0 int, ply int, start_time i64, time_limit_ms int, shared control SearchControl) int {
@@ -107,82 +203,149 @@ fn (mut e Engine) search(pos Position, side int, depth int, alpha0 int, beta0 in
 	}
 	mut alpha := alpha0
 	mut beta := beta0
+	mut remaining_depth := depth
+	if remaining_depth > 0 && remaining_depth <= 2 && e.is_in_check(pos, side) {
+		remaining_depth++
+	}
+	alpha_orig := alpha0
+	beta_orig := beta0
+	tt_key := e.position_key(pos)
+	mut tt_best_move := Move{}
+	if tt_key in e.transposition_table {
+		entry := e.transposition_table[tt_key]
+		tt_best_move = entry.best_move
+		if entry.depth >= remaining_depth {
+			match entry.bound {
+				tt_bound_exact {
+					return entry.score
+				}
+				tt_bound_lower {
+					if entry.score > alpha {
+						alpha = entry.score
+					}
+				}
+				tt_bound_upper {
+					if entry.score < beta {
+						beta = entry.score
+					}
+				}
+				else {}
+			}
+			if alpha >= beta {
+				return entry.score
+			}
+		}
+	}
 	moves := e.legal_moves_for(pos, side)
 	if moves.len == 0 {
 		if e.is_in_check(pos, side) {
-			return if side == black_color {
-				-checkmate_score - depth
+			score := if side == black_color {
+				-checkmate_score - remaining_depth
 			} else {
-				checkmate_score + depth
+				checkmate_score + remaining_depth
 			}
+			e.store_tt_entry(tt_key, remaining_depth, score, tt_bound_exact, Move{})
+			return score
 		}
+		e.store_tt_entry(tt_key, remaining_depth, 0, tt_bound_exact, Move{})
 		return 0
 	}
-	if depth == 0 {
+	if remaining_depth == 0 {
 		return e.quiescence(pos, alpha, beta, side, 0, start_time, time_limit_ms, shared
 			control)
 	}
-	ordered := e.order_moves(moves, pos, side, ply)
+	mut ordered := e.order_moves(moves, pos, side, ply)
+	ordered = prioritize_move(ordered, tt_best_move)
 	if side == black_color {
 		mut best := -checkmate_score
+		mut best_move := Move{}
+		mut completed := true
 		for mv in ordered {
 			if should_stop_search(start_time, time_limit_ms, shared control) {
+				completed = false
 				break
 			}
 			mut next := e.copy_position(pos)
 			apply_move(mut next, mv)
-			score := e.search(next, white_color, depth - 1, alpha, beta, ply + 1, start_time,
-				time_limit_ms, shared control)
+			score := e.search(next, white_color, remaining_depth - 1, alpha, beta, ply + 1,
+				start_time, time_limit_ms, shared control)
 			if should_stop_search(start_time, time_limit_ms, shared control) {
+				completed = false
 				break
 			}
 			if score > best {
 				best = score
+				best_move = mv
 			}
 			if best > alpha {
 				alpha = best
 			}
 			if alpha >= beta {
-				if mv.score == 0 {
-					e.killer_moves[1][ply] = mv.to_y * 64 + mv.to_x
-					e.history[1][mv.from_y][mv.from_x] += depth * depth
+				if is_quiet_move(pos, mv) {
+					from_sq := square_index(mv.from_x, mv.from_y)
+					to_sq := square_index(mv.to_x, mv.to_y)
+					e.killer_moves[1][ply] = move_order_key(mv)
+					e.history[1][from_sq][to_sq] += depth * depth
 				}
 				break
 			}
 		}
 		if best == -checkmate_score {
-			return e.evaluate(pos, 0, side)
+			score := e.evaluate(pos, 0, side)
+			if completed {
+				e.store_tt_entry(tt_key, remaining_depth, score, tt_bound_exact, Move{})
+			}
+			return score
+		}
+		if completed {
+			e.store_tt_entry(tt_key, remaining_depth, best, tt_bound_for(best, alpha_orig,
+				beta_orig), best_move)
 		}
 		return best
 	}
 	mut best := checkmate_score
+	mut best_move := Move{}
+	mut completed := true
 	for mv in ordered {
 		if should_stop_search(start_time, time_limit_ms, shared control) {
+			completed = false
 			break
 		}
 		mut next := e.copy_position(pos)
 		apply_move(mut next, mv)
-		score := e.search(next, black_color, depth - 1, alpha, beta, ply + 1, start_time,
-			time_limit_ms, shared control)
+		score := e.search(next, black_color, remaining_depth - 1, alpha, beta, ply + 1,
+			start_time, time_limit_ms, shared control)
 		if should_stop_search(start_time, time_limit_ms, shared control) {
+			completed = false
 			break
 		}
 		if score < best {
 			best = score
+			best_move = mv
 		}
 		if best < beta {
 			beta = best
 		}
 		if alpha >= beta {
-			if mv.score == 0 {
-				e.killer_moves[0][ply] = mv.to_y * 64 + mv.to_x
-				e.history[0][mv.from_y][mv.from_x] += depth * depth
+			if is_quiet_move(pos, mv) {
+				from_sq := square_index(mv.from_x, mv.from_y)
+				to_sq := square_index(mv.to_x, mv.to_y)
+				e.killer_moves[0][ply] = move_order_key(mv)
+				e.history[0][from_sq][to_sq] += depth * depth
 			}
 			break
 		}
 	}
 	if best == checkmate_score {
-		return e.evaluate(pos, 0, side)
+		score := e.evaluate(pos, 0, side)
+		if completed {
+			e.store_tt_entry(tt_key, remaining_depth, score, tt_bound_exact, Move{})
+		}
+		return score
+	}
+	if completed {
+		e.store_tt_entry(tt_key, remaining_depth, best, tt_bound_for(best, alpha_orig,
+			beta_orig), best_move)
 	}
 	return best
 }
@@ -196,21 +359,35 @@ fn (e &Engine) quiescence(pos Position, alpha_ int, beta_ int, side int, depth i
 	}
 	mut alpha := alpha_
 	mut beta := beta_
-	mut captures := e.legal_moves_for(pos, side).filter(it.score > 0 || it.is_en_passant)
-	if captures.len == 0 {
-		return e.evaluate(pos, 0, side)
+	in_check := e.is_in_check(pos, side)
+	mut stand_pat := 0
+	mut moves := []Move{}
+	if in_check {
+		moves = e.order_moves(e.legal_moves_for(pos, side), pos, side, 0)
+		if moves.len == 0 {
+			return if side == black_color {
+				-checkmate_score - depth
+			} else {
+				checkmate_score + depth
+			}
+		}
+	} else {
+		stand_pat = e.evaluate(pos, 0, side)
+		moves = e.legal_moves_for(pos, side).filter(is_tactical_move(pos, it))
+		if moves.len == 0 {
+			return stand_pat
+		}
+		e.sort_captures(mut moves, pos)
 	}
-	e.sort_captures(mut captures, pos)
 	if side == black_color {
-		mut stand_pat := e.evaluate(pos, 0, side)
-		if stand_pat > alpha {
+		if !in_check && stand_pat > alpha {
 			alpha = stand_pat
 		}
-		if alpha >= beta {
+		if !in_check && alpha >= beta {
 			return beta
 		}
 		mut best := -checkmate_score
-		for mv in captures {
+		for mv in moves {
 			if should_stop_search(start_time, time_limit_ms, shared control) {
 				break
 			}
@@ -236,12 +413,14 @@ fn (e &Engine) quiescence(pos Position, alpha_ int, beta_ int, side int, depth i
 		}
 		return best
 	}
-	mut stand_pat := e.evaluate(pos, 0, side)
-	if stand_pat < beta {
+	if !in_check && stand_pat < beta {
 		beta = stand_pat
 	}
+	if !in_check && alpha >= beta {
+		return alpha
+	}
 	mut best := checkmate_score
-	for mv in captures {
+	for mv in moves {
 		if should_stop_search(start_time, time_limit_ms, shared control) {
 			break
 		}
@@ -280,24 +459,16 @@ fn should_stop_search(start_time i64, time_limit_ms int, shared control SearchCo
 fn (e &Engine) order_moves(moves []Move, pos Position, side int, ply int) []Move {
 	mut scored := moves.map(fn [e, pos, side, ply] (mv Move) int {
 		mut s := 0
-		if mv.is_en_passant {
-			s += 500
+		if is_tactical_move(pos, mv) {
+			s += 10000 + tactical_order_score(pos, mv)
 		}
-		if mv.score > 0 {
-			s += 10000
+		sidx := side_index(side)
+		from_sq := square_index(mv.from_x, mv.from_y)
+		to_sq := square_index(mv.to_x, mv.to_y)
+		if e.killer_moves[sidx][ply] == move_order_key(mv) {
+			s += 900
 		}
-		to_sq := mv.to_y * 64 + mv.to_x
-		if side == black_color {
-			if e.killer_moves[1][ply] == to_sq {
-				s += 900
-			}
-			s += e.history[1][mv.from_y][mv.from_x]
-		} else {
-			if e.killer_moves[0][ply] == to_sq {
-				s += 900
-			}
-			s += e.history[0][mv.from_y][mv.from_x]
-		}
+		s += e.history[sidx][from_sq][to_sq]
 		if mv.is_castle {
 			s += 50
 		}
@@ -316,8 +487,18 @@ fn (e &Engine) order_moves(moves []Move, pos Position, side int, ply int) []Move
 	return result
 }
 
-fn (e &Engine) sort_captures(mut moves []Move, _ Position) {
-	moves.sort(a.score > b.score)
+fn (e &Engine) sort_captures(mut moves []Move, pos Position) {
+	moves.sort_with_compare(fn [pos] (a &Move, b &Move) int {
+		a_score := tactical_order_score(pos, *a)
+		b_score := tactical_order_score(pos, *b)
+		return if a_score > b_score {
+			-1
+		} else if a_score < b_score {
+			1
+		} else {
+			0
+		}
+	})
 }
 
 fn (e &Engine) evaluate(pos Position, mobility int, side int) int {
@@ -519,8 +700,8 @@ fn (e &Engine) evaluate(pos Position, mobility int, side int) int {
 	if black_king_rank >= 6 {
 		score -= king_safety_bonus
 	}
-	white_moves := e.legal_moves_for(pos, white_color).len
-	black_moves := e.legal_moves_for(pos, black_color).len
+	white_moves := e.pseudo_moves_for(pos, white_color).len
+	black_moves := e.pseudo_moves_for(pos, black_color).len
 	score += (black_moves - white_moves) * 8
 	score += 10
 	if e.is_in_check(pos, white_color) {

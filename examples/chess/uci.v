@@ -165,32 +165,39 @@ fn parse_position_command(parts []string, mut e engine.Engine) engine.Position {
 	return pos
 }
 
-fn go_command(parts []string, mut e engine.Engine, pos engine.Position) engine.SearchResult {
+fn go_command(parts []string, _ engine.Engine, pos engine.Position) engine.SearchResult {
 	side := if pos.white_to_move { engine.white_color } else { engine.black_color }
 	params := parse_go_params(parts)
 	time_limit_ms := compute_time_limit_ms(params, pos)
-	best_move := e.search_best_move_with_time(pos, side, time_limit_ms)
+	best_move := compute_best_move(pos, side, time_limit_ms)
 	return engine.SearchResult{
 		best_move: best_move
 	}
 }
 
-fn start_search(parts []string, e engine.Engine, pos engine.Position, search_id int, shared search_control engine.SearchControl, result_ch chan SearchOutcome) {
+fn start_search(parts []string, _ engine.Engine, pos engine.Position, search_id int, shared search_control engine.SearchControl, result_ch chan SearchOutcome) {
 	params := parse_go_params(parts)
 	time_limit_ms := compute_time_limit_ms(params, pos)
 	side := if pos.white_to_move { engine.white_color } else { engine.black_color }
-	spawn search_worker(e, pos, side, time_limit_ms, search_id, shared search_control,
-		result_ch)
+	spawn search_worker(pos, side, time_limit_ms, search_id, shared search_control, result_ch)
 }
 
-fn search_worker(e engine.Engine, pos engine.Position, side int, time_limit_ms int, search_id int, shared search_control engine.SearchControl, result_ch chan SearchOutcome) {
-	mut worker := e
-	best_move := worker.search_best_move_with_control(pos, side, time_limit_ms, shared
-		search_control)
+fn search_worker(pos engine.Position, side int, time_limit_ms int, search_id int, shared search_control engine.SearchControl, result_ch chan SearchOutcome) {
+	best_move := compute_best_move_with_control(pos, side, time_limit_ms, shared search_control)
 	result_ch <- SearchOutcome{
 		id:        search_id
 		best_move: best_move
 	}
+}
+
+fn compute_best_move(pos engine.Position, side int, time_limit_ms int) engine.Move {
+	shared control := engine.SearchControl{}
+	return compute_best_move_with_control(pos, side, time_limit_ms, shared control)
+}
+
+fn compute_best_move_with_control(pos engine.Position, side int, time_limit_ms int, shared search_control engine.SearchControl) engine.Move {
+	mut worker := engine.Engine{}
+	return worker.search_best_move_with_control(pos, side, time_limit_ms, shared search_control)
 }
 
 fn stop_search(search_id int, result_ch chan SearchOutcome, shared search_control engine.SearchControl) SearchOutcome {

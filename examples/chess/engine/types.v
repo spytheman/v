@@ -4,6 +4,7 @@ pub const board_cells = 8
 pub const search_depth = 5
 pub const quiescence_depth = 8
 pub const checkmate_score = 1000000
+pub const tt_max_entries = 200000
 pub const white_color = 1
 pub const black_color = -1
 pub const pawn = 1
@@ -152,17 +153,25 @@ pub mut:
 
 pub struct Engine {
 pub mut:
-	position_counts map[string]int
-	killer_moves    [2][64]int
-	history         [2][64][64]int
-	move_history    []Move
-	fullmove_number int = 1
+	position_counts     map[string]int     = map[string]int{}
+	transposition_table map[string]TTEntry = map[string]TTEntry{}
+	killer_moves        [2][64]int
+	history             [2][64][64]int
+	move_history        []Move
+	fullmove_number     int = 1
 }
 
 pub struct SearchResult {
 pub:
 	best_move Move
 	score     int
+}
+
+struct TTEntry {
+	depth     int
+	score     int
+	bound     int
+	best_move Move
 }
 
 pub struct SearchControl {
@@ -172,6 +181,7 @@ pub mut:
 
 pub fn (mut e Engine) reset() {
 	e.position_counts = map[string]int{}
+	e.transposition_table = map[string]TTEntry{}
 	e.move_history = []
 	e.fullmove_number = 1
 	e.killer_moves = [2][64]int{}
