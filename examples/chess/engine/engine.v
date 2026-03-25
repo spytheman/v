@@ -33,8 +33,9 @@ pub fn (mut e Engine) search_best_move_with_time(pos Position, side int, time_li
 pub fn (mut e Engine) search_best_move_with_control(pos Position, side int, time_limit_ms int, shared control SearchControl) Move {
 	e.killer_moves = [2][64]int{}
 	e.history = [2][64][64]int{}
-	mut best_score := -checkmate_score
+	mut best_score := if side == black_color { -checkmate_score } else { checkmate_score }
 	mut best_move := Move{}
+	mut tied_best_count := 0
 	mut alpha := -checkmate_score
 	mut beta := checkmate_score
 	window := 50
@@ -59,9 +60,15 @@ pub fn (mut e Engine) search_best_move_with_control(pos Position, side int, time
 			if should_stop_search(start_time, time_limit_ms, shared control) {
 				break
 			}
-			if score > best_score {
+			if is_better_root_score(score, best_score, side) {
 				best_score = score
 				best_move = mv
+				tied_best_count = 1
+			} else if score == best_score {
+				tied_best_count++
+				if should_choose_tied_move(start_time, mv, tied_best_count) {
+					best_move = mv
+				}
 			}
 		}
 		if best_score <= alpha || best_score >= beta {
@@ -76,6 +83,19 @@ pub fn (mut e Engine) search_best_move_with_control(pos Position, side int, time
 		best_move = moves[0]
 	}
 	return best_move
+}
+
+fn is_better_root_score(score int, best_score int, side int) bool {
+	return if side == black_color { score > best_score } else { score < best_score }
+}
+
+fn should_choose_tied_move(start_time i64, mv Move, tied_best_count int) bool {
+	if tied_best_count <= 1 {
+		return true
+	}
+	seed := u64(start_time) + u64(time.ticks()) + u64((mv.from_x + 1) * 17 + (mv.from_y + 1) * 31 +
+		(mv.to_x + 1) * 43 + (mv.to_y + 1) * 59 + (mv.promotion + 1) * 71)
+	return int(seed % u64(tied_best_count)) == 0
 }
 
 fn (mut e Engine) search(pos Position, side int, depth int, alpha0 int, beta0 int, ply int, start_time i64, time_limit_ms int, shared control SearchControl) int {
@@ -478,8 +498,8 @@ fn (e &Engine) evaluate(pos Position, mobility int, side int) int {
 	if black_bishops >= 2 {
 		score -= 30
 	}
-	white_castled := !pos.white_kingside || !pos.white_queenside || pos.white_to_move == false
-	black_castled := !pos.black_kingside || !pos.black_queenside || pos.white_to_move == true
+	white_castled := pos.board[7][6] == king || pos.board[7][2] == king
+	black_castled := pos.board[0][6] == -king || pos.board[0][2] == -king
 	if white_castled {
 		score += 30
 	}
