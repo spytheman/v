@@ -165,6 +165,11 @@ pub:
 	score     int
 }
 
+pub struct SearchControl {
+pub mut:
+	stop bool
+}
+
 pub fn (mut e Engine) reset() {
 	e.position_counts = map[string]int{}
 	e.move_history = []

@@ -1,6 +1,7 @@
 module main
 
 import gg
+import os
 import os.asset
 import time
 import engine
@@ -11,6 +12,7 @@ const panel_width = 360
 const top_height = 0
 const window_width = board_padding * 2 + tile_size * 8 + panel_width
 const window_height = board_padding * 2 + tile_size * 8
+const pgn_output_path = os.join_path(@DIR, 'gui_game.pgn')
 
 const piece_files = {
 	1:  'Chess_plt45.png'
@@ -45,6 +47,8 @@ mut:
 	best_move_so_far   engine.Move
 	thinking_frame     int
 	ai_start_time      i64
+	pgn_moves          []string
+	pgn_result         string = '*'
 }
 
 fn main() {
@@ -78,13 +82,11 @@ fn (mut g Game) reset() {
 	g.pending_promotions = []engine.Move{}
 	g.game_over = false
 	g.eng.reset()
-	println('PGN: [Event "V Chess"]')
-	println('PGN: [Site "?"] [Date "2026.03.25"]')
-	println('PGN: [White "You"] [Black "AI"]')
-	println('PGN: [Result "*"]')
-	println('')
+	g.pgn_moves = []string{}
+	g.pgn_result = '*'
 	g.eng.record_position(g.pos)
 	g.update_status()
+	g.write_pgn_file()
 }
 
 fn on_event(e &gg.Event, mut g Game) {
@@ -218,11 +220,13 @@ fn board_square_from_mouse(mouse_x int, mouse_y int) (int, int, bool) {
 }
 
 fn (mut g Game) commit_player_move(mv engine.Move) {
+	pos_before := g.pos
 	engine.apply_move(mut g.pos, mv)
-	g.record_pgn_move(mv)
+	g.record_pgn_move(mv, pos_before)
 	g.clear_selection()
 	g.eng.record_position(g.pos)
 	g.update_status()
+	g.write_pgn_file()
 	if !g.game_over {
 		g.make_ai_move()
 	}
@@ -253,10 +257,12 @@ fn (mut g Game) apply_ai_move() {
 	if g.pending_ai_move == engine.Move{} {
 		return
 	}
+	pos_before := g.pos
 	engine.apply_move(mut g.pos, g.pending_ai_move)
-	g.record_pgn_move(g.pending_ai_move)
+	g.record_pgn_move(g.pending_ai_move, pos_before)
 	g.eng.record_position(g.pos)
 	g.update_status()
+	g.write_pgn_file()
 	g.ai_thinking = false
 }
 
@@ -266,6 +272,7 @@ fn (mut g Game) update_status() {
 	if is_over {
 		g.game_over = true
 		g.status = msg
+		g.pgn_result = pgn_result_from_status(msg)
 		g.hover_moves = []engine.Move{}
 		return
 	}
@@ -282,10 +289,12 @@ fn (mut g Game) update_status() {
 		} else {
 			'Stalemate.'
 		}
+		g.pgn_result = pgn_result_from_status(g.status)
 		g.hover_moves = []engine.Move{}
 		return
 	}
 	g.game_over = false
+	g.pgn_result = '*'
 	side_name := if g.pos.white_to_move { 'White' } else { 'Black' }
 	g.status = if in_check { '${side_name} to move, check.' } else { '${side_name} to move.' }
 }
@@ -390,19 +399,48 @@ fn (mut g Game) draw_thinking_indicator() {
 	}
 }
 
-fn (mut g Game) record_pgn_move(mv engine.Move) {
+fn (mut g Game) record_pgn_move(mv engine.Move, pos_before engine.Position) {
 	g.eng.move_history << mv
-	move_str := engine.move_to_san(mv, g.pos)
-	is_white := g.pos.board[mv.from_y][mv.from_x] > 0
+	move_str := engine.move_to_san(mv, pos_before)
+	is_white := pos_before.white_to_move
 	if is_white {
-		g.eng.fullmove_number--
-	}
-	if is_white {
-		println('${g.eng.fullmove_number}. ${move_str}')
+		g.pgn_moves << '${g.eng.fullmove_number}. ${move_str}'
 	} else {
-		println('${g.eng.fullmove_number}... ${move_str}')
-		println('')
+		g.pgn_moves << move_str
 		g.eng.fullmove_number++
+	}
+}
+
+fn (g &Game) pgn_text() string {
+	now := time.now()
+	date_tag := '${now.year:04}.${now.month:02}.${now.day:02}'
+	mut text := '[Event "V Chess"]\n'
+	text += '[Site "?"]\n'
+	text += '[Date "${date_tag}"]\n'
+	text += '[White "You"]\n'
+	text += '[Black "AI"]\n'
+	text += '[Result "${g.pgn_result}"]\n\n'
+	mut movetext := g.pgn_moves.join(' ')
+	if movetext.len > 0 {
+		movetext += ' '
+	}
+	movetext += g.pgn_result
+	text += movetext + '\n'
+	return text
+}
+
+fn (g &Game) write_pgn_file() {
+	os.write_file(pgn_output_path, g.pgn_text()) or {
+		eprintln('failed to write PGN to ${pgn_output_path}: ${err}')
+	}
+}
+
+fn pgn_result_from_status(status string) string {
+	return match true {
+		status.contains('White wins') { '1-0' }
+		status.contains('Black wins') { '0-1' }
+		status.contains('Draw') || status.contains('Stalemate') { '1/2-1/2' }
+		else { '*' }
 	}
 }
 

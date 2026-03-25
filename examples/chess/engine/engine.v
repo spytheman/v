@@ -16,6 +16,7 @@ pub fn (mut e Engine) new_position() Position {
 			[pawn, pawn, pawn, pawn, pawn, pawn, pawn, pawn]!,
 			[rook, knight, bishop, queen, king, bishop, knight, rook]!,
 		]!
+		white_to_move:   true
 		fullmove_number: 1
 	}
 }
@@ -25,6 +26,11 @@ pub fn (mut e Engine) search_best_move(pos Position, side int) Move {
 }
 
 pub fn (mut e Engine) search_best_move_with_time(pos Position, side int, time_limit_ms int) Move {
+	shared control := SearchControl{}
+	return e.search_best_move_with_control(pos, side, time_limit_ms, shared control)
+}
+
+pub fn (mut e Engine) search_best_move_with_control(pos Position, side int, time_limit_ms int, shared control SearchControl) Move {
 	e.killer_moves = [2][64]int{}
 	e.history = [2][64][64]int{}
 	mut best_score := -checkmate_score
@@ -38,17 +44,21 @@ pub fn (mut e Engine) search_best_move_with_time(pos Position, side int, time_li
 		return Move{}
 	}
 	for current_depth := 1; current_depth <= search_depth; current_depth++ {
-		if time.ticks() - start_time > time_limit_ms {
+		if should_stop_search(start_time, time_limit_ms, shared control) {
 			break
 		}
 		for mv in moves {
-			if time.ticks() - start_time > time_limit_ms {
+			if should_stop_search(start_time, time_limit_ms, shared control) {
 				break
 			}
 			mut next := e.copy_position(pos)
 			apply_move(mut next, mv)
 			other_side := if side == black_color { white_color } else { black_color }
-			score := e.search(next, other_side, current_depth - 1, alpha, beta, 0)
+			score := e.search(next, other_side, current_depth - 1, alpha, beta, 0, start_time,
+				time_limit_ms, shared control)
+			if should_stop_search(start_time, time_limit_ms, shared control) {
+				break
+			}
 			if score > best_score {
 				best_score = score
 				best_move = mv
@@ -68,7 +78,10 @@ pub fn (mut e Engine) search_best_move_with_time(pos Position, side int, time_li
 	return best_move
 }
 
-fn (mut e Engine) search(pos Position, side int, depth int, alpha0 int, beta0 int, ply int) int {
+fn (mut e Engine) search(pos Position, side int, depth int, alpha0 int, beta0 int, ply int, start_time i64, time_limit_ms int, shared control SearchControl) int {
+	if should_stop_search(start_time, time_limit_ms, shared control) {
+		return e.evaluate(pos, 0, side)
+	}
 	if pos.halfmove_clock >= 100 || is_insufficient_material(pos) {
 		return 0
 	}
@@ -86,15 +99,23 @@ fn (mut e Engine) search(pos Position, side int, depth int, alpha0 int, beta0 in
 		return 0
 	}
 	if depth == 0 {
-		return e.quiescence(pos, alpha, beta, side, 0)
+		return e.quiescence(pos, alpha, beta, side, 0, start_time, time_limit_ms, shared
+			control)
 	}
 	ordered := e.order_moves(moves, pos, side, ply)
 	if side == black_color {
 		mut best := -checkmate_score
 		for mv in ordered {
+			if should_stop_search(start_time, time_limit_ms, shared control) {
+				break
+			}
 			mut next := e.copy_position(pos)
 			apply_move(mut next, mv)
-			score := e.search(next, white_color, depth - 1, alpha, beta, ply + 1)
+			score := e.search(next, white_color, depth - 1, alpha, beta, ply + 1, start_time,
+				time_limit_ms, shared control)
+			if should_stop_search(start_time, time_limit_ms, shared control) {
+				break
+			}
 			if score > best {
 				best = score
 			}
@@ -109,13 +130,23 @@ fn (mut e Engine) search(pos Position, side int, depth int, alpha0 int, beta0 in
 				break
 			}
 		}
+		if best == -checkmate_score {
+			return e.evaluate(pos, 0, side)
+		}
 		return best
 	}
 	mut best := checkmate_score
 	for mv in ordered {
+		if should_stop_search(start_time, time_limit_ms, shared control) {
+			break
+		}
 		mut next := e.copy_position(pos)
 		apply_move(mut next, mv)
-		score := e.search(next, black_color, depth - 1, alpha, beta, ply + 1)
+		score := e.search(next, black_color, depth - 1, alpha, beta, ply + 1, start_time,
+			time_limit_ms, shared control)
+		if should_stop_search(start_time, time_limit_ms, shared control) {
+			break
+		}
 		if score < best {
 			best = score
 		}
@@ -130,10 +161,16 @@ fn (mut e Engine) search(pos Position, side int, depth int, alpha0 int, beta0 in
 			break
 		}
 	}
+	if best == checkmate_score {
+		return e.evaluate(pos, 0, side)
+	}
 	return best
 }
 
-fn (e &Engine) quiescence(pos Position, alpha_ int, beta_ int, side int, depth int) int {
+fn (e &Engine) quiescence(pos Position, alpha_ int, beta_ int, side int, depth int, start_time i64, time_limit_ms int, shared control SearchControl) int {
+	if should_stop_search(start_time, time_limit_ms, shared control) {
+		return e.evaluate(pos, 0, side)
+	}
 	if depth >= quiescence_depth {
 		return e.evaluate(pos, 0, side)
 	}
@@ -154,9 +191,16 @@ fn (e &Engine) quiescence(pos Position, alpha_ int, beta_ int, side int, depth i
 		}
 		mut best := -checkmate_score
 		for mv in captures {
+			if should_stop_search(start_time, time_limit_ms, shared control) {
+				break
+			}
 			mut next := e.copy_position(pos)
 			apply_move(mut next, mv)
-			score := e.quiescence(next, alpha, beta, white_color, depth + 1)
+			score := e.quiescence(next, alpha, beta, white_color, depth + 1, start_time,
+				time_limit_ms, shared control)
+			if should_stop_search(start_time, time_limit_ms, shared control) {
+				break
+			}
 			if score > best {
 				best = score
 			}
@@ -167,6 +211,9 @@ fn (e &Engine) quiescence(pos Position, alpha_ int, beta_ int, side int, depth i
 				break
 			}
 		}
+		if best == -checkmate_score {
+			return stand_pat
+		}
 		return best
 	}
 	mut stand_pat := e.evaluate(pos, 0, side)
@@ -175,9 +222,16 @@ fn (e &Engine) quiescence(pos Position, alpha_ int, beta_ int, side int, depth i
 	}
 	mut best := checkmate_score
 	for mv in captures {
+		if should_stop_search(start_time, time_limit_ms, shared control) {
+			break
+		}
 		mut next := e.copy_position(pos)
 		apply_move(mut next, mv)
-		score := e.quiescence(next, alpha, beta, black_color, depth + 1)
+		score := e.quiescence(next, alpha, beta, black_color, depth + 1, start_time, time_limit_ms, shared
+			control)
+		if should_stop_search(start_time, time_limit_ms, shared control) {
+			break
+		}
 		if score < best {
 			best = score
 		}
@@ -188,7 +242,19 @@ fn (e &Engine) quiescence(pos Position, alpha_ int, beta_ int, side int, depth i
 			break
 		}
 	}
+	if best == checkmate_score {
+		return stand_pat
+	}
 	return best
+}
+
+fn should_stop_search(start_time i64, time_limit_ms int, shared control SearchControl) bool {
+	if time_limit_ms >= 0 && time.ticks() - start_time > time_limit_ms {
+		return true
+	}
+	return rlock control {
+		control.stop
+	}
 }
 
 fn (e &Engine) order_moves(moves []Move, pos Position, side int, ply int) []Move {

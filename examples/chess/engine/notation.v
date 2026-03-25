@@ -5,7 +5,7 @@ fn file_char(x int) string {
 }
 
 fn rank_char(y int) string {
-	return '${`1` + y}'.runes().string()
+	return '${`8` - y}'.runes().string()
 }
 
 pub fn move_to_uci(mv Move) string {
@@ -31,9 +31,9 @@ pub fn uci_to_move(uci string) ?Move {
 		return none
 	}
 	from_file := int(uci[0] - `a`)
-	from_rank := int(uci[1] - `1`)
+	from_rank := int(`8` - uci[1])
 	to_file := int(uci[2] - `a`)
-	to_rank := int(uci[3] - `1`)
+	to_rank := int(`8` - uci[3])
 	mut promotion := 0
 	if uci.len == 5 {
 		promotion = match uci[4] {
@@ -58,6 +58,8 @@ pub fn move_to_san(mv Move, pos Position) string {
 	kind := piece_kind(piece)
 	captured := pos.board[mv.to_y][mv.to_x]
 	is_white := piece > 0
+	mut next := pos
+	apply_move(mut next, mv)
 	mut san := ''
 	if mv.is_castle {
 		if mv.to_x == 6 {
@@ -68,29 +70,7 @@ pub fn move_to_san(mv Move, pos Position) string {
 	if kind != pawn {
 		san = piece_to_san_char(kind)
 	}
-	mut need_file := false
-	mut need_rank := false
-	if kind != pawn && kind != king {
-		for y := 0; y < 8; y++ {
-			for x := 0; x < 8; x++ {
-				if y == mv.from_y && x == mv.from_x {
-					continue
-				}
-				p := pos.board[y][x]
-				if p != 0 && piece_kind(p) == kind && piece_color(p) == piece_color(piece) {
-					if x == mv.to_x && y == mv.to_y {
-						continue
-					}
-					if x == mv.from_x {
-						need_rank = true
-					}
-					if y == mv.from_y {
-						need_file = true
-					}
-				}
-			}
-		}
-	}
+	need_file, need_rank := san_disambiguation(mv, pos, kind)
 	if need_file {
 		san += file_char(mv.from_x)
 	}
@@ -110,16 +90,16 @@ pub fn move_to_san(mv Move, pos Position) string {
 		san += '=' + piece_to_san_char(mv.promotion)
 	}
 	if is_white {
-		if is_in_check(pos, white_color) {
-			if is_checkmate(pos, white_color) {
+		if is_in_check(next, black_color) {
+			if is_checkmate(next, black_color) {
 				san += '#'
 			} else {
 				san += '+'
 			}
 		}
 	} else {
-		if is_in_check(pos, black_color) {
-			if is_checkmate(pos, black_color) {
+		if is_in_check(next, white_color) {
+			if is_checkmate(next, white_color) {
 				san += '#'
 			} else {
 				san += '+'
@@ -127,6 +107,45 @@ pub fn move_to_san(mv Move, pos Position) string {
 		}
 	}
 	return san
+}
+
+fn san_disambiguation(mv Move, pos Position, kind int) (bool, bool) {
+	if kind == pawn || kind == king {
+		return false, false
+	}
+	mut e := Engine{}
+	side := if pos.white_to_move { white_color } else { black_color }
+	mut same_file := false
+	mut same_rank := false
+	mut found := false
+	for other in e.legal_moves_for(pos, side) {
+		if other.from_x == mv.from_x && other.from_y == mv.from_y {
+			continue
+		}
+		if other.to_x != mv.to_x || other.to_y != mv.to_y || other.promotion != mv.promotion {
+			continue
+		}
+		piece := pos.board[other.from_y][other.from_x]
+		if piece != 0 && piece_kind(piece) == kind {
+			found = true
+			if other.from_x == mv.from_x {
+				same_file = true
+			}
+			if other.from_y == mv.from_y {
+				same_rank = true
+			}
+		}
+	}
+	if !found {
+		return false, false
+	}
+	if !same_file {
+		return true, false
+	}
+	if !same_rank {
+		return false, true
+	}
+	return true, true
 }
 
 pub fn find_move_in_legal(pos Position, from_x int, from_y int, to_x int, to_y int, promotion int) ?Move {
