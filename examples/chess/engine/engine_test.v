@@ -125,3 +125,44 @@ fn test_quiescence_includes_quiet_promotions() {
 	assert tactical.all(it.from_x == 0 && it.from_y == 1 && it.to_x == 0 && it.to_y == 0)
 	assert tactical.all(it.promotion in [queen, rook, bishop, knight])
 }
+
+fn test_evaluate_castled_white_king_is_safer_than_uncastled() {
+	mut e := Engine{}
+	mut uncastled := Position{
+		white_to_move: true
+		en_passant_x:  no_square
+		en_passant_y:  no_square
+	}
+	uncastled.board[7][4] = king
+	uncastled.board[7][7] = rook
+	uncastled.board[7][3] = queen
+	uncastled.board[6][6] = pawn
+	uncastled.board[6][7] = pawn
+	uncastled.board[0][4] = -king
+	uncastled.board[0][7] = -rook
+	uncastled.board[0][3] = -queen
+	uncastled.board[1][6] = -pawn
+	uncastled.board[1][7] = -pawn
+	mut castled := uncastled
+	castled.board[7][4] = 0
+	castled.board[7][7] = 0
+	castled.board[7][6] = king
+	castled.board[7][5] = rook
+	assert e.evaluate(castled, 0, white_color) < e.evaluate(uncastled, 0, white_color)
+}
+
+fn test_evaluate_more_advanced_passed_pawn_scores_better() {
+	mut e := Engine{}
+	mut base := Position{
+		white_to_move: true
+		en_passant_x:  no_square
+		en_passant_y:  no_square
+	}
+	base.board[7][6] = king
+	base.board[0][6] = -king
+	mut early := base
+	early.board[5][4] = pawn
+	mut advanced := base
+	advanced.board[2][4] = pawn
+	assert e.evaluate(advanced, 0, white_color) < e.evaluate(early, 0, white_color)
+}

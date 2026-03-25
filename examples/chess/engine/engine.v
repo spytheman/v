@@ -501,7 +501,40 @@ fn (e &Engine) sort_captures(mut moves []Move, pos Position) {
 	})
 }
 
+fn perspective_rank(y int, side int) int {
+	return if side == white_color { 7 - y } else { y }
+}
+
+fn feature_score(side int, value int) int {
+	return if side == black_color { value } else { -value }
+}
+
+fn is_passed_pawn(pos Position, side int, x int, y int) bool {
+	for dx := -1; dx <= 1; dx++ {
+		nx := x + dx
+		if nx < 0 || nx >= board_cells {
+			continue
+		}
+		if side == white_color {
+			for ey := y - 1; ey >= 0; ey-- {
+				if pos.board[ey][nx] == -pawn {
+					return false
+				}
+			}
+		} else {
+			for ey := y + 1; ey < board_cells; ey++ {
+				if pos.board[ey][nx] == pawn {
+					return false
+				}
+			}
+		}
+	}
+	return true
+}
+
 fn (e &Engine) evaluate(pos Position, mobility int, side int) int {
+	_ = mobility
+	_ = side
 	mut score := 0
 	mut white_bishops := 0
 	mut black_bishops := 0
@@ -511,8 +544,62 @@ fn (e &Engine) evaluate(pos Position, mobility int, side int) int {
 	mut black_pawn_files := [8]int{}
 	mut white_pawn_attacks := [8]int{}
 	mut black_pawn_attacks := [8]int{}
-	mut white_king_rank := 7
+	mut white_king_rank := 0
 	mut black_king_rank := 0
+	for y := 0; y < board_cells; y++ {
+		for x := 0; x < board_cells; x++ {
+			piece := pos.board[y][x]
+			if piece == 0 {
+				continue
+			}
+			color := piece_color(piece)
+			kind := piece_kind(piece)
+			match kind {
+				pawn {
+					if color == white_color {
+						white_pawn_files[x]++
+						if x > 0 {
+							white_pawn_attacks[x - 1]++
+						}
+						if x < 7 {
+							white_pawn_attacks[x + 1]++
+						}
+					} else {
+						black_pawn_files[x]++
+						if x > 0 {
+							black_pawn_attacks[x - 1]++
+						}
+						if x < 7 {
+							black_pawn_attacks[x + 1]++
+						}
+					}
+				}
+				bishop {
+					if color == white_color {
+						white_bishops++
+					} else {
+						black_bishops++
+					}
+				}
+				queen {
+					if color == white_color {
+						white_has_queen = true
+					} else {
+						black_has_queen = true
+					}
+				}
+				king {
+					if color == white_color {
+						white_king_rank = perspective_rank(y, white_color)
+					} else {
+						black_king_rank = perspective_rank(y, black_color)
+					}
+				}
+				else {}
+			}
+		}
+	}
+	endgame := !white_has_queen && !black_has_queen
 	for y := 0; y < board_cells; y++ {
 		for x := 0; x < board_cells; x++ {
 			piece := pos.board[y][x]
@@ -523,187 +610,100 @@ fn (e &Engine) evaluate(pos Position, mobility int, side int) int {
 			kind := piece_kind(piece)
 			mut value := piece_value(kind)
 			mut pst_bonus := 0
-			py := if color == white_color { 7 - y } else { y }
+			py := perspective_rank(y, color)
 			match kind {
 				pawn {
 					pst_bonus = pawn_pst[py][x]
-					if color == white_color {
-						white_pawn_files[x]++
-						mut blocked := false
-						for ey := y - 1; ey >= 0; ey-- {
-							if pos.board[ey][x] == pawn || pos.board[ey][x] == -pawn {
-								blocked = true
-								break
-							}
-						}
-						if !blocked {
-							mut is_passed := true
-							for dx := -1; dx <= 1; dx++ {
-								nx := x + dx
-								if nx < 0 || nx > 7 {
-									continue
-								}
-								for ey := y - 1; ey >= 0; ey-- {
-									if pos.board[ey][nx] == -pawn {
-										is_passed = false
-										break
-									}
-								}
-							}
-							if is_passed {
-								pst_bonus += 50 + y * 15
-							}
-						}
-						if x > 0 {
-							white_pawn_attacks[x - 1]++
-						}
-						if x < 7 {
-							white_pawn_attacks[x + 1]++
-						}
-					} else {
-						black_pawn_files[x]++
-						mut blocked := false
-						for ey := y + 1; ey < 8; ey++ {
-							if pos.board[ey][x] == pawn || pos.board[ey][x] == -pawn {
-								blocked = true
-								break
-							}
-						}
-						if !blocked {
-							mut is_passed := true
-							for dx := -1; dx <= 1; dx++ {
-								nx := x + dx
-								if nx < 0 || nx > 7 {
-									continue
-								}
-								for ey := y + 1; ey < 8; ey++ {
-									if pos.board[ey][nx] == pawn {
-										is_passed = false
-										break
-									}
-								}
-							}
-							if is_passed {
-								pst_bonus += 50 + (7 - y) * 15
-							}
-						}
-						if x > 0 {
-							black_pawn_attacks[x - 1]++
-						}
-						if x < 7 {
-							black_pawn_attacks[x + 1]++
-						}
+					if is_passed_pawn(pos, color, x, y) {
+						pst_bonus += 35 + py * 18
 					}
 				}
 				knight {
 					pst_bonus = knight_pst[py][x]
-					if color == white_color && (py >= 4 && (x == 2 || x == 5)) {
-						pst_bonus += 15
-					}
-					if color == black_color && (py <= 3 && (x == 2 || x == 5)) {
+					if py >= 4 && (x == 2 || x == 5) {
 						pst_bonus += 15
 					}
 				}
 				bishop {
 					pst_bonus = bishop_pst[py][x]
-					if color == white_color {
-						white_bishops++
-						if x >= 2 && x <= 5 && y >= 3 && y <= 4 {
-							pst_bonus += 10
-						}
-					} else {
-						black_bishops++
-						if x >= 2 && x <= 5 && y >= 3 && y <= 4 {
-							pst_bonus += 10
-						}
+					if x >= 2 && x <= 5 && y >= 2 && y <= 5 {
+						pst_bonus += 10
 					}
 				}
 				rook {
 					pst_bonus = rook_pst[py][x]
-					mut open_file := white_pawn_files[x] == 0 && black_pawn_files[x] == 0
-					mut semi_open_white := color == white_color && black_pawn_files[x] == 0
-					mut semi_open_black := color == black_color && white_pawn_files[x] == 0
-					if open_file {
+					if white_pawn_files[x] == 0 && black_pawn_files[x] == 0 {
 						pst_bonus += 25
-					} else if semi_open_white && color == white_color {
+					} else if color == white_color && white_pawn_files[x] == 0 {
 						pst_bonus += 15
-					} else if semi_open_black && color == black_color {
+					} else if color == black_color && black_pawn_files[x] == 0 {
 						pst_bonus += 15
+					}
+					if py == 6 {
+						pst_bonus += 20
 					}
 				}
 				queen {
 					pst_bonus = queen_pst[py][x]
-					if color == white_color {
-						white_has_queen = true
-					} else {
-						black_has_queen = true
-					}
 				}
 				king {
-					if color == white_color {
-						white_king_rank = y
-					} else {
-						black_king_rank = y
-					}
-					if white_has_queen || black_has_queen {
-						pst_bonus = king_pst_middle[py][x]
-					} else {
+					if endgame {
 						pst_bonus = king_pst_end[py][x]
+					} else {
+						pst_bonus = king_pst_middle[py][x]
 					}
 				}
 				else {}
 			}
 			value += pst_bonus
-			score += if color == black_color { value } else { -value }
+			score += feature_score(color, value)
 		}
 	}
 	for x := 0; x < 8; x++ {
 		if white_pawn_files[x] > 1 {
-			score -= 15 * (white_pawn_files[x] - 1)
+			score -= feature_score(white_color, 15 * (white_pawn_files[x] - 1))
 		}
 		if black_pawn_files[x] > 1 {
-			score += 15 * (black_pawn_files[x] - 1)
+			score -= feature_score(black_color, 15 * (black_pawn_files[x] - 1))
 		}
-	}
-	for x := 0; x < 8; x++ {
 		if white_pawn_files[x] > 0 && white_pawn_attacks[x] == 0 {
-			score -= 20
+			score -= feature_score(white_color, 20)
 		}
 		if black_pawn_files[x] > 0 && black_pawn_attacks[x] == 0 {
-			score += 20
+			score -= feature_score(black_color, 20)
 		}
 	}
 	if white_bishops >= 2 {
-		score += 30
+		score += feature_score(white_color, 30)
 	}
 	if black_bishops >= 2 {
-		score -= 30
+		score += feature_score(black_color, 30)
 	}
 	white_castled := pos.board[7][6] == king || pos.board[7][2] == king
 	black_castled := pos.board[0][6] == -king || pos.board[0][2] == -king
 	if white_castled {
-		score += 30
+		score += feature_score(white_color, 30)
 	}
 	if black_castled {
-		score -= 30
+		score += feature_score(black_color, 30)
 	}
 	if white_castled && black_has_queen {
-		score += 25
+		score += feature_score(white_color, 25)
 	}
 	if black_castled && white_has_queen {
-		score -= 25
+		score += feature_score(black_color, 25)
 	}
 	king_safety_bonus := 15
-	if white_king_rank <= 1 {
-		score += king_safety_bonus
+	if !endgame && white_king_rank <= 1 {
+		score += feature_score(white_color, king_safety_bonus)
 	}
-	if black_king_rank >= 6 {
-		score -= king_safety_bonus
+	if !endgame && black_king_rank <= 1 {
+		score += feature_score(black_color, king_safety_bonus)
 	}
 	white_moves := e.pseudo_moves_for(pos, white_color).len
 	black_moves := e.pseudo_moves_for(pos, black_color).len
 	score += (black_moves - white_moves) * 8
-	score += 10
+	score += if pos.white_to_move { -10 } else { 10 }
 	if e.is_in_check(pos, white_color) {
 		score += 40
 	}
