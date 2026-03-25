@@ -211,12 +211,8 @@ fn set_search_stop(stop bool, shared search_control engine.SearchControl) {
 }
 
 fn apply_search_result(mut pos engine.Position, mut e engine.Engine, best_move engine.Move) {
-	println('bestmove ${bestmove_string(best_move)}')
-	if best_move == engine.Move{} {
-		return
-	}
-	apply_move(mut pos, best_move)
-	e.record_position(pos)
+	legal_move := find_legal_move_for_position(e, pos, best_move)
+	println('bestmove ${bestmove_string(legal_move)}')
 }
 
 fn bestmove_string(best_move engine.Move) string {
@@ -224,6 +220,25 @@ fn bestmove_string(best_move engine.Move) string {
 		return '0000'
 	}
 	return engine.move_to_uci(best_move)
+}
+
+fn find_legal_move_for_position(e engine.Engine, pos engine.Position, best_move engine.Move) engine.Move {
+	side := if pos.white_to_move { engine.white_color } else { engine.black_color }
+	legal_moves := e.legal_moves_for(pos, side)
+	for mv in legal_moves {
+		if same_move(mv, best_move) {
+			return mv
+		}
+	}
+	if legal_moves.len > 0 {
+		return legal_moves[0]
+	}
+	return engine.Move{}
+}
+
+fn same_move(a engine.Move, b engine.Move) bool {
+	return a.from_x == b.from_x && a.from_y == b.from_y && a.to_x == b.to_x && a.to_y == b.to_y
+		&& a.promotion == b.promotion
 }
 
 fn parse_go_params(parts []string) GoParams {

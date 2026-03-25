@@ -12,7 +12,6 @@ const panel_width = 360
 const top_height = 0
 const window_width = board_padding * 2 + tile_size * 8 + panel_width
 const window_height = board_padding * 2 + tile_size * 8
-const pgn_output_path = os.join_path(@DIR, 'gui_game.pgn')
 
 const piece_files = {
 	1:  'Chess_plt45.png'
@@ -49,6 +48,7 @@ mut:
 	ai_start_time      i64
 	pgn_moves          []string
 	pgn_result         string = '*'
+	pgn_output_path    string
 }
 
 fn main() {
@@ -84,6 +84,7 @@ fn (mut g Game) reset() {
 	g.eng.reset()
 	g.pgn_moves = []string{}
 	g.pgn_result = '*'
+	g.pgn_output_path = ''
 	g.eng.record_position(g.pos)
 	g.update_status()
 	g.write_pgn_file()
@@ -429,10 +430,27 @@ fn (g &Game) pgn_text() string {
 	return text
 }
 
-fn (g &Game) write_pgn_file() {
-	os.write_file(pgn_output_path, g.pgn_text()) or {
-		eprintln('failed to write PGN to ${pgn_output_path}: ${err}')
+fn (mut g Game) write_pgn_file() {
+	pgn_dir := os.join_path(os.vtmp_dir(), 'chess')
+	os.mkdir_all(pgn_dir) or {
+		eprintln('failed to create PGN directory ${pgn_dir}: ${err}')
+		return
 	}
+	path := if g.game_over {
+		g.final_pgn_output_path()
+	} else {
+		os.join_path(pgn_dir, 'gui_game__current.pgn')
+	}
+	os.write_file(path, g.pgn_text()) or { eprintln('failed to write PGN to ${path}: ${err}') }
+}
+
+fn (mut g Game) final_pgn_output_path() string {
+	if g.pgn_output_path == '' {
+		now := time.now()
+		g.pgn_output_path = os.join_path(os.vtmp_dir(), 'chess', 'gui_game__${now.year:04}_${now.month:02}_${now.day:02}__${now.hour:02}_${now.minute:02}_${now.second:02}.pgn')
+		println('Saved game file: ${g.pgn_output_path}')
+	}
+	return g.pgn_output_path
 }
 
 fn pgn_result_from_status(status string) string {
