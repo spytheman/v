@@ -44,66 +44,115 @@ pub fn (mut e Engine) search_best_move_with_control(pos Position, side int, time
 	e.history = [2][64][64]int{}
 	mut best_score := worst_score_for(side)
 	mut best_move := Move{}
-	mut alpha := -checkmate_score
-	mut beta := checkmate_score
 	window := 50
 	start_time := time.ticks()
 	legal_moves := e.legal_moves_for(pos, side)
 	if legal_moves.len == 0 {
 		return Move{}
 	}
+	root_key := e.position_key(pos)
+	mut tt_root_move := Move{}
+	if root_key in e.transposition_table {
+		tt_root_move = e.transposition_table[root_key].best_move
+	}
 	for current_depth := 1; current_depth <= search_depth; current_depth++ {
 		if should_stop_search(start_time, time_limit_ms, shared control) {
 			break
 		}
+		mut alpha := -checkmate_score
+		mut beta := checkmate_score
+		if current_depth > 1 {
+			alpha = clamp_score(best_score - window)
+			beta = clamp_score(best_score + window)
+		}
+		priority_move := if best_move != Move{} { best_move } else { tt_root_move }
 		mut depth_best_score := worst_score_for(side)
 		mut depth_best_move := Move{}
-		mut completed_depth := true
-		mut ordered_root := e.order_moves(legal_moves, pos, side, 0)
-		if best_move != Move{} {
-			ordered_root = prioritize_move(ordered_root, best_move)
-		} else {
-			root_key := e.position_key(pos)
-			if root_key in e.transposition_table {
-				ordered_root = prioritize_move(ordered_root, e.transposition_table[root_key].best_move)
-			}
-		}
-		for mv in ordered_root {
-			if should_stop_search(start_time, time_limit_ms, shared control) {
-				completed_depth = false
+		mut completed_depth := false
+		for {
+			depth_best_score, depth_best_move, completed_depth = e.search_root_depth(pos,
+				legal_moves, side, current_depth, alpha, beta, start_time, time_limit_ms, shared
+				control, priority_move)
+			if !completed_depth || depth_best_move == Move{} {
 				break
 			}
-			mut next := e.copy_position(pos)
-			apply_move(mut next, mv)
-			other_side := if side == black_color { white_color } else { black_color }
-			score := e.search(next, other_side, current_depth - 1, alpha, beta, 0, start_time,
-				time_limit_ms, shared control)
-			if should_stop_search(start_time, time_limit_ms, shared control) {
-				completed_depth = false
+			if current_depth == 1
+				|| (depth_best_score > alpha && depth_best_score < beta)
+				|| (alpha == -checkmate_score && beta == checkmate_score) {
 				break
 			}
-			if depth_best_move == Move{} || is_better_root_score(score, depth_best_score, side) {
-				depth_best_score = score
-				depth_best_move = mv
-			}
+			alpha = -checkmate_score
+			beta = checkmate_score
 		}
 		if !completed_depth || depth_best_move == Move{} {
 			break
 		}
 		best_score = depth_best_score
 		best_move = depth_best_move
-		if best_score <= alpha || best_score >= beta {
-			alpha = -checkmate_score
-			beta = checkmate_score
-		} else {
-			alpha = best_score - window
-			beta = best_score + window
-		}
 	}
 	if best_move == Move{} {
 		best_move = legal_moves[0]
 	}
 	return best_move
+}
+
+fn (mut e Engine) search_root_depth(pos Position, legal_moves []Move, side int, depth int, alpha0 int, beta0 int, start_time i64, time_limit_ms int, shared control SearchControl, priority_move Move) (int, Move, bool) {
+	mut alpha := alpha0
+	mut beta := beta0
+	mut best_score := worst_score_for(side)
+	mut best_move := Move{}
+	in_check := e.is_in_check(pos, side)
+	mut ordered_root := e.order_moves(legal_moves, pos, side, 0)
+	ordered_root = prioritize_move(ordered_root, priority_move)
+	for i, mv in ordered_root {
+		if should_stop_search(start_time, time_limit_ms, shared control) {
+			return best_score, best_move, false
+		}
+		mut next := e.copy_position(pos)
+		apply_move(mut next, mv)
+		next_side := other_side(side)
+		mut score := 0
+		if i == 0 || depth <= 1 || in_check {
+			score = e.search(next, next_side, depth - 1, alpha, beta, 0, start_time, time_limit_ms, shared
+				control)
+		} else if side == black_color {
+			score = e.search(next, next_side, depth - 1, alpha, alpha + 1, 0, start_time,
+				time_limit_ms, shared control)
+			if !should_stop_search(start_time, time_limit_ms, shared control) && score > alpha
+				&& score < beta {
+				score = e.search(next, next_side, depth - 1, alpha, beta, 0, start_time,
+					time_limit_ms, shared control)
+			}
+		} else {
+			score = e.search(next, next_side, depth - 1, beta - 1, beta, 0, start_time,
+				time_limit_ms, shared control)
+			if !should_stop_search(start_time, time_limit_ms, shared control) && score < beta
+				&& score > alpha {
+				score = e.search(next, next_side, depth - 1, alpha, beta, 0, start_time,
+					time_limit_ms, shared control)
+			}
+		}
+		if should_stop_search(start_time, time_limit_ms, shared control) {
+			return best_score, best_move, false
+		}
+		if best_move == Move{} || is_better_root_score(score, best_score, side) {
+			best_score = score
+			best_move = mv
+		}
+		if side == black_color {
+			if score > alpha {
+				alpha = score
+			}
+		} else {
+			if score < beta {
+				beta = score
+			}
+		}
+		if alpha >= beta {
+			break
+		}
+	}
+	return best_score, best_move, true
 }
 
 fn is_better_root_score(score int, best_score int, side int) bool {
@@ -112,6 +161,20 @@ fn is_better_root_score(score int, best_score int, side int) bool {
 
 fn worst_score_for(side int) int {
 	return if side == black_color { -checkmate_score } else { checkmate_score }
+}
+
+fn other_side(side int) int {
+	return -side
+}
+
+fn clamp_score(score int) int {
+	if score < -checkmate_score {
+		return -checkmate_score
+	}
+	if score > checkmate_score {
+		return checkmate_score
+	}
+	return score
 }
 
 fn square_index(x int, y int) int {
@@ -254,21 +317,33 @@ fn (mut e Engine) search(pos Position, side int, depth int, alpha0 int, beta0 in
 		return e.quiescence(pos, alpha, beta, side, 0, start_time, time_limit_ms, shared
 			control)
 	}
+	in_check := e.is_in_check(pos, side)
 	mut ordered := e.order_moves(moves, pos, side, ply)
 	ordered = prioritize_move(ordered, tt_best_move)
 	if side == black_color {
 		mut best := -checkmate_score
 		mut best_move := Move{}
 		mut completed := true
-		for mv in ordered {
+		for i, mv in ordered {
 			if should_stop_search(start_time, time_limit_ms, shared control) {
 				completed = false
 				break
 			}
 			mut next := e.copy_position(pos)
 			apply_move(mut next, mv)
-			score := e.search(next, white_color, remaining_depth - 1, alpha, beta, ply + 1,
-				start_time, time_limit_ms, shared control)
+			mut score := 0
+			if i == 0 || remaining_depth <= 1 || in_check {
+				score = e.search(next, white_color, remaining_depth - 1, alpha, beta,
+					ply + 1, start_time, time_limit_ms, shared control)
+			} else {
+				score = e.search(next, white_color, remaining_depth - 1, alpha, alpha + 1,
+					ply + 1, start_time, time_limit_ms, shared control)
+				if !should_stop_search(start_time, time_limit_ms, shared control) && score > alpha
+					&& score < beta {
+					score = e.search(next, white_color, remaining_depth - 1, alpha, beta,
+						ply + 1, start_time, time_limit_ms, shared control)
+				}
+			}
 			if should_stop_search(start_time, time_limit_ms, shared control) {
 				completed = false
 				break
@@ -306,15 +381,26 @@ fn (mut e Engine) search(pos Position, side int, depth int, alpha0 int, beta0 in
 	mut best := checkmate_score
 	mut best_move := Move{}
 	mut completed := true
-	for mv in ordered {
+	for i, mv in ordered {
 		if should_stop_search(start_time, time_limit_ms, shared control) {
 			completed = false
 			break
 		}
 		mut next := e.copy_position(pos)
 		apply_move(mut next, mv)
-		score := e.search(next, black_color, remaining_depth - 1, alpha, beta, ply + 1,
-			start_time, time_limit_ms, shared control)
+		mut score := 0
+		if i == 0 || remaining_depth <= 1 || in_check {
+			score = e.search(next, black_color, remaining_depth - 1, alpha, beta, ply + 1,
+				start_time, time_limit_ms, shared control)
+		} else {
+			score = e.search(next, black_color, remaining_depth - 1, beta - 1, beta, ply + 1,
+				start_time, time_limit_ms, shared control)
+			if !should_stop_search(start_time, time_limit_ms, shared control) && score < beta
+				&& score > alpha {
+				score = e.search(next, black_color, remaining_depth - 1, alpha, beta,
+					ply + 1, start_time, time_limit_ms, shared control)
+			}
+		}
 		if should_stop_search(start_time, time_limit_ms, shared control) {
 			completed = false
 			break
@@ -457,7 +543,8 @@ fn should_stop_search(start_time i64, time_limit_ms int, shared control SearchCo
 }
 
 fn (e &Engine) order_moves(moves []Move, pos Position, side int, ply int) []Move {
-	mut scored := moves.map(fn [e, pos, side, ply] (mv Move) int {
+	in_check := e.is_in_check(pos, side)
+	mut scored := moves.map(fn [e, pos, side, ply, in_check] (mv Move) int {
 		mut s := 0
 		if is_tactical_move(pos, mv) {
 			s += 10000 + tactical_order_score(pos, mv)
@@ -472,7 +559,7 @@ fn (e &Engine) order_moves(moves []Move, pos Position, side int, ply int) []Move
 		if mv.is_castle {
 			s += 50
 		}
-		if e.is_in_check(pos, side) {
+		if in_check {
 			s += 50
 		}
 		return s

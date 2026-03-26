@@ -84,6 +84,22 @@ fn test_search_best_move_stays_legal_across_repeated_searches() {
 	assert legal.any(same_move(it, best_second))
 }
 
+fn test_search_finds_mate_in_one() {
+	mut e := Engine{}
+	mut pos := Position{
+		white_to_move: true
+		en_passant_x:  no_square
+		en_passant_y:  no_square
+	}
+	pos.board[7][4] = queen
+	pos.board[7][6] = king
+	pos.board[0][6] = -king
+	pos.board[1][6] = -pawn
+	pos.board[1][7] = -pawn
+	best := e.search_best_move_with_time(pos, white_color, 50)
+	assert move_to_uci(best) == 'e1e8'
+}
+
 fn test_quiescence_searches_non_capture_check_evasions() {
 	mut e := Engine{}
 	shared control := SearchControl{}

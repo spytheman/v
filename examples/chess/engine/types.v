@@ -1,7 +1,7 @@
 module engine
 
 pub const board_cells = 8
-pub const search_depth = 5
+pub const search_depth = 6
 pub const quiescence_depth = 8
 pub const checkmate_score = 1000000
 pub const tt_max_entries = 200000
