@@ -28,7 +28,7 @@ struct SearchOutcome {
 
 fn main() {
 	unbuffer_stdout()
-	println('${engine_name}, by ${engine_author}.')
+	println('${engine_name}, by ${engine_author}, hash: ${@VHASH}')
 	command_ch := chan string{cap: 1}
 	result_ch := chan SearchOutcome{cap: 1}
 	spawn stdin_reader(command_ch)
@@ -100,7 +100,7 @@ fn main() {
 						running = false
 					}
 					'help' {
-						println('VChess is a simple chess engine, written in the V programming language.')
+						println('VChess is a simple chess engine, written in the V programming language. Hash: ${@VHASH}')
 					}
 					else {
 						println('Unknown command: `${cmd}`. Type help for more info.')
