@@ -395,6 +395,33 @@ fn test_sanity_filter_rejects_hanging_minor_piece() {
 	assert same_move(filtered, quiet)
 }
 
+fn test_reduced_tactical_search_detects_discovered_queen_loss() {
+	mut e := Engine{}
+	mut pos := Position{
+		white_to_move:   true
+		en_passant_x:    no_square
+		en_passant_y:    no_square
+		fullmove_number: 5
+	}
+	pos.board[7][6] = king
+	pos.board[7][0] = queen
+	pos.board[6][0] = knight
+	pos.board[6][7] = pawn
+	pos.board[0][6] = -king
+	pos.board[0][0] = -rook
+	exposes_queen := Move{
+		from_x: 0
+		from_y: 6
+		to_x:   1
+		to_y:   4
+	}
+	assert !e.tactical_verification_fails(pos, white_color, exposes_queen)
+	assert e.is_catastrophic_root_move(pos, white_color, exposes_queen)
+	mut next := e.copy_position(pos)
+	apply_move(mut next, exposes_queen)
+	assert e.reduced_tactical_search_fails(next, white_color)
+}
+
 fn test_exposed_king_marks_position_tactical() {
 	e := Engine{}
 	mut pos := Position{

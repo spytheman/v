@@ -8,6 +8,7 @@ const tt_bound_lower = 1
 const tt_bound_upper = 2
 const opening_phase_plies = 8
 const root_sanity_candidate_count = 4
+const root_tactical_reply_limit = 8
 pub const tactical_time_bonus_percent = 50
 
 pub fn (mut e Engine) new_position() Position {
@@ -934,6 +935,7 @@ fn (mut e Engine) is_catastrophic_root_move(pos Position, side int, mv Move) boo
 		return true
 	}
 	return e.tactical_verification_fails(pos, side, mv)
+		|| e.reduced_tactical_search_fails(next, side)
 }
 
 fn (e &Engine) allows_immediate_mate(pos Position, side int) bool {
@@ -999,6 +1001,74 @@ fn (mut e Engine) tactical_verification_fails(pos Position, side int, mv Move) b
 		}
 	}
 	return false
+}
+
+fn (e &Engine) reduced_tactical_search_fails(pos Position, side int) bool {
+	if !e.is_tactical_position(pos, side) {
+		return false
+	}
+	baseline := e.evaluate(pos, 0, side)
+	opponent := -side
+	mut replies := e.legal_moves_for(pos, opponent)
+	replies = replies.filter(e.is_forcing_reply(pos, it, opponent))
+	if replies.len == 0 {
+		return false
+	}
+	e.sort_captures(mut replies, pos)
+	limit := min_int(root_tactical_reply_limit, replies.len)
+	for i := 0; i < limit; i++ {
+		reply := replies[i]
+		mut after_reply := e.copy_position(pos)
+		apply_move(mut after_reply, reply)
+		score := e.best_tactical_response_score(after_reply, side)
+		if score_is_catastrophically_worse(score, baseline, side) {
+			return true
+		}
+	}
+	return false
+}
+
+fn (e &Engine) is_forcing_reply(pos Position, mv Move, side int) bool {
+	return is_tactical_move(pos, mv) || e.move_gives_check(pos, mv, side)
+}
+
+fn (e &Engine) best_tactical_response_score(pos Position, side int) int {
+	moves := e.legal_moves_for(pos, side)
+	if moves.len == 0 {
+		if e.is_in_check(pos, side) {
+			return if side == black_color { -checkmate_score } else { checkmate_score }
+		}
+		return 0
+	}
+	in_check := e.is_in_check(pos, side)
+	mut best := e.evaluate(pos, 0, side)
+	for mv in moves {
+		if !in_check && !e.is_forcing_reply(pos, mv, side) {
+			continue
+		}
+		mut next := e.copy_position(pos)
+		apply_move(mut next, mv)
+		score := e.evaluate(next, 0, side)
+		if side == black_color {
+			if score > best {
+				best = score
+			}
+		} else {
+			if score < best {
+				best = score
+			}
+		}
+	}
+	return best
+}
+
+fn score_is_catastrophically_worse(score int, baseline int, side int) bool {
+	threshold := piece_value(bishop)
+	return if side == black_color {
+		score <= baseline - threshold
+	} else {
+		score >= baseline + threshold
+	}
 }
 
 fn (e &Engine) has_recapture(pos Position, side int, x int, y int) bool {
