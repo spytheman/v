@@ -43,8 +43,12 @@ struct GameResult {
 	duration_ms   int
 	current_ms    int
 	old_ms        int
+	white_ms      int
+	black_ms      int
 	current_moves int
 	old_moves     int
+	white_moves   int
+	black_moves   int
 }
 
 struct MatchScore {
@@ -273,8 +277,12 @@ fn play_game(mut old_engine UciProcess, mut current_engine UciProcess, config Ma
 	mut moves := []string{}
 	mut current_ms := 0
 	mut old_ms := 0
+	mut white_ms := 0
+	mut black_ms := 0
 	mut current_moves := 0
 	mut old_moves := 0
+	mut white_moves := 0
+	mut black_moves := 0
 	mut clock := GameClock{
 		white_ms: config.base_time_ms
 		black_ms: config.base_time_ms
@@ -285,7 +293,8 @@ fn play_game(mut old_engine UciProcess, mut current_engine UciProcess, config Ma
 		if over {
 			clear_progress_line()
 			return game_result_from_reason(reason, ply, current_color, current_is_white, moves,
-				game_start, current_ms, old_ms, current_moves, old_moves)
+				game_start, current_ms, old_ms, white_ms, black_ms, current_moves, old_moves,
+				white_moves, black_moves)
 		}
 		side := if pos.white_to_move { engine.white_color } else { engine.black_color }
 		current_to_move := (side == engine.white_color && current_is_white)
@@ -304,10 +313,17 @@ fn play_game(mut old_engine UciProcess, mut current_engine UciProcess, config Ma
 			old_ms += elapsed_ms
 			old_moves++
 		}
+		if side == engine.white_color {
+			white_ms += elapsed_ms
+			white_moves++
+		} else {
+			black_ms += elapsed_ms
+			black_moves++
+		}
 		if config.movetime_ms == 0 {
 			timeout_result := update_clock(mut clock, side, elapsed_ms, config.increment_ms,
 				current_to_move, current_color, ply, moves, game_start, current_ms, old_ms,
-				current_moves, old_moves)
+				white_ms, black_ms, current_moves, old_moves, white_moves, black_moves)
 			if timeout_result.winner != '' {
 				clear_progress_line()
 				return timeout_result
@@ -329,15 +345,19 @@ fn play_game(mut old_engine UciProcess, mut current_engine UciProcess, config Ma
 				duration_ms:   int(time.ticks() - game_start)
 				current_ms:    current_ms
 				old_ms:        old_ms
+				white_ms:      white_ms
+				black_ms:      black_ms
 				current_moves: current_moves
 				old_moves:     old_moves
+				white_moves:   white_moves
+				black_moves:   black_moves
 			}
 		}
 		engine.apply_move(mut pos, legal_move)
 		adjudicator.record_position(pos)
 		moves << uci_move
 		print_progress(current_color, moves, game_start, current_ms, old_ms, current_moves,
-			old_moves)
+			old_moves, white_ms, black_ms, white_moves, black_moves)
 	}
 	clear_progress_line()
 	return GameResult{
@@ -349,12 +369,16 @@ fn play_game(mut old_engine UciProcess, mut current_engine UciProcess, config Ma
 		duration_ms:   int(time.ticks() - game_start)
 		current_ms:    current_ms
 		old_ms:        old_ms
+		white_ms:      white_ms
+		black_ms:      black_ms
 		current_moves: current_moves
 		old_moves:     old_moves
+		white_moves:   white_moves
+		black_moves:   black_moves
 	}
 }
 
-fn update_clock(mut clock GameClock, side int, elapsed_ms int, increment_ms int, current_to_move bool, current_color string, ply int, moves []string, game_start i64, current_ms int, old_ms int, current_moves int, old_moves int) GameResult {
+fn update_clock(mut clock GameClock, side int, elapsed_ms int, increment_ms int, current_to_move bool, current_color string, ply int, moves []string, game_start i64, current_ms int, old_ms int, white_ms int, black_ms int, current_moves int, old_moves int, white_moves int, black_moves int) GameResult {
 	if side == engine.white_color {
 		clock.white_ms = clock.white_ms - elapsed_ms + increment_ms
 		if clock.white_ms <= 0 {
@@ -367,8 +391,12 @@ fn update_clock(mut clock GameClock, side int, elapsed_ms int, increment_ms int,
 				duration_ms:   int(time.ticks() - game_start)
 				current_ms:    current_ms
 				old_ms:        old_ms
+				white_ms:      white_ms
+				black_ms:      black_ms
 				current_moves: current_moves
 				old_moves:     old_moves
+				white_moves:   white_moves
+				black_moves:   black_moves
 			}
 		}
 	} else {
@@ -383,27 +411,33 @@ fn update_clock(mut clock GameClock, side int, elapsed_ms int, increment_ms int,
 				duration_ms:   int(time.ticks() - game_start)
 				current_ms:    current_ms
 				old_ms:        old_ms
+				white_ms:      white_ms
+				black_ms:      black_ms
 				current_moves: current_moves
 				old_moves:     old_moves
+				white_moves:   white_moves
+				black_moves:   black_moves
 			}
 		}
 	}
 	return GameResult{}
 }
 
-fn print_progress(current_color string, moves []string, game_start i64, current_ms int, old_ms int, current_moves int, old_moves int) {
+fn print_progress(current_color string, moves []string, game_start i64, current_ms int, old_ms int, current_moves int, old_moves int, white_ms int, black_ms int, white_moves int, black_moves int) {
 	last_moves := last_n_moves(moves, 3)
 	now := time.now().format_ss()
 	elapsed := int(time.ticks() - game_start)
 	current_avg := average_ms(current_ms, current_moves)
 	old_avg := average_ms(old_ms, old_moves)
-	print('\r${'':160s}\r')
-	print('${now} current ${current_color:5s} ply ${moves.len:3d} elapsed ${format_ms(elapsed)} current avg ${current_avg:7.1f} ms old avg ${old_avg:7.1f} ms last3: ${last_moves}')
+	white_avg := average_ms(white_ms, white_moves)
+	black_avg := average_ms(black_ms, black_moves)
+	clear_progress_line()
+	print('${now} current ${current_color:5s} ply ${moves.len:3d} elapsed ${format_ms(elapsed)} current avg ${current_avg:7.1f} ms old avg ${old_avg:7.1f} ms white avg ${white_avg:7.1f} ms black avg ${black_avg:7.1f} ms last3: ${last_moves}')
 	flush_stdout()
 }
 
 fn clear_progress_line() {
-	print('\r${'':160s}\r')
+	print('\r${'':165s}\r')
 	flush_stdout()
 }
 
@@ -431,7 +465,7 @@ fn find_legal_uci_move(e engine.Engine, pos engine.Position, side int, uci strin
 	return none
 }
 
-fn game_result_from_reason(reason string, plies int, current_color string, current_is_white bool, moves []string, game_start i64, current_ms int, old_ms int, current_moves int, old_moves int) GameResult {
+fn game_result_from_reason(reason string, plies int, current_color string, current_is_white bool, moves []string, game_start i64, current_ms int, old_ms int, white_ms int, black_ms int, current_moves int, old_moves int, white_moves int, black_moves int) GameResult {
 	winner := if reason.contains('White wins') {
 		if current_is_white { 'current' } else { 'old' }
 	} else if reason.contains('Black wins') {
@@ -448,8 +482,12 @@ fn game_result_from_reason(reason string, plies int, current_color string, curre
 		duration_ms:   int(time.ticks() - game_start)
 		current_ms:    current_ms
 		old_ms:        old_ms
+		white_ms:      white_ms
+		black_ms:      black_ms
 		current_moves: current_moves
 		old_moves:     old_moves
+		white_moves:   white_moves
+		black_moves:   black_moves
 	}
 }
 
@@ -459,6 +497,8 @@ fn print_game_result(game_number int, result GameResult) {
 	println('  duration: ${format_ms(result.duration_ms)}, current avg: ${average_ms(result.current_ms,
 		result.current_moves):.1f} ms/move (${result.current_moves} moves), old avg: ${average_ms(result.old_ms,
 		result.old_moves):.1f} ms/move (${result.old_moves} moves)')
+	println('  white avg: ${average_ms(result.white_ms, result.white_moves):.1f} ms/move (${result.white_moves} moves), black avg: ${average_ms(result.black_ms,
+		result.black_moves):.1f} ms/move (${result.black_moves} moves)')
 	println('  moves: ${move_text}')
 }
 
