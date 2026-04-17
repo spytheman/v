@@ -249,7 +249,7 @@ fn (mut g Game) make_ai_move() {
 	spawn g.compute_ai_move(moves)
 }
 
-fn (mut g Game) compute_ai_move(moves []engine.Move) {
+fn (mut g Game) compute_ai_move(_moves []engine.Move) {
 	side := if g.pos.white_to_move { engine.white_color } else { engine.black_color }
 	g.pending_ai_move = g.eng.search_best_move(g.pos, side)
 }
@@ -339,8 +339,8 @@ fn (g &Game) draw_board() {
 				g.ctx.draw_image_by_id(sx + 6, sy + 6, tile_size - 12, tile_size - 12,
 					g.images[piece])
 			} else if g.hover_moves.any(it.to_x == x && it.to_y == y) {
-				g.ctx.draw_circle_filled(f32(sx + tile_size / 2), f32(sy + tile_size / 2),
-					8, gg.rgba(0, 0, 0, 85))
+				g.ctx.draw_circle_filled(f32(sx + tile_size / 2), f32(sy + tile_size / 2), 8, gg.rgba(0,
+					0, 0, 85))
 			}
 		}
 	}
@@ -447,7 +447,8 @@ fn (mut g Game) write_pgn_file() {
 fn (mut g Game) final_pgn_output_path() string {
 	if g.pgn_output_path == '' {
 		now := time.now()
-		g.pgn_output_path = os.join_path(os.vtmp_dir(), 'chess', 'gui_game__${now.year:04}_${now.month:02}_${now.day:02}__${now.hour:02}_${now.minute:02}_${now.second:02}.pgn')
+		g.pgn_output_path = os.join_path(os.vtmp_dir(), 'chess',
+			'gui_game__${now.year:04}_${now.month:02}_${now.day:02}__${now.hour:02}_${now.minute:02}_${now.second:02}.pgn')
 		println('Saved game file: ${g.pgn_output_path}')
 	}
 	return g.pgn_output_path
@@ -463,8 +464,8 @@ fn pgn_result_from_status(status string) string {
 }
 
 fn (mut g Game) draw_promotion_overlay() {
-	g.ctx.draw_rect_filled(board_padding, top_height + board_padding, tile_size * 8, tile_size * 8,
-		gg.rgba(10, 10, 10, 160))
+	g.ctx.draw_rect_filled(board_padding, top_height + board_padding, tile_size * 8, tile_size * 8, gg.rgba(10,
+		10, 10, 160))
 	for i, mv in g.pending_promotions {
 		x, y, w, h := promotion_rect(i)
 		g.ctx.draw_rect_filled(x, y, w, h, gg.rgb(230, 230, 230))

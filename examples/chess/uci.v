@@ -165,16 +165,6 @@ fn parse_position_command(parts []string, mut e engine.Engine) engine.Position {
 	return pos
 }
 
-fn go_command(parts []string, _ engine.Engine, pos engine.Position) engine.SearchResult {
-	side := if pos.white_to_move { engine.white_color } else { engine.black_color }
-	params := parse_go_params(parts)
-	time_limit_ms := compute_time_limit_ms(params, pos)
-	best_move := compute_best_move(pos, side, time_limit_ms)
-	return engine.SearchResult{
-		best_move: best_move
-	}
-}
-
 fn start_search(parts []string, _ engine.Engine, pos engine.Position, search_id int, shared search_control engine.SearchControl, result_ch chan SearchOutcome) {
 	params := parse_go_params(parts)
 	time_limit_ms := compute_time_limit_ms(params, pos)
@@ -188,11 +178,6 @@ fn search_worker(pos engine.Position, side int, time_limit_ms int, search_id int
 		id:        search_id
 		best_move: best_move
 	}
-}
-
-fn compute_best_move(pos engine.Position, side int, time_limit_ms int) engine.Move {
-	shared control := engine.SearchControl{}
-	return compute_best_move_with_control(pos, side, time_limit_ms, shared control)
 }
 
 fn compute_best_move_with_control(pos engine.Position, side int, time_limit_ms int, shared search_control engine.SearchControl) engine.Move {

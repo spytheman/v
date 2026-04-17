@@ -6,6 +6,8 @@ const ai_time_limit_ms = 2000
 const tt_bound_exact = 0
 const tt_bound_lower = 1
 const tt_bound_upper = 2
+const opening_phase_plies = 8
+const root_sanity_candidate_count = 4
 
 pub fn (mut e Engine) new_position() Position {
 	return Position{
@@ -50,6 +52,9 @@ pub fn (mut e Engine) search_best_move_with_control(pos Position, side int, time
 	if legal_moves.len == 0 {
 		return Move{}
 	}
+	if book_move := opening_book_move(pos, side, legal_moves) {
+		return book_move
+	}
 	root_key := e.position_key(pos)
 	mut tt_root_move := Move{}
 	if root_key in e.transposition_table {
@@ -93,10 +98,12 @@ pub fn (mut e Engine) search_best_move_with_control(pos Position, side int, time
 	if best_move == Move{} {
 		best_move = legal_moves[0]
 	}
+	best_move = e.sanity_filter_root_move(pos, side, best_move, legal_moves, start_time,
+		time_limit_ms, shared control)
 	return best_move
 }
 
-fn (mut e Engine) search_root_depth(pos Position, legal_moves []Move, side int, depth int, alpha0 int, beta0 int, start_time i64, time_limit_ms int, shared control SearchControl, priority_move Move) (int, Move, bool) {
+fn (mut e Engine) search_root_depth(pos Position, legal_moves []engine.Move, side int, depth int, alpha0 int, beta0 int, start_time i64, time_limit_ms int, shared control SearchControl, priority_move Move) (int, Move, bool) {
 	mut alpha := alpha0
 	mut beta := beta0
 	mut best_score := worst_score_for(side)
@@ -192,7 +199,7 @@ fn same_move(a Move, b Move) bool {
 		&& a.promotion == b.promotion
 }
 
-fn prioritize_move(moves []Move, priority Move) []Move {
+fn prioritize_move(moves []engine.Move, priority Move) []engine.Move {
 	if priority == Move{} {
 		return moves
 	}
@@ -314,8 +321,7 @@ fn (mut e Engine) search(pos Position, side int, depth int, alpha0 int, beta0 in
 		return 0
 	}
 	if remaining_depth == 0 {
-		return e.quiescence(pos, alpha, beta, side, 0, start_time, time_limit_ms, shared
-			control)
+		return e.quiescence(pos, alpha, beta, side, 0, start_time, time_limit_ms, shared control)
 	}
 	in_check := e.is_in_check(pos, side)
 	mut ordered := e.order_moves(moves, pos, side, ply)
@@ -333,15 +339,15 @@ fn (mut e Engine) search(pos Position, side int, depth int, alpha0 int, beta0 in
 			apply_move(mut next, mv)
 			mut score := 0
 			if i == 0 || remaining_depth <= 1 || in_check {
-				score = e.search(next, white_color, remaining_depth - 1, alpha, beta,
-					ply + 1, start_time, time_limit_ms, shared control)
+				score = e.search(next, white_color, remaining_depth - 1, alpha, beta, ply + 1,
+					start_time, time_limit_ms, shared control)
 			} else {
-				score = e.search(next, white_color, remaining_depth - 1, alpha, alpha + 1,
-					ply + 1, start_time, time_limit_ms, shared control)
+				score = e.search(next, white_color, remaining_depth - 1, alpha, alpha + 1, ply + 1,
+					start_time, time_limit_ms, shared control)
 				if !should_stop_search(start_time, time_limit_ms, shared control) && score > alpha
 					&& score < beta {
-					score = e.search(next, white_color, remaining_depth - 1, alpha, beta,
-						ply + 1, start_time, time_limit_ms, shared control)
+					score = e.search(next, white_color, remaining_depth - 1, alpha, beta, ply + 1,
+						start_time, time_limit_ms, shared control)
 				}
 			}
 			if should_stop_search(start_time, time_limit_ms, shared control) {
@@ -397,8 +403,8 @@ fn (mut e Engine) search(pos Position, side int, depth int, alpha0 int, beta0 in
 				start_time, time_limit_ms, shared control)
 			if !should_stop_search(start_time, time_limit_ms, shared control) && score < beta
 				&& score > alpha {
-				score = e.search(next, black_color, remaining_depth - 1, alpha, beta,
-					ply + 1, start_time, time_limit_ms, shared control)
+				score = e.search(next, black_color, remaining_depth - 1, alpha, beta, ply + 1,
+					start_time, time_limit_ms, shared control)
 			}
 		}
 		if should_stop_search(start_time, time_limit_ms, shared control) {
@@ -430,8 +436,8 @@ fn (mut e Engine) search(pos Position, side int, depth int, alpha0 int, beta0 in
 		return score
 	}
 	if completed {
-		e.store_tt_entry(tt_key, remaining_depth, best, tt_bound_for(best, alpha_orig,
-			beta_orig), best_move)
+		e.store_tt_entry(tt_key, remaining_depth, best, tt_bound_for(best, alpha_orig, beta_orig),
+			best_move)
 	}
 	return best
 }
@@ -542,7 +548,7 @@ fn should_stop_search(start_time i64, time_limit_ms int, shared control SearchCo
 	}
 }
 
-fn (e &Engine) order_moves(moves []Move, pos Position, side int, ply int) []Move {
+fn (e &Engine) order_moves(moves []engine.Move, pos Position, side int, ply int) []engine.Move {
 	in_check := e.is_in_check(pos, side)
 	mut scored := moves.map(fn [e, pos, side, ply, in_check] (mv Move) int {
 		mut s := 0
@@ -557,10 +563,13 @@ fn (e &Engine) order_moves(moves []Move, pos Position, side int, ply int) []Move
 		}
 		s += e.history[sidx][from_sq][to_sq]
 		if mv.is_castle {
-			s += 50
+			s += 120
 		}
 		if in_check {
 			s += 50
+		}
+		if opening_ply(pos) < opening_phase_plies {
+			s += e.opening_move_order_score(pos, mv, side)
 		}
 		return s
 	})
@@ -574,7 +583,7 @@ fn (e &Engine) order_moves(moves []Move, pos Position, side int, ply int) []Move
 	return result
 }
 
-fn (e &Engine) sort_captures(mut moves []Move, pos Position) {
+fn (e &Engine) sort_captures(mut moves []engine.Move, pos Position) {
 	moves.sort_with_compare(fn [pos] (a &Move, b &Move) int {
 		a_score := tactical_order_score(pos, *a)
 		b_score := tactical_order_score(pos, *b)
@@ -586,6 +595,251 @@ fn (e &Engine) sort_captures(mut moves []Move, pos Position) {
 			0
 		}
 	})
+}
+
+fn opening_ply(pos Position) int {
+	return (pos.fullmove_number - 1) * 2 + if pos.white_to_move {
+		0
+	} else {
+		1
+	}
+}
+
+fn (e &Engine) opening_move_order_score(pos Position, mv Move, side int) int {
+	piece := pos.board[mv.from_y][mv.from_x]
+	kind := piece_kind(piece)
+	tactical_reason := is_tactical_move(pos, mv) || e.move_gives_check(pos, mv, side)
+	mut score := 0
+	if mv.is_castle {
+		score += 260
+	}
+	if is_developing_minor_from_home(mv, side, kind) {
+		score += 90
+	}
+	if is_center_pawn_advance(mv, side, kind) {
+		score += 65
+	}
+	if kind == queen && !tactical_reason {
+		score -= 220
+	}
+	if is_repeated_opening_piece_move(mv, side, kind) && !tactical_reason {
+		score -= 140
+	}
+	if is_startpos_after_1_e4(pos, side) {
+		if mv.from_x == 1 && mv.from_y == 0 && mv.to_x == 2 && mv.to_y == 2 {
+			score -= 260
+		}
+		if mv.from_x == 4 && mv.from_y == 1 && mv.to_x == 4 && mv.to_y == 3 {
+			score += 180
+		}
+		if mv.from_x == 2 && mv.from_y == 1 && mv.to_x == 2 && mv.to_y == 3 {
+			score += 130
+		}
+		if mv.from_x == 4 && mv.from_y == 1 && mv.to_x == 4 && mv.to_y == 2 {
+			score += 105
+		}
+		if mv.from_x == 2 && mv.from_y == 1 && mv.to_x == 2 && mv.to_y == 2 {
+			score += 95
+		}
+		if mv.from_x == 6 && mv.from_y == 0 && mv.to_x == 5 && mv.to_y == 2 {
+			score += 85
+		}
+	}
+	return score
+}
+
+fn (e &Engine) move_gives_check(pos Position, mv Move, side int) bool {
+	mut next := e.copy_position(pos)
+	apply_move(mut next, mv)
+	return e.is_in_check(next, -side)
+}
+
+fn is_developing_minor_from_home(mv Move, side int, kind int) bool {
+	if kind != knight && kind != bishop {
+		return false
+	}
+	home_rank := if side == white_color { 7 } else { 0 }
+	return mv.from_y == home_rank
+}
+
+fn is_center_pawn_advance(mv Move, side int, kind int) bool {
+	if kind != pawn || mv.from_x !in [2, 3, 4] {
+		return false
+	}
+	start_row := if side == white_color { 6 } else { 1 }
+	return mv.from_y == start_row && iabs(mv.to_y - mv.from_y) <= 2
+}
+
+fn is_repeated_opening_piece_move(mv Move, side int, kind int) bool {
+	if kind == pawn || kind == king {
+		return false
+	}
+	home_rank := if side == white_color { 7 } else { 0 }
+	return mv.from_y != home_rank
+}
+
+fn is_startpos_after_1_e4(pos Position, side int) bool {
+	if side != black_color || pos.white_to_move || pos.fullmove_number != 1
+		|| pos.halfmove_clock != 0 || !pos.white_kingside || !pos.white_queenside
+		|| !pos.black_kingside || !pos.black_queenside {
+		return false
+	}
+	for y := 0; y < board_cells; y++ {
+		for x := 0; x < board_cells; x++ {
+			if pos.board[y][x] != expected_piece_after_1_e4(x, y) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+fn expected_piece_after_1_e4(x int, y int) int {
+	return match y {
+		0 {
+			match x {
+				0 { -rook }
+				1 { -knight }
+				2 { -bishop }
+				3 { -queen }
+				4 { -king }
+				5 { -bishop }
+				6 { -knight }
+				7 { -rook }
+				else { 0 }
+			}
+		}
+		1 {
+			-pawn
+		}
+		4 {
+			if x == 4 {
+				pawn
+			} else {
+				0
+			}
+		}
+		6 {
+			if x == 4 {
+				0
+			} else {
+				pawn
+			}
+		}
+		7 {
+			match x {
+				0 { rook }
+				1 { knight }
+				2 { bishop }
+				3 { queen }
+				4 { king }
+				5 { bishop }
+				6 { knight }
+				7 { rook }
+				else { 0 }
+			}
+		}
+		else {
+			0
+		}
+	}
+}
+
+fn opening_book_move(pos Position, side int, legal_moves []engine.Move) ?Move {
+	if is_startpos_after_1_e4(pos, side) {
+		if mv := find_uci_move(legal_moves, 'e7e5') {
+			return mv
+		}
+	}
+	return none
+}
+
+fn find_uci_move(moves []engine.Move, uci string) ?Move {
+	for mv in moves {
+		if move_to_uci(mv) == uci {
+			return mv
+		}
+	}
+	return none
+}
+
+fn (mut e Engine) sanity_filter_root_move(pos Position, side int, best_move Move, legal_moves []engine.Move, start_time i64, time_limit_ms int, shared control SearchControl) Move {
+	if should_stop_search(start_time, time_limit_ms, shared control) {
+		return best_move
+	}
+	if best_move == Move{} || !e.is_catastrophic_root_move(pos, side, best_move) {
+		return best_move
+	}
+	ordered := e.order_moves(legal_moves, pos, side, 0)
+	limit := min_int(root_sanity_candidate_count, ordered.len)
+	for i := 0; i < limit; i++ {
+		if should_stop_search(start_time, time_limit_ms, shared control) {
+			break
+		}
+		mv := ordered[i]
+		if same_move(mv, best_move) {
+			continue
+		}
+		if !e.is_catastrophic_root_move(pos, side, mv) {
+			return mv
+		}
+	}
+	return best_move
+}
+
+fn min_int(a int, b int) int {
+	return if a < b { a } else { b }
+}
+
+fn (mut e Engine) is_catastrophic_root_move(pos Position, side int, mv Move) bool {
+	captured_value := captured_material_value(pos, mv)
+	mut next := e.copy_position(pos)
+	apply_move(mut next, mv)
+	if e.allows_immediate_mate(next, side) {
+		return true
+	}
+	return e.hangs_major_piece(next, side, mv, captured_value)
+}
+
+fn (e &Engine) allows_immediate_mate(pos Position, side int) bool {
+	opponent := -side
+	for reply in e.legal_moves_for(pos, opponent) {
+		mut after_reply := e.copy_position(pos)
+		apply_move(mut after_reply, reply)
+		if e.is_in_check(after_reply, side) && e.legal_moves_for(after_reply, side).len == 0 {
+			return true
+		}
+	}
+	return false
+}
+
+fn (e &Engine) hangs_major_piece(pos Position, side int, mv Move, captured_value int) bool {
+	moved_piece := pos.board[mv.to_y][mv.to_x]
+	if piece_color(moved_piece) != side {
+		return false
+	}
+	moved_kind := piece_kind(moved_piece)
+	if moved_kind != queen && moved_kind != rook {
+		return false
+	}
+	moved_value := piece_value(moved_kind)
+	if captured_value >= moved_value {
+		return false
+	}
+	for reply in e.legal_moves_for(pos, -side) {
+		if reply.to_x != mv.to_x || reply.to_y != mv.to_y {
+			continue
+		}
+		return true
+	}
+	return false
+}
+
+fn captured_material_value(pos Position, mv Move) int {
+	if mv.is_en_passant {
+		return piece_value(pawn)
+	}
+	return piece_value(piece_kind(pos.board[mv.to_y][mv.to_x]))
 }
 
 fn perspective_rank(y int, side int) int {
@@ -633,6 +887,10 @@ fn (e &Engine) evaluate(pos Position, mobility int, side int) int {
 	mut black_pawn_attacks := [8]int{}
 	mut white_king_rank := 0
 	mut black_king_rank := 0
+	mut white_home_minors := 0
+	mut black_home_minors := 0
+	mut white_queen_developed := false
+	mut black_queen_developed := false
 	for y := 0; y < board_cells; y++ {
 		for x := 0; x < board_cells; x++ {
 			piece := pos.board[y][x]
@@ -664,15 +922,30 @@ fn (e &Engine) evaluate(pos Position, mobility int, side int) int {
 				bishop {
 					if color == white_color {
 						white_bishops++
+						if y == 7 {
+							white_home_minors++
+						}
 					} else {
 						black_bishops++
+						if y == 0 {
+							black_home_minors++
+						}
+					}
+				}
+				knight {
+					if color == white_color && y == 7 {
+						white_home_minors++
+					} else if color == black_color && y == 0 {
+						black_home_minors++
 					}
 				}
 				queen {
 					if color == white_color {
 						white_has_queen = true
+						white_queen_developed = x != 3 || y != 7
 					} else {
 						black_has_queen = true
+						black_queen_developed = x != 3 || y != 0
 					}
 				}
 				king {
@@ -766,13 +1039,29 @@ fn (e &Engine) evaluate(pos Position, mobility int, side int) int {
 	if black_bishops >= 2 {
 		score += feature_score(black_color, 30)
 	}
+	if opening_ply(pos) < opening_phase_plies {
+		score -= feature_score(white_color, white_home_minors * 18)
+		score -= feature_score(black_color, black_home_minors * 18)
+		if white_queen_developed {
+			score -= feature_score(white_color, 70)
+		}
+		if black_queen_developed {
+			score -= feature_score(black_color, 70)
+		}
+	}
 	white_castled := pos.board[7][6] == king || pos.board[7][2] == king
 	black_castled := pos.board[0][6] == -king || pos.board[0][2] == -king
 	if white_castled {
-		score += feature_score(white_color, 30)
+		score += feature_score(white_color, 55)
 	}
 	if black_castled {
-		score += feature_score(black_color, 30)
+		score += feature_score(black_color, 55)
+	}
+	if !white_castled && (pos.white_kingside || pos.white_queenside) {
+		score += feature_score(white_color, 12)
+	}
+	if !black_castled && (pos.black_kingside || pos.black_queenside) {
+		score += feature_score(black_color, 12)
 	}
 	if white_castled && black_has_queen {
 		score += feature_score(white_color, 25)
@@ -800,7 +1089,7 @@ fn (e &Engine) evaluate(pos Position, mobility int, side int) int {
 	return score
 }
 
-pub fn (e &Engine) legal_moves_for(pos Position, side int) []Move {
+pub fn (e &Engine) legal_moves_for(pos Position, side int) []engine.Move {
 	mut legal := []Move{}
 	for mv in e.pseudo_moves_for(pos, side) {
 		mut next := e.copy_position(pos)
@@ -812,7 +1101,7 @@ pub fn (e &Engine) legal_moves_for(pos Position, side int) []Move {
 	return legal
 }
 
-fn (e &Engine) pseudo_moves_for(pos Position, side int) []Move {
+fn (e &Engine) pseudo_moves_for(pos Position, side int) []engine.Move {
 	mut moves := []Move{}
 	for y := 0; y < board_cells; y++ {
 		for x := 0; x < board_cells; x++ {
@@ -847,7 +1136,7 @@ fn (e &Engine) pseudo_moves_for(pos Position, side int) []Move {
 	return moves
 }
 
-fn (e &Engine) add_pawn_moves(pos Position, side int, x int, y int, mut moves []Move) {
+fn (e &Engine) add_pawn_moves(pos Position, side int, x int, y int, mut moves []engine.Move) {
 	step := if side == white_color { -1 } else { 1 }
 	start_row := if side == white_color { 6 } else { 1 }
 	promo_row := if side == white_color { 0 } else { 7 }
@@ -892,7 +1181,7 @@ fn (e &Engine) add_pawn_moves(pos Position, side int, x int, y int, mut moves []
 	}
 }
 
-fn (e &Engine) add_pawn_move_or_promotions(side int, from_x int, from_y int, to_x int, to_y int, score int, is_en_passant bool, mut moves []Move) {
+fn (e &Engine) add_pawn_move_or_promotions(side int, from_x int, from_y int, to_x int, to_y int, score int, is_en_passant bool, mut moves []engine.Move) {
 	promo_row := if side == white_color { 0 } else { 7 }
 	if to_y != promo_row {
 		moves << Move{
@@ -918,7 +1207,7 @@ fn (e &Engine) add_pawn_move_or_promotions(side int, from_x int, from_y int, to_
 	}
 }
 
-fn (e &Engine) add_knight_moves(pos Position, side int, x int, y int, mut moves []Move) {
+fn (e &Engine) add_knight_moves(pos Position, side int, x int, y int, mut moves []engine.Move) {
 	for offset in knight_offsets {
 		nx := x + offset.x
 		ny := y + offset.y
@@ -938,7 +1227,7 @@ fn (e &Engine) add_knight_moves(pos Position, side int, x int, y int, mut moves 
 	}
 }
 
-fn (e &Engine) add_sliding_moves(pos Position, side int, x int, y int, dirs [4]Pos, mut moves []Move) {
+fn (e &Engine) add_sliding_moves(pos Position, side int, x int, y int, dirs [4]Pos, mut moves []engine.Move) {
 	for dir in dirs {
 		mut nx := x + dir.x
 		mut ny := y + dir.y
@@ -969,7 +1258,7 @@ fn (e &Engine) add_sliding_moves(pos Position, side int, x int, y int, dirs [4]P
 	}
 }
 
-fn (e &Engine) add_king_moves(pos Position, side int, x int, y int, mut moves []Move) {
+fn (e &Engine) add_king_moves(pos Position, side int, x int, y int, mut moves []engine.Move) {
 	for offset in king_offsets {
 		nx := x + offset.x
 		ny := y + offset.y
