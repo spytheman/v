@@ -8,6 +8,7 @@ const tt_bound_lower = 1
 const tt_bound_upper = 2
 const opening_phase_plies = 8
 const root_sanity_candidate_count = 4
+pub const tactical_time_bonus_percent = 50
 
 pub fn (mut e Engine) new_position() Position {
 	return Position{
@@ -109,6 +110,7 @@ fn (mut e Engine) search_root_depth(pos Position, legal_moves []engine.Move, sid
 	mut best_score := worst_score_for(side)
 	mut best_move := Move{}
 	in_check := e.is_in_check(pos, side)
+	king_exposed := e.is_king_exposed(pos, side)
 	mut ordered_root := e.order_moves(legal_moves, pos, side, 0)
 	ordered_root = prioritize_move(ordered_root, priority_move)
 	for i, mv in ordered_root {
@@ -119,7 +121,7 @@ fn (mut e Engine) search_root_depth(pos Position, legal_moves []engine.Move, sid
 		apply_move(mut next, mv)
 		next_side := other_side(side)
 		mut score := 0
-		if i == 0 || depth <= 1 || in_check {
+		if i == 0 || depth <= 1 || in_check || king_exposed {
 			score = e.search(next, next_side, depth - 1, alpha, beta, 0, start_time, time_limit_ms, shared
 				control)
 		} else if side == black_color {
@@ -229,6 +231,15 @@ fn is_quiet_move(pos Position, mv Move) bool {
 	return !is_tactical_move(pos, mv)
 }
 
+fn (e &Engine) is_quiet_opening_queen_move(pos Position, mv Move, side int) bool {
+	if opening_ply(pos) >= opening_phase_plies {
+		return false
+	}
+	piece := pos.board[mv.from_y][mv.from_x]
+	return piece_color(piece) == side && piece_kind(piece) == queen && is_quiet_move(pos, mv)
+		&& !e.move_gives_check(pos, mv, side)
+}
+
 fn tactical_order_score(pos Position, mv Move) int {
 	attacker := piece_value(piece_kind(pos.board[mv.from_y][mv.from_x]))
 	victim := if mv.is_en_passant {
@@ -273,10 +284,7 @@ fn (mut e Engine) search(pos Position, side int, depth int, alpha0 int, beta0 in
 	}
 	mut alpha := alpha0
 	mut beta := beta0
-	mut remaining_depth := depth
-	if remaining_depth > 0 && remaining_depth <= 2 && e.is_in_check(pos, side) {
-		remaining_depth++
-	}
+	remaining_depth, king_exposed := e.search_depth_with_extensions(pos, side, depth, ply)
 	alpha_orig := alpha0
 	beta_orig := beta0
 	tt_key := e.position_key(pos)
@@ -338,7 +346,7 @@ fn (mut e Engine) search(pos Position, side int, depth int, alpha0 int, beta0 in
 			mut next := e.copy_position(pos)
 			apply_move(mut next, mv)
 			mut score := 0
-			if i == 0 || remaining_depth <= 1 || in_check {
+			if i == 0 || remaining_depth <= 1 || in_check || king_exposed {
 				score = e.search(next, white_color, remaining_depth - 1, alpha, beta, ply + 1,
 					start_time, time_limit_ms, shared control)
 			} else {
@@ -395,7 +403,7 @@ fn (mut e Engine) search(pos Position, side int, depth int, alpha0 int, beta0 in
 		mut next := e.copy_position(pos)
 		apply_move(mut next, mv)
 		mut score := 0
-		if i == 0 || remaining_depth <= 1 || in_check {
+		if i == 0 || remaining_depth <= 1 || in_check || king_exposed {
 			score = e.search(next, black_color, remaining_depth - 1, alpha, beta, ply + 1,
 				start_time, time_limit_ms, shared control)
 		} else {
@@ -440,6 +448,18 @@ fn (mut e Engine) search(pos Position, side int, depth int, alpha0 int, beta0 in
 			best_move)
 	}
 	return best
+}
+
+fn (e &Engine) search_depth_with_extensions(pos Position, side int, depth int, ply int) (int, bool) {
+	mut remaining_depth := depth
+	if remaining_depth > 0 && remaining_depth <= 2 && e.is_in_check(pos, side) {
+		remaining_depth++
+	}
+	king_exposed := e.is_king_exposed(pos, side)
+	if remaining_depth > 0 && remaining_depth <= 2 && king_exposed && ply == 0 {
+		remaining_depth++
+	}
+	return remaining_depth, king_exposed
 }
 
 fn (e &Engine) quiescence(pos Position, alpha_ int, beta_ int, side int, depth int, start_time i64, time_limit_ms int, shared control SearchControl) int {
@@ -746,12 +766,117 @@ fn expected_piece_after_1_e4(x int, y int) int {
 }
 
 fn opening_book_move(pos Position, side int, legal_moves []engine.Move) ?Move {
+	if is_startpos(pos, side) {
+		if mv := find_uci_move(legal_moves, 'e2e4') {
+			return mv
+		}
+	}
 	if is_startpos_after_1_e4(pos, side) {
 		if mv := find_uci_move(legal_moves, 'e7e5') {
 			return mv
 		}
 	}
+	for line in white_opening_book_lines(pos, side) {
+		if mv := find_uci_move(legal_moves, line) {
+			return mv
+		}
+	}
 	return none
+}
+
+fn is_startpos(pos Position, side int) bool {
+	if side != white_color || !pos.white_to_move || pos.fullmove_number != 1
+		|| pos.halfmove_clock != 0 || !pos.white_kingside || !pos.white_queenside
+		|| !pos.black_kingside || !pos.black_queenside {
+		return false
+	}
+	for y := 0; y < board_cells; y++ {
+		for x := 0; x < board_cells; x++ {
+			if pos.board[y][x] != initial_piece_at(x, y) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+fn initial_piece_at(x int, y int) int {
+	return match y {
+		0 {
+			expected_piece_after_1_e4(x, y)
+		}
+		1 {
+			-pawn
+		}
+		6 {
+			pawn
+		}
+		7 {
+			expected_piece_after_1_e4(x, y)
+		}
+		else {
+			0
+		}
+	}
+}
+
+fn white_opening_book_lines(pos Position, side int) []string {
+	if side != white_color || !pos.white_to_move || opening_ply(pos) >= opening_phase_plies {
+		return []
+	}
+	if moves_match_position(pos, ['e2e4', 'e7e5']) {
+		return ['g1f3']
+	}
+	if moves_match_position(pos, ['e2e4', 'c7c5']) {
+		return ['g1f3']
+	}
+	if moves_match_position(pos, ['e2e4', 'e7e6']) {
+		return ['d2d4']
+	}
+	if moves_match_position(pos, ['e2e4', 'c7c6']) {
+		return ['d2d4']
+	}
+	if moves_match_position(pos, ['e2e4', 'g8f6']) {
+		return ['e4e5']
+	}
+	return []
+}
+
+fn moves_match_position(pos Position, ucis []string) bool {
+	mut e := Engine{}
+	mut replay := e.new_position()
+	for uci in ucis {
+		mv := find_legal_uci_move(e, replay, uci) or { return false }
+		apply_move(mut replay, mv)
+	}
+	return same_position_for_book(pos, replay)
+}
+
+fn find_legal_uci_move(e Engine, pos Position, uci string) ?Move {
+	side := if pos.white_to_move { white_color } else { black_color }
+	for mv in e.legal_moves_for(pos, side) {
+		if move_to_uci(mv) == uci {
+			return mv
+		}
+	}
+	return none
+}
+
+fn same_position_for_book(a Position, b Position) bool {
+	if a.white_to_move != b.white_to_move || a.fullmove_number != b.fullmove_number
+		|| a.halfmove_clock != b.halfmove_clock || a.white_kingside != b.white_kingside
+		|| a.white_queenside != b.white_queenside || a.black_kingside != b.black_kingside
+		|| a.black_queenside != b.black_queenside {
+		return false
+	}
+	for y := 0; y < board_cells; y++ {
+		for x := 0; x < board_cells; x++ {
+			if a.board[y][x] != b.board[y][x] {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 fn find_uci_move(moves []engine.Move, uci string) ?Move {
@@ -798,7 +923,17 @@ fn (mut e Engine) is_catastrophic_root_move(pos Position, side int, mv Move) boo
 	if e.allows_immediate_mate(next, side) {
 		return true
 	}
-	return e.hangs_major_piece(next, side, mv, captured_value)
+	if e.hangs_piece_to_one_move_tactic(next, side, mv, captured_value) {
+		return true
+	}
+	if e.allows_forcing_check_sequence(next, side) {
+		return true
+	}
+	if e.is_quiet_opening_queen_move(pos, mv, side)
+		&& e.queen_can_be_harassed_by_development(next, side, mv) {
+		return true
+	}
+	return e.tactical_verification_fails(pos, side, mv)
 }
 
 fn (e &Engine) allows_immediate_mate(pos Position, side int) bool {
@@ -813,13 +948,13 @@ fn (e &Engine) allows_immediate_mate(pos Position, side int) bool {
 	return false
 }
 
-fn (e &Engine) hangs_major_piece(pos Position, side int, mv Move, captured_value int) bool {
+fn (e &Engine) hangs_piece_to_one_move_tactic(pos Position, side int, mv Move, captured_value int) bool {
 	moved_piece := pos.board[mv.to_y][mv.to_x]
 	if piece_color(moved_piece) != side {
 		return false
 	}
 	moved_kind := piece_kind(moved_piece)
-	if moved_kind != queen && moved_kind != rook {
+	if moved_kind != queen && moved_kind != rook && moved_kind != bishop && moved_kind != knight {
 		return false
 	}
 	moved_value := piece_value(moved_kind)
@@ -830,7 +965,279 @@ fn (e &Engine) hangs_major_piece(pos Position, side int, mv Move, captured_value
 		if reply.to_x != mv.to_x || reply.to_y != mv.to_y {
 			continue
 		}
+		attacker_value := piece_value(piece_kind(pos.board[reply.from_y][reply.from_x]))
+		if moved_value - attacker_value >= piece_value(pawn) {
+			return true
+		}
+	}
+	return false
+}
+
+fn (mut e Engine) tactical_verification_fails(pos Position, side int, mv Move) bool {
+	if !e.is_sharp_position(pos, side) && !is_tactical_move(pos, mv)
+		&& !e.move_gives_check(pos, mv, side) {
+		return false
+	}
+	mut next := e.copy_position(pos)
+	apply_move(mut next, mv)
+	opponent := -side
+	opponent_moves := e.legal_moves_for(next, opponent)
+	for reply in opponent_moves {
+		reply_gives_check := e.move_gives_check(next, reply, opponent)
+		if !is_tactical_move(next, reply) && !reply_gives_check {
+			continue
+		}
+		mut after_reply := e.copy_position(next)
+		apply_move(mut after_reply, reply)
+		if e.is_in_check(after_reply, side) && e.legal_moves_for(after_reply, side).len == 0 {
+			return true
+		}
+		if reply.to_x == mv.to_x && reply.to_y == mv.to_y
+			&& tactical_order_score(next, reply) >= piece_value(bishop) * 16 - piece_value(pawn)
+			&& !e.has_recapture(after_reply, side, reply.to_x, reply.to_y) {
+			return true
+		}
+	}
+	return false
+}
+
+fn (e &Engine) has_recapture(pos Position, side int, x int, y int) bool {
+	for mv in e.legal_moves_for(pos, side) {
+		if mv.to_x == x && mv.to_y == y {
+			return true
+		}
+	}
+	return false
+}
+
+fn (e &Engine) allows_forcing_check_sequence(pos Position, side int) bool {
+	if !e.is_king_exposed(pos, side) {
+		return false
+	}
+	opponent := -side
+	for reply in e.legal_moves_for(pos, opponent) {
+		if !e.move_gives_check(pos, reply, opponent) {
+			continue
+		}
+		mut after_reply := e.copy_position(pos)
+		apply_move(mut after_reply, reply)
+		if e.legal_moves_for(after_reply, side).len <= 1 {
+			return true
+		}
+		if e.check_reply_wins_decisive_material(after_reply, side) {
+			return true
+		}
+	}
+	return false
+}
+
+fn (e &Engine) check_reply_wins_decisive_material(pos Position, side int) bool {
+	opponent := -side
+	for reply in e.legal_moves_for(pos, side) {
+		mut after_reply := e.copy_position(pos)
+		apply_move(mut after_reply, reply)
+		if e.is_in_check(after_reply, side) {
+			continue
+		}
+		if !e.has_decisive_capture(after_reply, opponent) {
+			return false
+		}
+	}
+	return true
+}
+
+fn (e &Engine) has_decisive_capture(pos Position, side int) bool {
+	for mv in e.legal_moves_for(pos, side) {
+		if is_capture_move(pos, mv) && captured_material_value(pos, mv) >= piece_value(rook) {
+			return true
+		}
+	}
+	return false
+}
+
+fn (e &Engine) queen_can_be_harassed_by_development(pos Position, side int, mv Move) bool {
+	moved_piece := pos.board[mv.to_y][mv.to_x]
+	if piece_color(moved_piece) != side || piece_kind(moved_piece) != queen {
+		return false
+	}
+	if e.square_attacked(pos, mv.to_x, mv.to_y, -side) {
 		return true
+	}
+	for reply in e.legal_moves_for(pos, -side) {
+		piece := pos.board[reply.from_y][reply.from_x]
+		kind := piece_kind(piece)
+		if !is_developing_minor_from_home(reply, -side, kind) {
+			continue
+		}
+		mut after_reply := e.copy_position(pos)
+		apply_move(mut after_reply, reply)
+		if e.square_attacked(after_reply, mv.to_x, mv.to_y, -side) {
+			return true
+		}
+	}
+	return false
+}
+
+// is_tactical_position reports whether the side should spend extra time on forcing play.
+pub fn (e &Engine) is_tactical_position(pos Position, side int) bool {
+	return e.is_in_check(pos, side) || e.is_king_exposed(pos, side)
+		|| e.has_sharp_forcing_move(pos, side) || e.has_sharp_forcing_move(pos, -side)
+}
+
+// time_budget_with_tactical_bonus returns budget with extra time for tactical positions.
+pub fn (e &Engine) time_budget_with_tactical_bonus(pos Position, side int, budget int) int {
+	if e.is_tactical_position(pos, side) {
+		return budget + budget * tactical_time_bonus_percent / 100
+	}
+	return budget
+}
+
+fn (e &Engine) is_sharp_position(pos Position, side int) bool {
+	return e.is_tactical_position(pos, side)
+}
+
+fn (e &Engine) has_sharp_forcing_move(pos Position, side int) bool {
+	for mv in e.legal_moves_for(pos, side) {
+		if e.move_gives_check(pos, mv, side) || mv.promotion != 0 {
+			return true
+		}
+		if e.is_significant_capture(pos, mv) {
+			return true
+		}
+	}
+	return false
+}
+
+fn (e &Engine) is_significant_capture(pos Position, mv Move) bool {
+	if !is_capture_move(pos, mv) {
+		return false
+	}
+	attacker_value := piece_value(piece_kind(pos.board[mv.from_y][mv.from_x]))
+	victim_value := captured_material_value(pos, mv)
+	return victim_value >= piece_value(rook) || victim_value - attacker_value >= piece_value(pawn)
+}
+
+fn (e &Engine) is_king_exposed(pos Position, side int) bool {
+	kx, ky := e.find_king(pos, side)
+	if kx == no_square {
+		return true
+	}
+	if e.is_in_check(pos, side) {
+		return true
+	}
+	if e.is_low_material_endgame(pos) {
+		return false
+	}
+	castled := if side == white_color {
+		(pos.board[7][6] == king || pos.board[7][2] == king)
+	} else {
+		(pos.board[0][6] == -king || pos.board[0][2] == -king)
+	}
+	mut danger := 0
+	if !castled && opening_ply(pos) >= opening_phase_plies {
+		danger++
+	}
+	if e.king_pawn_shield_count(pos, side, kx, ky) <= 1 {
+		danger++
+	}
+	if e.king_adjacent_attacks(pos, side, kx, ky) >= 2 {
+		danger++
+	}
+	if e.open_line_to_king(pos, side, kx, ky) {
+		danger++
+	}
+	return danger >= 2
+}
+
+fn (e &Engine) is_low_material_endgame(pos Position) bool {
+	mut queens := 0
+	mut non_pawn_material := 0
+	for y := 0; y < board_cells; y++ {
+		for x := 0; x < board_cells; x++ {
+			kind := piece_kind(pos.board[y][x])
+			if kind == queen {
+				queens++
+			}
+			if kind != 0 && kind != king && kind != pawn {
+				non_pawn_material += piece_value(kind)
+			}
+		}
+	}
+	return queens == 0 && non_pawn_material <= piece_value(rook) * 2
+}
+
+fn (e &Engine) king_pawn_shield_count(pos Position, side int, kx int, ky int) int {
+	shield_y := ky + if side == white_color { -1 } else { 1 }
+	if shield_y < 0 || shield_y >= board_cells {
+		return 0
+	}
+	mut count := 0
+	for dx := -1; dx <= 1; dx++ {
+		x := kx + dx
+		if inside(x, shield_y) && pos.board[shield_y][x] == side * pawn {
+			count++
+		}
+	}
+	return count
+}
+
+fn (e &Engine) king_adjacent_attacks(pos Position, side int, kx int, ky int) int {
+	mut attacks := 0
+	for offset in king_offsets {
+		x := kx + offset.x
+		y := ky + offset.y
+		if inside(x, y) && e.square_attacked(pos, x, y, -side) {
+			attacks++
+		}
+	}
+	return attacks
+}
+
+fn (e &Engine) open_line_to_king(pos Position, side int, kx int, ky int) bool {
+	for dir in rook_dirs {
+		mut nx := kx + dir.x
+		mut ny := ky + dir.y
+		mut blockers := 0
+		for inside(nx, ny) {
+			piece := pos.board[ny][nx]
+			if piece != 0 {
+				if piece_color(piece) == side {
+					blockers++
+					if blockers > 1 {
+						break
+					}
+				} else if blockers == 0 && (piece_kind(piece) == rook || piece_kind(piece) == queen) {
+					return true
+				} else {
+					break
+				}
+			}
+			nx += dir.x
+			ny += dir.y
+		}
+	}
+	for dir in bishop_dirs {
+		mut nx := kx + dir.x
+		mut ny := ky + dir.y
+		mut blockers := 0
+		for inside(nx, ny) {
+			piece := pos.board[ny][nx]
+			if piece != 0 {
+				if piece_color(piece) == side {
+					blockers++
+					if blockers > 1 {
+						break
+					}
+				} else if blockers == 0
+					&& (piece_kind(piece) == bishop || piece_kind(piece) == queen) {
+					return true
+				} else {
+					break
+				}
+			}
+			nx += dir.x
+			ny += dir.y
+		}
 	}
 	return false
 }

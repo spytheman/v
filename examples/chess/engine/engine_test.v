@@ -163,6 +163,25 @@ fn test_opening_book_ignores_arbitrary_fen_like_e4_position() {
 	}
 }
 
+fn test_white_opening_book_keeps_simple_repertoire() {
+	mut e := Engine{}
+	mut pos := e.new_position()
+	legal_start := e.legal_moves_for(pos, white_color)
+	if mv := opening_book_move(pos, white_color, legal_start) {
+		assert move_to_uci(mv) == 'e2e4'
+	} else {
+		assert false
+	}
+	apply_legal_uci_move(mut e, mut pos, 'e2e4')
+	apply_legal_uci_move(mut e, mut pos, 'e7e5')
+	legal_after_e5 := e.legal_moves_for(pos, white_color)
+	if mv := opening_book_move(pos, white_color, legal_after_e5) {
+		assert move_to_uci(mv) == 'g1f3'
+	} else {
+		assert false
+	}
+}
+
 fn test_opening_move_order_penalizes_early_quiet_queen_move() {
 	mut e := Engine{}
 	mut pos := e.new_position()
@@ -343,6 +362,195 @@ fn test_sanity_filter_keeps_top_ordered_fallback_when_best_was_low_priority() {
 		bad_best,
 	], 0, -1, shared control)
 	assert same_move(filtered, safe_top_fallback)
+}
+
+fn test_sanity_filter_rejects_hanging_minor_piece() {
+	mut e := Engine{}
+	mut pos := Position{
+		white_to_move:   true
+		en_passant_x:    no_square
+		en_passant_y:    no_square
+		fullmove_number: 5
+	}
+	pos.board[7][6] = king
+	pos.board[7][5] = bishop
+	pos.board[6][0] = pawn
+	pos.board[0][6] = -king
+	pos.board[3][1] = -pawn
+	shared control := SearchControl{}
+	hanging := Move{
+		from_x: 5
+		from_y: 7
+		to_x:   2
+		to_y:   4
+	}
+	quiet := Move{
+		from_x: 0
+		from_y: 6
+		to_x:   0
+		to_y:   5
+	}
+	filtered := e.sanity_filter_root_move(pos, white_color, hanging, [hanging, quiet], 0, -1, shared
+		control)
+	assert same_move(filtered, quiet)
+}
+
+fn test_exposed_king_marks_position_tactical() {
+	e := Engine{}
+	mut pos := Position{
+		white_to_move:   true
+		en_passant_x:    no_square
+		en_passant_y:    no_square
+		fullmove_number: 8
+	}
+	pos.board[7][4] = king
+	pos.board[7][3] = queen
+	pos.board[0][4] = -king
+	pos.board[0][3] = -queen
+	pos.board[0][0] = -rook
+	assert e.is_king_exposed(pos, white_color)
+	assert e.is_tactical_position(pos, white_color)
+}
+
+fn test_exposed_king_depth_extension_is_root_only() {
+	e := Engine{}
+	mut pos := Position{
+		white_to_move:   true
+		en_passant_x:    no_square
+		en_passant_y:    no_square
+		fullmove_number: 8
+	}
+	pos.board[7][4] = king
+	pos.board[7][3] = queen
+	pos.board[0][4] = -king
+	pos.board[0][3] = -queen
+	pos.board[0][0] = -rook
+	root_depth, root_exposed := e.search_depth_with_extensions(pos, white_color, 1, 0)
+	child_depth, child_exposed := e.search_depth_with_extensions(pos, white_color, 1, 1)
+	assert root_exposed
+	assert child_exposed
+	assert root_depth == 2
+	assert child_depth == 1
+}
+
+fn test_low_material_endgame_king_is_not_exposed() {
+	e := Engine{}
+	mut pos := Position{
+		white_to_move:   true
+		en_passant_x:    no_square
+		en_passant_y:    no_square
+		fullmove_number: 40
+	}
+	pos.board[4][4] = king
+	pos.board[2][2] = -king
+	pos.board[3][4] = pawn
+	pos.board[1][2] = -pawn
+	assert !e.is_king_exposed(pos, white_color)
+}
+
+fn test_ordinary_pawn_capture_does_not_force_tactical_time() {
+	mut e := Engine{}
+	mut pos := e.new_position()
+	apply_legal_uci_move(mut e, mut pos, 'a2a3')
+	apply_legal_uci_move(mut e, mut pos, 'h7h6')
+	apply_legal_uci_move(mut e, mut pos, 'b2b4')
+	apply_legal_uci_move(mut e, mut pos, 'a7a5')
+	assert e.legal_moves_for(pos, white_color).any(move_to_uci(it) == 'b4a5')
+	assert !e.is_tactical_position(pos, white_color)
+}
+
+fn test_tactical_position_gets_time_budget_bonus() {
+	e := Engine{}
+	mut pos := Position{
+		white_to_move:   true
+		en_passant_x:    no_square
+		en_passant_y:    no_square
+		fullmove_number: 8
+	}
+	pos.board[7][4] = king
+	pos.board[7][3] = queen
+	pos.board[0][4] = -king
+	pos.board[0][3] = -queen
+	pos.board[0][0] = -rook
+	assert e.is_tactical_position(pos, white_color)
+	assert tactical_time_bonus_percent == 50
+	assert e.time_budget_with_tactical_bonus(pos, white_color, 998) == 1497
+}
+
+fn test_queen_harassed_by_development_is_catastrophic() {
+	mut e := Engine{}
+	mut pos := e.new_position()
+	apply_legal_uci_move(mut e, mut pos, 'e2e4')
+	apply_legal_uci_move(mut e, mut pos, 'e7e5')
+	legal := e.legal_moves_for(pos, white_color)
+	queen_move := find_uci_move(legal, 'd1h5') or { panic('expected d1h5') }
+	assert e.is_catastrophic_root_move(pos, white_color, queen_move)
+}
+
+fn test_harmless_multiple_checks_do_not_force_rejection() {
+	mut e := Engine{}
+	mut pos := Position{
+		white_to_move:   false
+		en_passant_x:    no_square
+		en_passant_y:    no_square
+		fullmove_number: 8
+	}
+	pos.board[7][4] = king
+	pos.board[7][0] = rook
+	pos.board[7][7] = rook
+	pos.board[6][0] = queen
+	pos.board[0][6] = -king
+	pos.board[0][0] = -queen
+	pos.board[5][7] = -rook
+	assert e.is_king_exposed(pos, white_color)
+	assert !e.allows_forcing_check_sequence(pos, white_color)
+}
+
+fn test_tactical_queen_capture_is_not_rejected_as_opening_harassment() {
+	mut e := Engine{}
+	mut pos := Position{
+		white_to_move:   true
+		en_passant_x:    no_square
+		en_passant_y:    no_square
+		fullmove_number: 3
+	}
+	pos.board[7][6] = king
+	pos.board[7][3] = queen
+	pos.board[0][6] = -king
+	pos.board[5][5] = -bishop
+	pos.board[0][7] = -rook
+	capture := Move{
+		from_x: 3
+		from_y: 7
+		to_x:   5
+		to_y:   5
+	}
+	assert is_tactical_move(pos, capture)
+	assert !e.is_quiet_opening_queen_move(pos, capture, white_color)
+}
+
+fn test_tactical_verification_ignores_unrelated_hanging_material() {
+	mut e := Engine{}
+	mut pos := Position{
+		white_to_move:   true
+		en_passant_x:    no_square
+		en_passant_y:    no_square
+		fullmove_number: 5
+	}
+	pos.board[7][6] = king
+	pos.board[7][0] = queen
+	pos.board[6][1] = pawn
+	pos.board[5][0] = -pawn
+	pos.board[0][6] = -king
+	pos.board[0][0] = -rook
+	candidate := Move{
+		from_x: 1
+		from_y: 6
+		to_x:   0
+		to_y:   5
+	}
+	assert is_tactical_move(pos, candidate)
+	assert !e.tactical_verification_fails(pos, white_color, candidate)
 }
 
 fn test_quiescence_searches_non_capture_check_evasions() {

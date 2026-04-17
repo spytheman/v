@@ -165,9 +165,9 @@ fn parse_position_command(parts []string, mut e engine.Engine) engine.Position {
 	return pos
 }
 
-fn start_search(parts []string, _ engine.Engine, pos engine.Position, search_id int, shared search_control engine.SearchControl, result_ch chan SearchOutcome) {
+fn start_search(parts []string, e engine.Engine, pos engine.Position, search_id int, shared search_control engine.SearchControl, result_ch chan SearchOutcome) {
 	params := parse_go_params(parts)
-	time_limit_ms := compute_time_limit_ms(params, pos)
+	time_limit_ms := compute_time_limit_ms(params, e, pos)
 	side := if pos.white_to_move { engine.white_color } else { engine.black_color }
 	spawn search_worker(pos, side, time_limit_ms, search_id, shared search_control, result_ch)
 }
@@ -284,7 +284,7 @@ fn parse_go_params(parts []string) GoParams {
 	return params
 }
 
-fn compute_time_limit_ms(params GoParams, pos engine.Position) int {
+fn compute_time_limit_ms(params GoParams, e engine.Engine, pos engine.Position) int {
 	if params.movetime > 0 {
 		return max_time_budget(params.movetime)
 	}
@@ -302,6 +302,8 @@ fn compute_time_limit_ms(params GoParams, pos engine.Position) int {
 	if increment > 0 {
 		budget += increment / 2
 	}
+	side := if pos.white_to_move { engine.white_color } else { engine.black_color }
+	budget = e.time_budget_with_tactical_bonus(pos, side, budget)
 	return min_int(max_time_budget(budget), safe_remaining)
 }
 
