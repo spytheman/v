@@ -2,6 +2,7 @@ module main
 
 import engine
 import os
+import term
 import time
 
 const default_games = 11
@@ -493,7 +494,9 @@ fn game_result_from_reason(reason string, plies int, current_color string, curre
 
 fn print_game_result(game_number int, result GameResult) {
 	move_text := if result.moves.len == 0 { '-' } else { result.moves.join(' ') }
-	println('game ${game_number:2d}: current as ${result.current_color:5s} -> ${result.winner:7s} (${result.reason}, ${result.plies} plies)')
+	winner := term.inverse('${result.winner:7s}')
+	result_line := 'game ${game_number:2d}: current as ${result.current_color:5s} -> ${winner} (${result.reason}, ${result.plies} plies)'
+	println(term.bg_rgb(74, 45, 24, result_line))
 	println('  duration: ${format_ms(result.duration_ms)}, current avg: ${average_ms(result.current_ms,
 		result.current_moves):.1f} ms/move (${result.current_moves} moves), old avg: ${average_ms(result.old_ms,
 		result.old_moves):.1f} ms/move (${result.old_moves} moves)')

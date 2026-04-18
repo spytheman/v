@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ELO="${SF_ELO:-1320}"
+LIMIT="${SF_LIMIT:-true}"
+
+{
+  printf 'uci\n'
+  printf 'setoption name Debug Log File value /tmp/stockfish.log\n'
+  printf 'setoption name UCI_LimitStrength value %s\n' "$LIMIT"
+  printf 'setoption name UCI_Elo value %s\n' "$ELO"
+  printf 'isready\n'
+  cat
+} | "${STOCKFISH:-stockfish}"
